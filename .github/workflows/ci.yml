@@ -79,6 +79,9 @@ jobs:
           go-version-file: .go-version
       - name: Install MinGW
         run: choco install mingw --yes --no-progress
+      - name: Put MinGW on PATH
+        shell: bash
+        run: echo 'C:\ProgramData\mingw64\bin' >> "$GITHUB_PATH"
       - name: Build
         shell: bash
         run: |
