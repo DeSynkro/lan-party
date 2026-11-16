@@ -31,9 +31,9 @@ Friends cannot reach each other, cannot reach anything else on your network, and
 
 ## Status
 
-Works end to end on Linux and Windows for the core of it: create a group, publish services, start a session, send an invite, join from another machine, and reach the published ports through loopback. TCP and UDP both forward.
+Works end to end on Linux and Windows for the core of it: create a group, publish services, start a session, send an invite, join from another machine, and reach the published ports through loopback. TCP and UDP both forward. There is a tray icon, start on login and start minimised.
 
-Not built yet: the tray icon and start on boot, the live control channel that pushes changes to a running session, port conflict warnings on the friend side, and the self hosted relay.
+Not built yet: the live control channel that pushes changes to a running session, port conflict warnings on the friend side, and the self hosted relay.
 
 The design is in [docs/design.md](docs/design.md).
 

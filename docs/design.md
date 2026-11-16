@@ -205,10 +205,14 @@ TCP and UDP forwarding, presence from WireGuard handshakes, AppImage and exe
 builds.
 
 Missing: the control channel that pushes service and grant changes to a session
-that is already running, tray and start-on-boot, friend side port conflict
-warnings (it falls back quietly today, and shows which address it won), the
-self hosted relay, and encryption at rest for keys. Keys live in the group store
-at mode 0600, the way an SSH key does, until a vault is worth the friction.
+that is already running, friend side port conflict warnings (it falls back
+quietly today, and shows which address it won), the self hosted relay, and
+encryption at rest for keys. Keys live in the group store at mode 0600, the way
+an SSH key does, until a vault is worth the friction.
+
+Tray, start minimised and start on login exist. Closing the window with a live
+session hides it instead of ending the party; Quit in the tray menu stops
+everything.
 
 ## Dependencies
 
