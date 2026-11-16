@@ -3,16 +3,20 @@ SHELL := /bin/bash
 ROOT := $(CURDIR)
 CACHE := $(ROOT)/.cache
 GO := $(ROOT)/.tools/go/bin/go
-WAILS := $(CACHE)/go/bin/wails3
-WAILS_VERSION := v3.1.0
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+LDFLAGS := -s -w -X github.com/desynkro/lan-party/internal/buildinfo.Version=$(VERSION)
 
+# Everything the build touches stays inside the project.
 export TMPDIR := $(ROOT)/.tmp
 export GOCACHE := $(CACHE)/go-build
 export GOMODCACHE := $(CACHE)/go-mod
 export GOPATH := $(CACHE)/go
+export XDG_CONFIG_HOME := $(ROOT)/.tmp/config
+export XDG_DATA_HOME := $(ROOT)/.tmp/data
+export XDG_CACHE_HOME := $(ROOT)/.tmp/cache
 export PATH := $(ROOT)/.tools/go/bin:$(PATH)
 
-.PHONY: help dirs env toolchain wails fmt vet test build dev package clean
+.PHONY: help dirs env toolchain fmt vet test build run clean
 
 help: ## List targets
 	@awk 'BEGIN {FS = ":.*## "; print "Targets:"} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-10s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -25,10 +29,7 @@ env: dirs ## Show the build environment
 		"$(GO)" "$(GOCACHE)" "$(GOMODCACHE)" "$(GOPATH)"
 
 toolchain: dirs ## Install the pinned Go toolchain into .tools/
-	@scripts/toolchain.sh
-
-wails: toolchain ## Install the pinned Wails CLI into .cache/
-	@test -x "$(WAILS)" || $(GO) install github.com/wailsapp/wails/v3/cmd/wails3@$(WAILS_VERSION)
+	@build/toolchain.sh
 
 fmt: toolchain ## Format Go code
 	@$(GO) fmt ./...
@@ -39,14 +40,11 @@ vet: toolchain ## Vet Go code
 test: toolchain ## Run the test suite
 	@$(GO) test ./...
 
-build: wails ## Build the app for this platform
-	@$(WAILS) build
+build: toolchain ## Build the binary into bin/
+	@$(GO) build -trimpath -ldflags "$(LDFLAGS)" -o bin/lan-party .
 
-dev: wails ## Run with hot reload
-	@$(WAILS) dev
-
-package: wails ## Build release packages (AppImage, exe)
-	@$(WAILS) package
+run: toolchain ## Run the app with project-local config
+	@$(GO) run .
 
 clean: ## Remove build output and caches
 	@rm -rf "$(ROOT)/bin" "$(CACHE)" "$(ROOT)/.tmp"

@@ -23,6 +23,8 @@ The friend's game never leaves their computer. It talks to a real local socket, 
 
 There is no network adapter, no TUN device and no admin prompt. The app carries its own WireGuard device and its own TCP/IP stack (gVisor) inside the process, and asks the OS for exactly one ordinary UDP socket.
 
+The interface is written in Go with Fyne. No webview, no bundled browser, no npm tree.
+
 Your app listens on one tunnel address, in carrier grade NAT space, and only on the ports you published. For each connection it dials the LAN target and copies bytes both ways.
 
 Friends cannot reach each other, cannot reach anything else on your network, and cannot use you as a gateway. There is nothing to configure and nothing to forget.
@@ -37,7 +39,15 @@ Linux and Windows. macOS is not supported because the author cannot test it.
 
 ## Building
 
-Eventually: `make dev` for a local run, `make package` for the AppImage and the Windows exe. For now the Makefile will tell you what is missing.
+You need a C toolchain and the GL headers, which most desktops already have.
+
+```
+make run     # build and open the app
+make test    # tests
+make build   # binary in bin/
+```
+
+The first run downloads the pinned Go toolchain into `.tools/`, so nothing is installed system wide. Config written while developing stays inside the project too.
 
 ## Licence
 

@@ -186,21 +186,25 @@ the preset. Custom presets live in the same store and are marked custom.
 
 ## Build and packaging
 
-Go core, Wails v3 shell, plain HTML and CSS with no runtime packages.
+Go core and a Fyne interface. One binary, no webview, no npm, no bundled browser.
 
-- Linux: `wails3 package` produces the AppImage. The Wails AppImage bundles
-  WebKit and its helper processes, so there is no external webview to install.
-- Windows: `wails3 build GOOS=windows` cross compiles from Linux, because the
-  Windows webview binding is pure Go. The result is a single exe, no installer.
-- Release bottoms out at Ubuntu 24.04, Debian 13 and Fedora 40, because that is
-  where GTK4 and WebKitGTK 6.0 exist.
-- CI builds on native runners for each platform and publishes checksums.
+- Linux: the binary plus an AppImage. A small script assembles the AppDir and
+  runs `appimagetool`, pinned by version and checksum, because `fyne package`
+  produces a tarball and not an AppImage.
+- Windows: one exe with the icon embedded, built on a Windows CI runner. Fyne
+  draws through cgo, so crossing from Linux needs a mingw toolchain; the runner
+  is the sane path.
+- Runtime needs OpenGL and X11 or Wayland, which every desktop already has. No
+  package to install before the app will start.
+- CI builds both on native runners and publishes checksums.
 
 ## Dependencies
 
-Three matter for security: gVisor, wireguard-go and `golang.org/x`. The rest is
-cosmetic. Dependabot keeps them current, `govulncheck` and CodeQL run on a
-schedule, and nothing auto merges if it touches the network stack.
+Three matter for security: gVisor, wireguard-go and `golang.org/x`. Fyne pulls
+GLFW and the GL bindings for the window, which is a build dependency rather than
+a network one. There is no npm tree to audit. Dependabot keeps the modules
+current, `govulncheck` and CodeQL run on a schedule, and nothing auto merges if
+it touches the network stack.
 
 There is no self updater. It is an attack surface for a project people can simply
 download again.
