@@ -134,14 +134,19 @@ func (d *Device) RemovePeer(key wgtypes.Key) error {
 
 // DialContext opens a connection through the tunnel.
 func (d *Device) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
-	if network != "tcp" {
-		return nil, fmt.Errorf("network %q is not supported yet", network)
-	}
 	addr, err := parseAddress(address)
 	if err != nil {
 		return nil, err
 	}
-	return gonet.DialContextTCP(ctx, d.stack, addr, header.IPv4ProtocolNumber)
+
+	switch network {
+	case "tcp":
+		return gonet.DialContextTCP(ctx, d.stack, addr, header.IPv4ProtocolNumber)
+	case "udp":
+		return d.dialUDP(addr)
+	default:
+		return nil, fmt.Errorf("network %q is not supported", network)
+	}
 }
 
 // Listen accepts connections arriving through the tunnel.
@@ -151,6 +156,15 @@ func (d *Device) Listen(address string) (net.Listener, error) {
 		return nil, err
 	}
 	return gonet.ListenTCP(d.stack, addr, header.IPv4ProtocolNumber)
+}
+
+// ListenPacket accepts datagrams arriving through the tunnel.
+func (d *Device) ListenPacket(address string) (net.PacketConn, error) {
+	addr, err := parseAddress(address)
+	if err != nil {
+		return nil, err
+	}
+	return d.listenUDP(addr)
 }
 
 func parseAddress(address string) (tcpip.FullAddress, error) {
