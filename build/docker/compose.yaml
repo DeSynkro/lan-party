@@ -1,0 +1,18 @@
+name: lan-party
+
+services:
+  build:
+    build:
+      context: ../..
+      dockerfile: build/docker/Dockerfile
+    image: lan-party-builder
+    user: "${PUID:-1000}:${PGID:-1000}"
+    working_dir: /work
+    environment:
+      HOME: /tmp
+      TMPDIR: /tmp
+      GOCACHE: /work/.cache/go-build
+      GOMODCACHE: /work/.cache/go-mod
+      GOPATH: /work/.cache/go
+    volumes:
+      - ../..:/work
