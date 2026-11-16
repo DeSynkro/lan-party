@@ -9,6 +9,7 @@ import (
 	"net"
 	"strconv"
 	"sync"
+	"time"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
@@ -116,6 +117,10 @@ type Friend struct {
 
 // StartFriend brings the tunnel up and opens a loopback port per service.
 func StartFriend(cfg FriendConfig) (*Friend, error) {
+	if !cfg.Invite.Expires.IsZero() && time.Now().After(cfg.Invite.Expires) {
+		return nil, errors.New("this invite has expired")
+	}
+
 	hostKey, peerKey, err := cfg.Invite.Keys()
 	if err != nil {
 		return nil, err

@@ -12,6 +12,8 @@ import (
 
 	"github.com/desynkro/lan-party/internal/buildinfo"
 	"github.com/desynkro/lan-party/internal/group"
+	"github.com/desynkro/lan-party/internal/invite"
+	"github.com/desynkro/lan-party/internal/session"
 )
 
 // showHome lists saved groups, or introduces the app when there are none.
@@ -30,32 +32,53 @@ func (a *App) showHome() {
 		container.NewCenter(subtitle),
 	)
 
-	actions := container.NewVBox(layout.NewSpacer())
-	for _, g := range a.groups {
-		g := g
-		actions.Add(widget.NewButton("Open "+g.Name, func() { a.showGroup(g) }))
+	list := container.NewVBox()
+
+	if len(a.groups) > 0 {
+		list.Add(section("Your groups"))
+		for _, g := range a.groups {
+			g := g
+			list.Add(widget.NewButton("Open "+g.Name, func() { a.showGroup(g) }))
+		}
+		list.Add(widget.NewSeparator())
+	}
+
+	if len(a.joined) > 0 {
+		list.Add(section("Groups you joined"))
+		for _, inv := range a.joined {
+			inv := inv
+			label := inv.GroupName + " · hosted by " + inv.HostName
+			list.Add(widget.NewButton(label, func() { a.openJoined(inv) }))
+		}
+		list.Add(widget.NewSeparator())
 	}
 
 	start := widget.NewButton("Start a group", a.newGroup)
 	start.Importance = widget.HighImportance
-	actions.Add(start)
 
-	join := widget.NewButton("Join a group", nil)
-	join.Disable()
-	actions.Add(join)
+	join := widget.NewButton("Join a group", a.joinGroup)
 
-	hint := canvas.NewText("Joining someone else's group comes next.", hex("#5c6373"))
+	list.Add(start)
+	list.Add(join)
+
+	hint := canvas.NewText("Paste an invite to join someone else's LAN.", hex("#5c6373"))
 	hint.TextSize = 11
 	hint.Alignment = fyne.TextAlignCenter
-	actions.Add(container.NewCenter(hint))
-	actions.Add(layout.NewSpacer())
+	list.Add(container.NewCenter(hint))
+
+	var centre fyne.CanvasObject
+	if len(a.groups) == 0 && len(a.joined) == 0 {
+		centre = container.NewVBox(layout.NewSpacer(), list, layout.NewSpacer())
+	} else {
+		centre = container.NewVScroll(list)
+	}
 
 	a.win.SetContent(container.NewPadded(container.NewBorder(
 		container.NewPadded(heading),
 		a.footer(),
 		nil,
 		nil,
-		container.NewPadded(actions),
+		container.NewPadded(centre),
 	)))
 	a.win.SetTitle("LAN Party")
 }
@@ -92,6 +115,66 @@ func (a *App) newGroup() {
 		}, a.win)
 	form.Resize(fyne.NewSize(380, 250))
 	form.Show()
+}
+
+// joinGroup takes an invite and connects to the host.
+func (a *App) joinGroup() {
+	entry := widget.NewMultiLineEntry()
+	entry.SetPlaceHolder("lp1_…")
+	entry.Wrapping = fyne.TextWrapBreak
+
+	body := container.NewVBox(
+		widget.NewLabel("Paste the invite you were sent."),
+		entry,
+	)
+
+	d := dialog.NewCustomConfirm("Join a group", "Join", "Cancel", body, func(ok bool) {
+		if !ok {
+			return
+		}
+		inv, err := invite.Decode(entry.Text)
+		if err != nil {
+			dialog.ShowError(err, a.win)
+			return
+		}
+		a.openJoined(inv)
+	}, a.win)
+	d.Resize(fyne.NewSize(440, 260))
+	d.Show()
+}
+
+// openJoined connects to a group and remembers it.
+func (a *App) openJoined(inv invite.Invite) {
+	if a.friend != nil || a.live != nil {
+		dialog.ShowInformation("One session at a time", "End the session you are in first.", a.win)
+		return
+	}
+
+	f, err := session.StartFriend(session.FriendConfig{Invite: inv})
+	if err != nil {
+		dialog.ShowError(err, a.win)
+		return
+	}
+
+	a.friend = f
+	a.remember(inv)
+	a.showFriend(inv)
+}
+
+func (a *App) remember(inv invite.Invite) {
+	for i := range a.joined {
+		if a.joined[i].GroupID == inv.GroupID {
+			a.joined[i] = inv
+			if err := a.inviteStore.Save(a.joined); err != nil {
+				dialog.ShowError(err, a.win)
+			}
+			return
+		}
+	}
+	a.joined = append(a.joined, inv)
+	if err := a.inviteStore.Save(a.joined); err != nil {
+		dialog.ShowError(err, a.win)
+	}
 }
 
 func (a *App) footer() fyne.CanvasObject {
