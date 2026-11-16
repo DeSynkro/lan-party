@@ -24,7 +24,12 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libgl1-mesa-dev xorg-dev
+          sudo apt-get install -y --no-install-recommends \
+            libgl1-mesa-dev \
+            libwayland-dev \
+            libxkbcommon-dev \
+            wayland-protocols \
+            xorg-dev
       - name: Vet
         run: go vet ./...
       - name: Test
@@ -43,7 +48,12 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libgl1-mesa-dev xorg-dev
+          sudo apt-get install -y --no-install-recommends \
+            libgl1-mesa-dev \
+            libwayland-dev \
+            libxkbcommon-dev \
+            wayland-protocols \
+            xorg-dev
       - name: govulncheck
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
@@ -59,7 +69,12 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libgl1-mesa-dev xorg-dev
+          sudo apt-get install -y --no-install-recommends \
+            libgl1-mesa-dev \
+            libwayland-dev \
+            libxkbcommon-dev \
+            wayland-protocols \
+            xorg-dev
       - name: Build AppImage
         run: VERSION="${GITHUB_REF_NAME#v}" ./build/appimage.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

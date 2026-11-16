@@ -11,7 +11,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         file \
         git \
         libgl1-mesa-dev \
+        libwayland-dev \
+        libxkbcommon-dev \
         pkg-config \
+        wayland-protocols \
         xorg-dev \
         xz-utils \
     && rm -rf /var/lib/apt/lists/*
