@@ -23,8 +23,9 @@ type App struct {
 	inviteStore *invite.Store
 	joined      []invite.Invite
 
-	live   *session.Host
-	friend *session.Friend
+	live        *session.Host
+	friend      *session.Friend
+	memberViews map[string]*memberView
 }
 
 // Run starts the interface and blocks until the window closes.
@@ -59,6 +60,7 @@ func Run() {
 		app.win.Close()
 	})
 	app.showHome()
+	app.startPresenceTimer()
 
 	app.win.Resize(fyne.NewSize(420, 620))
 	app.win.CenterOnScreen()

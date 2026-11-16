@@ -53,9 +53,14 @@ func (a *App) showGroup(g group.Group) {
 		a.sessionButton(g),
 	)
 
+	a.memberViews = map[string]*memberView{}
 	members := container.NewVBox(section("Members"))
 	for _, m := range g.Members {
-		members.Add(memberRow(m))
+		row, view := memberRow(m)
+		members.Add(row)
+		if m.PublicKey != "" {
+			a.memberViews[m.PublicKey] = view
+		}
 	}
 	inviteButton := widget.NewButton("Invite a friend", func() { a.newInvite(g) })
 	members.Add(inviteButton)
@@ -520,24 +525,17 @@ func muted(text string) *canvas.Text {
 	return t
 }
 
-func memberRow(m group.Member) fyne.CanvasObject {
-	colour := "#22c55e"
-	if !m.IsHost && m.LastSeen.IsZero() {
-		colour = "#6b7280"
-	}
-
-	dot := canvas.NewText("●", hex(colour))
+func memberRow(m group.Member) (fyne.CanvasObject, *memberView) {
+	dot := canvas.NewText("●", hex("#6b7280"))
 	dot.TextSize = 10
 
-	row := container.NewHBox(dot, widget.NewLabel(m.Name))
+	status := widget.NewLabel("waiting")
+
+	row := container.NewHBox(dot, widget.NewLabel(m.Name), layout.NewSpacer(), status)
 	if m.IsHost {
-		tag := canvas.NewText("host", hex("#9aa2b2"))
-		tag.TextSize = 10
-		row.Add(tag)
-	} else if m.LastSeen.IsZero() {
-		tag := canvas.NewText("not joined yet", hex("#9aa2b2"))
-		tag.TextSize = 10
-		row.Add(tag)
+		dot.Color = hex("#22c55e")
+		status.SetText("host")
 	}
-	return row
+
+	return row, &memberView{dot: dot, status: status}
 }

@@ -94,6 +94,20 @@ func (h *Host) AddPeer(p tunnel.Peer) error {
 	return h.dev.AddPeer(p)
 }
 
+// Presence reports the last handshake for every peer, keyed by public key. A
+// zero time means that peer has never connected.
+func (h *Host) Presence() map[string]time.Time {
+	peers, err := h.dev.Peers()
+	if err != nil {
+		return map[string]time.Time{}
+	}
+	out := make(map[string]time.Time, len(peers))
+	for _, p := range peers {
+		out[p.PublicKey.String()] = p.LastHandshake
+	}
+	return out
+}
+
 // FriendConfig is what the friend's app starts with.
 type FriendConfig struct {
 	Invite invite.Invite

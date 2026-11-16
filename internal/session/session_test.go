@@ -19,7 +19,7 @@ import (
 func TestFriendReachesPublishedService(t *testing.T) {
 	echoAddr := startTCPEcho(t)
 
-	inv := startSessionPair(t, group.Service{
+	_, inv := startSessionPair(t, group.Service{
 		ID:     "svc-tcp",
 		Name:   "Echo",
 		Proto:  "tcp",
@@ -60,7 +60,7 @@ func TestFriendReachesPublishedService(t *testing.T) {
 func TestFriendReachesPublishedUDP(t *testing.T) {
 	echoAddr := startUDPEcho(t)
 
-	inv := startSessionPair(t, group.Service{
+	_, inv := startSessionPair(t, group.Service{
 		ID:     "svc-udp",
 		Name:   "Echo",
 		Proto:  "udp",
@@ -106,8 +106,8 @@ func TestFriendReachesPublishedUDP(t *testing.T) {
 	t.Fatal("no reply through the session")
 }
 
-// startSessionPair publishes one service and returns an invite for a friend.
-func startSessionPair(t *testing.T, svc group.Service) invite.Invite {
+// startSessionPair publishes one service and returns the host and an invite.
+func startSessionPair(t *testing.T, svc group.Service) (*Host, invite.Invite) {
 	t.Helper()
 
 	hostKey, err := wgtypes.GeneratePrivateKey()
@@ -135,7 +135,7 @@ func startSessionPair(t *testing.T, svc group.Service) invite.Invite {
 	}
 	t.Cleanup(func() { host.Close() })
 
-	return invite.Invite{
+	return host, invite.Invite{
 		Version:   1,
 		GroupID:   "grp",
 		GroupName: "Friday Night",
@@ -219,4 +219,45 @@ func testCIDR(t *testing.T, s string) net.IPNet {
 		t.Fatal(err)
 	}
 	return net.IPNet{IP: ip, Mask: network.Mask}
+}
+
+// The host has to be able to tell who is actually in the session, otherwise the
+// roster is decoration.
+func TestHostSeesFriendConnect(t *testing.T) {
+	echoAddr := startTCPEcho(t)
+
+	host, inv := startSessionPair(t, group.Service{
+		ID:     "svc-tcp",
+		Name:   "Echo",
+		Proto:  "tcp",
+		Ports:  []int{25565},
+		Target: echoAddr,
+	})
+
+	friend, err := StartFriend(FriendConfig{Invite: inv})
+	if err != nil {
+		t.Fatalf("start friend: %v", err)
+	}
+	defer friend.Close()
+
+	conn, err := net.DialTimeout("tcp", friend.Bound()[0].Address, 5*time.Second)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.Close()
+
+	peerKey, err := wgtypes.ParseKey(inv.PeerKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if last := host.Presence()[peerKey.PublicKey().String()]; !last.IsZero() {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	t.Fatal("the host never saw the friend connect")
 }
