@@ -32,7 +32,7 @@ func main() {
 	drawCircle(img, cx, cy, 62, accent)
 	drawRect(img, cx-22, cy+30, cx+22, 300, accent)
 
-	f, err := os.Create("build/icon.png")
+	f, err := os.Create("internal/ui/assets/icon.png")
 	if err != nil {
 		panic(err)
 	}

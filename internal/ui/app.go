@@ -26,6 +26,7 @@ type App struct {
 	live        *session.Host
 	friend      *session.Friend
 	memberViews map[string]*memberView
+	trayReady   bool
 }
 
 // Run starts the interface and blocks until the window closes.
@@ -55,7 +56,15 @@ func Run() {
 		joined:      joined,
 	}
 	app.win = a.NewWindow("LAN Party")
+	app.win.SetIcon(appIcon)
+	app.trayReady = app.setupTray()
 	app.win.SetCloseIntercept(func() {
+		// A live session keeps running when the window is closed, as long as
+		// there is a tray icon to bring it back.
+		if app.trayReady && (app.live != nil || app.friend != nil) {
+			app.win.Hide()
+			return
+		}
 		app.closeSessions()
 		app.win.Close()
 	})
@@ -64,6 +73,11 @@ func Run() {
 
 	app.win.Resize(fyne.NewSize(420, 620))
 	app.win.CenterOnScreen()
+
+	if app.trayReady && a.Preferences().Bool(prefStartMinimised) {
+		a.Run()
+		return
+	}
 	app.win.ShowAndRun()
 }
 

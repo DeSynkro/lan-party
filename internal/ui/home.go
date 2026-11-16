@@ -178,12 +178,17 @@ func (a *App) remember(inv invite.Invite) {
 }
 
 func (a *App) footer() fyne.CanvasObject {
+	settings := widget.NewButton("Settings", a.showSettings)
+	settings.Importance = widget.LowImportance
+
 	return container.NewVBox(
 		widget.NewSeparator(),
-		container.NewHBox(
-			layout.NewSpacer(),
-			widget.NewLabelWithStyle(buildinfo.Summary(), fyne.TextAlignCenter, fyne.TextStyle{}),
-			layout.NewSpacer(),
+		container.NewBorder(
+			nil,
+			nil,
+			nil,
+			settings,
+			container.NewCenter(widget.NewLabelWithStyle(buildinfo.Summary(), fyne.TextAlignCenter, fyne.TextStyle{})),
 		),
 	)
 }

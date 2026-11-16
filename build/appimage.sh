@@ -33,7 +33,7 @@ mkdir -p "${work}/usr/bin" "${work}/usr/share/applications" "${out}"
     -ldflags "-s -w -X github.com/desynkro/lan-party/internal/buildinfo.Version=${version}" \
     -o "${work}/usr/bin/lan-party" .
 
-install -m 644 "${root}/build/icon.png" "${work}/lan-party.png"
+install -m 644 "${root}/internal/ui/assets/icon.png" "${work}/lan-party.png"
 
 cat > "${work}/lan-party.desktop" <<DESKTOP
 [Desktop Entry]
