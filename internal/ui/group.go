@@ -53,14 +53,14 @@ func (a *App) showGroup(g group.Group) {
 		body.Add(a.serviceCard(g, s))
 	}
 
-	add := newButton("Add service", buttonSecondary, func() { a.addService(g) })
+	add := newRowButton("Add service", "", func() { a.addService(g) })
 	if a.live != nil {
 		add.disabled = true
 	}
 	body.Add(add)
 
 	body.Add(gap(20))
-	body.Add(sectionLabel(fmt.Sprintf("Group · %d members", len(g.Members))))
+	body.Add(sectionLabel("Group · " + memberCount(len(g.Members))))
 	body.Add(gap(4))
 	for _, m := range g.Members {
 		row, view := memberRow(m)
@@ -99,7 +99,7 @@ func (a *App) sessionBanner(g group.Group) fyne.CanvasObject {
 	fill := hex("#141b17")
 	border := hex("#24402e")
 	titleColour := "#8de3ac"
-	title := "Session live"
+	title := "Session live" + a.playingLabel(g)
 
 	if !live {
 		fill = hex("#17181c")
@@ -229,6 +229,39 @@ func (a *App) inviteCard(g group.Group) fyne.CanvasObject {
 	)
 
 	return card(container.NewBorder(nil, nil, nil, right, left))
+}
+
+// playingLabel is how many peers are actually connected right now.
+func (a *App) playingLabel(g group.Group) string {
+	total := 0
+	for _, m := range g.Members {
+		if !m.IsHost {
+			total++
+		}
+	}
+	if total == 0 || a.live == nil {
+		return ""
+	}
+
+	presence := a.live.Presence()
+	playing := 0
+	for _, m := range g.Members {
+		if m.IsHost {
+			continue
+		}
+		if last := presence[m.PublicKey]; !last.IsZero() && time.Since(last) < 2*time.Minute {
+			playing++
+		}
+	}
+	return fmt.Sprintf(" · %d of %d playing", playing, total)
+}
+
+// memberCount avoids "1 members".
+func memberCount(n int) string {
+	if n == 1 {
+		return "1 member"
+	}
+	return fmt.Sprintf("%d members", n)
 }
 
 func timeLeft(t time.Time) string {

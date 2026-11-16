@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -43,36 +42,40 @@ func (a *App) showHome() {
 
 	if len(a.groups) > 0 {
 		list.Add(sectionLabel("Your groups"))
-		list.Add(gap(4))
-		for _, g := range a.groups {
+		list.Add(gap(8))
+		for i, g := range a.groups {
 			g := g
-			label := fmt.Sprintf("%s · %d members", g.Name, len(g.Members))
-			list.Add(newButton(label, buttonSecondary, func() { a.showGroup(g) }))
-			list.Add(gap(4))
+			if i > 0 {
+				list.Add(gap(6))
+			}
+			list.Add(newRowButton(g.Name, memberCount(len(g.Members)), func() { a.showGroup(g) }))
 		}
 		list.Add(gap(16))
 	}
 
 	if len(a.joined) > 0 {
 		list.Add(sectionLabel("Groups you joined"))
-		list.Add(gap(4))
-		for _, inv := range a.joined {
+		list.Add(gap(8))
+		for i, inv := range a.joined {
 			inv := inv
-			label := inv.GroupName + " · " + inv.HostName
-			list.Add(newButton(label, buttonSecondary, func() { a.openJoined(inv) }))
-			list.Add(gap(4))
+			if i > 0 {
+				list.Add(gap(6))
+			}
+			list.Add(newRowButton(inv.GroupName, "hosted by "+inv.HostName, func() { a.openJoined(inv) }))
 		}
 		list.Add(gap(16))
 	}
 
-	list.Add(newButton("Start a group", buttonPrimary, a.newGroup))
-	list.Add(gap(8))
-	list.Add(newButton("Join a group", buttonSecondary, a.joinGroup))
-	list.Add(gap(12))
+	list.Add(container.NewCenter(container.NewHBox(
+		newButton("Start a group", buttonPrimary, a.newGroup),
+		gapW(8),
+		newButton("Join a group", buttonSecondary, a.joinGroup),
+	)))
 
 	hint := canvas.NewText("Paste an invite to join someone else's LAN.", hex("#4d515a"))
 	hint.TextSize = sizeMeta
 	hint.Alignment = fyne.TextAlignCenter
+	list.Add(gap(12))
 	list.Add(container.NewCenter(hint))
 
 	block := container.NewVBox(heading, gap(32), list)

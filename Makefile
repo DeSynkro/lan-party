@@ -3,7 +3,7 @@ SHELL := /bin/bash
 ROOT := $(CURDIR)
 CACHE := $(ROOT)/.cache
 GO := $(ROOT)/.tools/go/bin/go
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null | sed -e "s/^v//" -e "s/^$$/dev/")
 LDFLAGS := -s -w -X github.com/desynkro/lan-party/internal/buildinfo.Version=$(VERSION)
 
 # Everything the build touches stays inside the project.

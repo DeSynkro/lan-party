@@ -138,6 +138,108 @@ func pill(text, colour string) fyne.CanvasObject {
 	)
 }
 
+// rowButton is a full width row with the label on the left and quiet meta on
+// the right. Used for navigation, where a centred button reads like a form.
+type rowButton struct {
+	widget.BaseWidget
+
+	title    string
+	trailing string
+	onTap    func()
+	disabled bool
+
+	hover bool
+}
+
+func newRowButton(title, trailing string, onTap func()) *rowButton {
+	r := &rowButton{title: title, trailing: trailing, onTap: onTap}
+	r.ExtendBaseWidget(r)
+	return r
+}
+
+func (r *rowButton) Tapped(*fyne.PointEvent) {
+	if r.disabled || r.onTap == nil {
+		return
+	}
+	r.onTap()
+}
+
+func (r *rowButton) MouseIn(*desktop.MouseEvent) { r.hover = true; r.Refresh() }
+func (r *rowButton) MouseOut()                   { r.hover = false; r.Refresh() }
+func (r *rowButton) Cursor() desktop.Cursor      { return desktop.PointerCursor }
+
+type rowRenderer struct {
+	row   *rowButton
+	bg    *canvas.Rectangle
+	title *canvas.Text
+	meta  *canvas.Text
+	chev  *canvas.Text
+}
+
+func (r *rowButton) CreateRenderer() fyne.WidgetRenderer {
+	return &rowRenderer{
+		row: r,
+		bg:  surface(hex("#17181c"), hex("#2a2d34"), 10),
+		title: func() *canvas.Text {
+			t := canvas.NewText(r.title, hex("#e8eaee"))
+			t.TextSize = sizeBody
+			return t
+		}(),
+		meta: func() *canvas.Text {
+			t := canvas.NewText(r.trailing, hex("#6f737d"))
+			t.TextSize = sizeMeta
+			return t
+		}(),
+		chev: func() *canvas.Text {
+			t := canvas.NewText("›", hex("#4d515a"))
+			t.TextSize = 16
+			return t
+		}(),
+	}
+}
+
+func (r *rowRenderer) MinSize() fyne.Size { return fyne.NewSize(200, 44) }
+
+func (r *rowRenderer) Layout(size fyne.Size) {
+	r.bg.Resize(size)
+
+	pad := float32(14)
+	titleSize := r.title.MinSize()
+	metaSize := r.meta.MinSize()
+
+	r.title.Resize(titleSize)
+	r.title.Move(fyne.NewPos(pad, (size.Height-titleSize.Height)/2))
+
+	r.chev.Resize(r.chev.MinSize())
+	r.chev.Move(fyne.NewPos(size.Width-pad-r.chev.MinSize().Width, (size.Height-r.chev.MinSize().Height)/2))
+
+	metaX := size.Width - pad - r.chev.MinSize().Width - 10 - metaSize.Width
+	r.meta.Resize(metaSize)
+	r.meta.Move(fyne.NewPos(metaX, (size.Height-metaSize.Height)/2))
+}
+
+func (r *rowRenderer) Refresh() {
+	switch {
+	case r.row.disabled:
+		r.title.Color = hex("#4d515a")
+		r.meta.Color = hex("#3a3e47")
+		r.bg.FillColor = hex("#141519")
+	case r.row.hover:
+		r.bg.FillColor = hex("#1d2025")
+	default:
+		r.bg.FillColor = hex("#17181c")
+	}
+	r.title.Refresh()
+	r.meta.Refresh()
+	r.bg.Refresh()
+}
+
+func (r *rowRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{r.bg, r.title, r.meta, r.chev}
+}
+
+func (r *rowRenderer) Destroy() {}
+
 // tapArea is an invisible tappable layer, so a card can open a detail dialog
 // without a visible button on it.
 type tapArea struct {
@@ -265,9 +367,6 @@ func (b *button) CreateRenderer() fyne.WidgetRenderer {
 	text := canvas.NewText(b.label, b.textColour())
 	text.TextSize = sizeBody
 	text.Alignment = fyne.TextAlignCenter
-	if b.kind == buttonPrimary {
-		text.TextStyle = fyne.TextStyle{Bold: true}
-	}
 
 	bg := surface(b.fillColour(), b.borderColour(), 8)
 
