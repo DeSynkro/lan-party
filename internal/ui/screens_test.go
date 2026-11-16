@@ -27,7 +27,15 @@ func TestScreensRender(t *testing.T) {
 	app.showHome()
 	capture(t, app.win, "home.png")
 
-	app.showGroup(group.Create("Friday Night", "Desynkro"))
+	g := group.Create("Friday Night", "Desynkro")
+	g.Services = []group.Service{{
+		ID:     "svc1",
+		Name:   "Minecraft: Java Edition",
+		Proto:  "tcp",
+		Ports:  []int{25565},
+		Target: "192.168.1.50:25565",
+	}}
+	app.showGroup(g)
 	capture(t, app.win, "group.png")
 }
 
