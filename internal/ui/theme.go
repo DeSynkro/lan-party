@@ -32,7 +32,7 @@ var palette = map[fyne.ThemeColorName]color.Color{
 	theme.ColorNameButton:          hex("#23252e"),
 	theme.ColorNameDisabledButton:  hex("#1b1d24"),
 	theme.ColorNameInputBackground: hex("#0e0f13"),
-	theme.ColorNamePrimary:         hex("#22d3ee"),
+	theme.ColorNamePrimary:         hex("#0e7490"),
 	theme.ColorNameSeparator:       hex("#2b2d36"),
 	theme.ColorNameShadow:          color.NRGBA{R: 0, G: 0, B: 0, A: 120},
 }
