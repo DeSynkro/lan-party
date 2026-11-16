@@ -11,7 +11,7 @@ if [ ! -x "${go_bin}" ]; then
     go_bin="$(command -v go)"
 fi
 
-version="${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo dev)}"
+version="${VERSION:-$(git describe --tags --abbrev=0 2>/dev/null | sed -e 's/^v//' -e 's/^$/dev/')}"
 out="${root}/dist"
 work="${root}/.cache/appimage"
 tool="${root}/.tools/appimagetool"
