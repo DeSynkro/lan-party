@@ -13,9 +13,9 @@ import (
 var fontFiles embed.FS
 
 var (
-	fontRegular  = resource("Inter-Regular.ttf")
-	fontMedium   = resource("Inter-Medium.ttf")
-	fontSemibold = resource("Inter-SemiBold.ttf")
+	fontRegular  = resource("IBMPlexSans-Regular.ttf")
+	fontMedium   = resource("IBMPlexSans-Medium.ttf")
+	fontSemibold = resource("IBMPlexSans-SemiBold.ttf")
 	fontMono     = resource("JetBrainsMono-Regular.ttf")
 )
 

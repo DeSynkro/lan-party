@@ -66,11 +66,11 @@ func (a *App) showHome() {
 		list.Add(gap(16))
 	}
 
-	list.Add(container.NewCenter(container.NewHBox(
+	actions := container.NewGridWithColumns(2,
 		newButton("Start a group", buttonPrimary, a.newGroup),
-		gapW(8),
 		newButton("Join a group", buttonSecondary, a.joinGroup),
-	)))
+	)
+	list.Add(actions)
 
 	hint := canvas.NewText("Paste an invite to join someone else's LAN.", hex("#4d515a"))
 	hint.TextSize = sizeMeta
@@ -199,9 +199,9 @@ func (a *App) footer() fyne.CanvasObject {
 		container.NewBorder(
 			nil,
 			nil,
-			nil,
+			metaText(versionText()),
 			newButton("Settings", buttonQuiet, a.showSettings),
-			container.NewCenter(metaText(versionText())),
+			layout.NewSpacer(),
 		),
 	)
 }

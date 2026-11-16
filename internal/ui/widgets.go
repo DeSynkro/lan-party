@@ -13,11 +13,11 @@ import (
 
 // Type scale. Inter at these sizes holds up in a 420px window.
 const (
-	sizeTitle   = 18
-	sizeName    = 14
+	sizeTitle   = 22
+	sizeName    = 15
 	sizeBody    = 13
 	sizeMeta    = 11
-	sizeAddress = 14
+	sizeAddress = 15
 )
 
 func titleText(text string) *canvas.Text {
