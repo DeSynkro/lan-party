@@ -16,7 +16,7 @@ func TestStartAndEndSession(t *testing.T) {
 	a := test.NewApp()
 	app := &App{fyneApp: a}
 	app.win = a.NewWindow("LAN Party")
-	app.win.Resize(fyne.NewSize(460, 680))
+	app.win.Resize(fyne.NewSize(420, 620))
 
 	g := group.Create("Friday Night", "Desynkro")
 	g.ListenPort = int(freeUDPPort(t))
