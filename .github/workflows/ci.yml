@@ -5,6 +5,8 @@ on:
     branches: [main]
     tags: ["v*"]
   pull_request:
+  # Builds can be triggered by hand from the Actions tab without a tag.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -59,7 +61,7 @@ jobs:
 
   linux:
     name: Linux AppImage
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -76,7 +78,14 @@ jobs:
             wayland-protocols \
             xorg-dev
       - name: Build AppImage
-        run: VERSION="${GITHUB_REF_NAME#v}" ./build/appimage.sh
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            version="dev-${GITHUB_SHA::7}"
+          else
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          VERSION="${version}" ./build/appimage.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: linux-appimage
@@ -85,7 +94,7 @@ jobs:
 
   windows:
     name: Windows exe
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -100,7 +109,12 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            version="dev-${GITHUB_SHA::7}"
+          else
+            version="${GITHUB_REF_NAME#v}"
+          fi
           mkdir -p dist
           go build -trimpath \
             -ldflags "-s -w -H windowsgui -X github.com/desynkro/lan-party/internal/buildinfo.Version=${version}" \
