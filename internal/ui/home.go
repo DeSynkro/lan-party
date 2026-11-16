@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -19,15 +20,21 @@ import (
 // showHome lists saved groups, or introduces the app when there are none.
 func (a *App) showHome() {
 	title := canvas.NewText("LAN PARTY", hex("#e9edf5"))
-	title.TextSize = 30
+	title.TextSize = 28
 	title.TextStyle = fyne.TextStyle{Bold: true}
 	title.Alignment = fyne.TextAlignCenter
 
 	subtitle := canvas.NewText("One port, not the network.", hex("#757c8c"))
-	subtitle.TextSize = 13
+	subtitle.TextSize = 12
 	subtitle.Alignment = fyne.TextAlignCenter
 
+	mark := canvas.NewImageFromResource(appIcon)
+	mark.FillMode = canvas.ImageFillContain
+	mark.SetMinSize(fyne.NewSize(84, 84))
+
 	heading := container.NewVBox(
+		container.NewCenter(mark),
+		gap(10),
 		container.NewCenter(title),
 		container.NewCenter(subtitle),
 	)
@@ -35,21 +42,25 @@ func (a *App) showHome() {
 	list := container.NewVBox()
 
 	if len(a.groups) > 0 {
-		list.Add(section("Your groups"))
+		list.Add(sectionHeader("Your groups", nil))
 		for _, g := range a.groups {
 			g := g
-			list.Add(widget.NewButton("Open "+g.Name, func() { a.showGroup(g) }))
+			list.Add(widget.NewButton(fmt.Sprintf("%s · %d members", g.Name, len(g.Members)), func() {
+				a.showGroup(g)
+			}))
 		}
-		list.Add(widget.NewSeparator())
 	}
 
 	if len(a.joined) > 0 {
-		list.Add(section("Groups you joined"))
+		list.Add(sectionHeader("Groups you joined", nil))
 		for _, inv := range a.joined {
 			inv := inv
-			label := inv.GroupName + " · hosted by " + inv.HostName
+			label := inv.GroupName + " · " + inv.HostName
 			list.Add(widget.NewButton(label, func() { a.openJoined(inv) }))
 		}
+	}
+
+	if len(a.groups) > 0 || len(a.joined) > 0 {
 		list.Add(widget.NewSeparator())
 	}
 
@@ -178,8 +189,7 @@ func (a *App) remember(inv invite.Invite) {
 }
 
 func (a *App) footer() fyne.CanvasObject {
-	settings := widget.NewButton("Settings", a.showSettings)
-	settings.Importance = widget.LowImportance
+	settings := quietButton("Settings", a.showSettings)
 
 	return container.NewVBox(
 		widget.NewSeparator(),
@@ -188,7 +198,15 @@ func (a *App) footer() fyne.CanvasObject {
 			nil,
 			nil,
 			settings,
-			container.NewCenter(widget.NewLabelWithStyle(buildinfo.Summary(), fyne.TextAlignCenter, fyne.TextStyle{})),
+			container.NewCenter(muted(versionText())),
 		),
 	)
+}
+
+func versionText() string {
+	summary := buildinfo.Summary()
+	if summary == "dev" || summary == "" {
+		return "dev build"
+	}
+	return "v" + summary
 }

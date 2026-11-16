@@ -25,36 +25,22 @@ import (
 
 // showGroup is the host's view of a group.
 func (a *App) showGroup(g group.Group) {
-	back := widget.NewButton("Back", a.showHome)
-	back.Importance = widget.LowImportance
-
-	name := canvas.NewText(g.Name, hex("#e9edf5"))
-	name.TextSize = 24
-	name.TextStyle = fyne.TextStyle{Bold: true}
-
-	host := canvas.NewText("Host: "+g.HostName, hex("#757c8c"))
-	host.TextSize = 12
+	top := container.NewBorder(nil, nil, quietButton("Back", a.showHome), a.statusPill(), layout.NewSpacer())
 
 	header := container.NewVBox(
-		container.NewHBox(back, layout.NewSpacer()),
-		name,
-		host,
-		a.endpointRow(g),
+		top,
+		titleText(g.Name),
+		muted("Host: "+g.HostName),
 	)
 
-	statusColour := "#6b7280"
-	if a.live != nil {
-		statusColour = "#22c55e"
-	}
-	status := container.NewHBox(
-		canvas.NewText("●", hex(statusColour)),
-		widget.NewLabel(a.statusText()),
-		layout.NewSpacer(),
-		a.sessionButton(g),
+	body := container.NewVBox(
+		a.addressCard(g),
+		gap(8),
+		a.sessionCard(g),
 	)
 
 	a.memberViews = map[string]*memberView{}
-	members := container.NewVBox(section("Members"))
+	members := container.NewVBox(sectionHeader(fmt.Sprintf("Members · %d", len(g.Members)), nil))
 	for _, m := range g.Members {
 		row, view := memberRow(m)
 		members.Add(row)
@@ -62,33 +48,35 @@ func (a *App) showGroup(g group.Group) {
 			a.memberViews[m.PublicKey] = view
 		}
 	}
-	inviteButton := widget.NewButton("Invite a friend", func() { a.newInvite(g) })
-	members.Add(inviteButton)
+	if g.Endpoint != "" {
+		members.Add(widget.NewButton("Invite a friend", func() { a.newInvite(g) }))
+	}
 
-	services := container.NewVBox(section("Services"))
+	services := container.NewVBox(sectionHeader("Services", nil))
 	if len(g.Services) == 0 {
 		services.Add(muted("Nothing published yet."))
 	}
 	for _, s := range g.Services {
-		services.Add(a.serviceRow(g, s))
+		services.Add(a.serviceCard(g, s))
 	}
 	add := widget.NewButton("Add service", func() { a.addService(g) })
-	services.Add(add)
-
 	if a.live != nil {
-		note := muted("End the session to change services.")
-		note.TextSize = 11
 		add.Disable()
-		services.Add(note)
+		services.Add(add)
+		services.Add(muted("End the session to change services."))
+	} else {
+		services.Add(add)
 	}
 
-	body := container.NewVBox(
-		status,
-		widget.NewSeparator(),
-		members,
-		widget.NewSeparator(),
-		services,
-	)
+	body.Add(gap(12))
+	body.Add(members)
+	body.Add(gap(12))
+	body.Add(services)
+
+	if len(g.Invites) > 0 {
+		body.Add(gap(12))
+		body.Add(a.invitesSection(g))
+	}
 
 	a.win.SetContent(container.NewPadded(container.NewBorder(
 		container.NewPadded(header),
@@ -100,36 +88,93 @@ func (a *App) showGroup(g group.Group) {
 	a.win.SetTitle("LAN Party · " + g.Name)
 }
 
-func (a *App) endpointRow(g group.Group) fyne.CanvasObject {
-	value := g.Endpoint
-	if value == "" {
-		value = "not set"
+func (a *App) statusPill() fyne.CanvasObject {
+	if a.live != nil {
+		return pill("LIVE", "#22c55e")
 	}
-	label := muted("Public address: " + value)
-
-	set := widget.NewButton("Set", func() { a.setEndpoint(g) })
-	set.Importance = widget.LowImportance
-
-	return container.NewHBox(label, layout.NewSpacer(), set)
+	return pill("IDLE", "#6b7280")
 }
 
-func (a *App) statusText() string {
-	if a.live != nil {
-		return "Session live"
+// addressCard shows the address friends dial, and says so when it is missing.
+func (a *App) addressCard(g group.Group) fyne.CanvasObject {
+	label := muted("Public address")
+
+	var value fyne.CanvasObject
+	if g.Endpoint == "" {
+		value = canvas.NewText("Not set. Friends cannot join until you set one.", hex("#eab308"))
+		value.(*canvas.Text).TextSize = 12
+	} else {
+		value = addressText(g.Endpoint)
 	}
-	return "No session running"
+
+	action := widget.NewButton("Set", func() { a.setEndpoint(g) })
+	if g.Endpoint != "" {
+		action.SetText("Change")
+	}
+
+	row := container.NewBorder(nil, nil, nil, action, container.NewVBox(label, value))
+	return card(row)
+}
+
+func (a *App) sessionCard(g group.Group) fyne.CanvasObject {
+	state := "No session running"
+	if a.live != nil {
+		state = "Session live"
+	}
+	label := canvas.NewText(state, hex("#e9edf5"))
+	label.TextSize = 13
+
+	row := container.NewBorder(nil, nil, nil, a.sessionButton(g), label)
+	return card(row)
 }
 
 func (a *App) sessionButton(g group.Group) fyne.CanvasObject {
 	if a.live != nil {
-		end := widget.NewButton("End session", func() { a.endSession(g) })
+		end := widget.NewButton("End", func() { a.endSession(g) })
 		end.Importance = widget.DangerImportance
 		return end
 	}
 
-	start := widget.NewButton("Start session", func() { a.startSession(g) })
+	start := widget.NewButton("Start", func() { a.startSession(g) })
 	start.Importance = widget.HighImportance
 	return start
+}
+
+func (a *App) invitesSection(g group.Group) fyne.CanvasObject {
+	rows := container.NewVBox(sectionHeader("Invites", nil))
+
+	for _, code := range g.Invites {
+		code := code
+		detail := muted("expired")
+		if time.Now().Before(code.Expires) {
+			detail = muted("expires in " + timeLeft(code.Expires))
+		}
+
+		show := quietButton("Show", func() { a.showCode(code.PeerName, code.Value) })
+		name := canvas.NewText(code.PeerName, hex("#e9edf5"))
+		name.TextSize = 13
+
+		action := container.NewVBox(layout.NewSpacer(), show, layout.NewSpacer())
+		row := container.NewBorder(nil, nil, nil, action,
+			container.NewVBox(name, detail))
+		rows.Add(row)
+		rows.Add(gap(6))
+	}
+	return rows
+}
+
+func timeLeft(t time.Time) string {
+	d := time.Until(t)
+	switch {
+	case d <= 0:
+		return "expired"
+	case d < time.Hour:
+		return fmt.Sprintf("%dm", int(d.Minutes()))
+	case d < 24*time.Hour:
+		return fmt.Sprintf("%dh", int(d.Hours()))
+	default:
+		return fmt.Sprintf("%dd", int(d.Hours()/24))
+	}
 }
 
 func (a *App) startSession(g group.Group) {
@@ -306,38 +351,34 @@ func (a *App) showCode(name, code string) {
 		nil,
 		nil,
 		container.NewVBox(
-			widget.NewLabel(fmt.Sprintf("Send this to %s. It works once, for them only, and expires in 24 hours.", name)),
+			muted(fmt.Sprintf("For %s. One use, and it expires in 24 hours.", name)),
 			entry,
 		),
 	)
 
 	d := dialog.NewCustom("Invite for "+name, "Close", body, a.win)
-	d.Resize(fyne.NewSize(460, 320))
+	d.Resize(fyne.NewSize(460, 300))
 	d.Show()
 }
 
-func (a *App) serviceRow(g group.Group, s group.Service) fyne.CanvasObject {
-	title := canvas.NewText(s.Name, hex("#e9edf5"))
-	title.TextSize = 13
-	title.TextStyle = fyne.TextStyle{Bold: true}
+func (a *App) serviceCard(g group.Group, s group.Service) fyne.CanvasObject {
+	name := canvas.NewText(s.Name, hex("#e9edf5"))
+	name.TextSize = 13
+	name.TextStyle = fyne.TextStyle{Bold: true}
 
 	detail := muted(fmt.Sprintf("%s · %s → %s", s.Proto, group.FormatPorts(s.Ports), s.Target))
 
-	rows := container.NewVBox(title, detail)
+	left := container.NewVBox(name, detail)
 	if len(s.Ports) > 0 {
-		address := canvas.NewText(fmt.Sprintf("friends see 127.0.0.1:%d", s.Ports[0]), hex("#22d3ee"))
-		address.TextSize = 11
-		address.TextStyle = fyne.TextStyle{Monospace: true}
-		rows.Add(address)
+		left.Add(addressText(fmt.Sprintf("127.0.0.1:%d", s.Ports[0])))
 	}
 
-	remove := widget.NewButton("Remove", func() { a.removeService(g, s.ID) })
-	remove.Importance = widget.LowImportance
+	remove := quietButton("Remove", func() { a.removeService(g, s.ID) })
 	if a.live != nil {
 		remove.Disable()
 	}
 
-	return container.NewHBox(rows, layout.NewSpacer(), remove)
+	return card(container.NewBorder(nil, nil, nil, remove, left))
 }
 
 func (a *App) addService(g group.Group) {
@@ -512,24 +553,12 @@ func validHostPort(value string) error {
 	return nil
 }
 
-func section(title string) *canvas.Text {
-	t := canvas.NewText(strings.ToUpper(title), hex("#666d7d"))
-	t.TextSize = 10
-	t.TextStyle = fyne.TextStyle{Bold: true}
-	return t
-}
-
-func muted(text string) *canvas.Text {
-	t := canvas.NewText(text, hex("#757c8c"))
-	t.TextSize = 12
-	return t
-}
-
 func memberRow(m group.Member) (fyne.CanvasObject, *memberView) {
 	dot := canvas.NewText("●", hex("#6b7280"))
 	dot.TextSize = 10
 
 	status := widget.NewLabel("waiting")
+	status.TextStyle = fyne.TextStyle{}
 
 	row := container.NewHBox(dot, widget.NewLabel(m.Name), layout.NewSpacer(), status)
 	if m.IsHost {

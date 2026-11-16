@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/test"
@@ -22,12 +23,14 @@ func TestScreensRender(t *testing.T) {
 
 	app := &App{fyneApp: a}
 	app.win = a.NewWindow("LAN Party")
-	app.win.Resize(fyne.NewSize(420, 620))
+	app.win.Resize(fyne.NewSize(460, 680))
 
 	app.showHome()
 	capture(t, app.win, "home.png")
 
 	g := group.Create("Friday Night", "Desynkro")
+	g.Members = append(g.Members, group.Member{Name: "Ash", PublicKey: "peer", BoxAddress: "100.64.0.2"})
+	g.Invites = []group.Code{{Value: "lp1_test", PeerName: "Jonah", Expires: time.Now().Add(3 * time.Hour)}}
 	g.Services = []group.Service{{
 		ID:     "svc1",
 		Name:   "Minecraft: Java Edition",

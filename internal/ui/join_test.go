@@ -30,7 +30,7 @@ func TestJoinAndForget(t *testing.T) {
 		win:         a.NewWindow("LAN Party"),
 		inviteStore: invite.OpenStore(filepath.Join(t.TempDir(), "joined.json")),
 	}
-	app.win.Resize(fyne.NewSize(420, 620))
+	app.win.Resize(fyne.NewSize(460, 680))
 
 	app.openJoined(inv)
 	if app.friend == nil {
