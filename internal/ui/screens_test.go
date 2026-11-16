@@ -24,7 +24,7 @@ func TestScreensRender(t *testing.T) {
 
 	app := &App{fyneApp: a}
 	app.win = a.NewWindow("LAN Party")
-	app.win.Resize(fyne.NewSize(420, 620))
+	app.win.Resize(fyne.NewSize(460, 620))
 
 	app.showHome()
 	capture(t, app.win, "home.png")

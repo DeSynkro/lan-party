@@ -70,17 +70,16 @@ func (a *App) showGroup(g group.Group) {
 		}
 	}
 
-	body.Add(gap(20))
-	body.Add(a.inviteCard(g))
-	body.Add(gap(8))
+	bottom := container.NewVBox(a.inviteCard(g), a.footer())
 
-	a.win.SetContent(container.NewPadded(container.NewBorder(
+	page := container.NewPadded(container.NewBorder(
 		container.NewPadded(header),
-		a.footer(),
+		bottom,
 		nil,
 		nil,
 		container.NewScroll(pad(0, 12, body)),
-	)))
+	))
+	a.win.SetContent(container.New(column{max: 460}, page))
 	a.win.Canvas().Unfocus()
 	a.win.SetTitle("LAN Party · " + g.Name)
 }

@@ -71,7 +71,8 @@ func Run() {
 	app.showHome()
 	app.startPresenceTimer()
 
-	app.win.Resize(fyne.NewSize(420, 620))
+	app.win.Resize(fyne.NewSize(460, 620))
+	app.win.SetFixedSize(true)
 	app.win.CenterOnScreen()
 
 	if app.trayReady && a.Preferences().Bool(prefStartMinimised) {

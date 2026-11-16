@@ -171,6 +171,24 @@ func (r *tapRenderer) Refresh()                     { r.rect.Refresh() }
 func (r *tapRenderer) Objects() []fyne.CanvasObject { return []fyne.CanvasObject{r.rect} }
 func (r *tapRenderer) Destroy()                     {}
 
+// column keeps content at a readable width and centres it, no matter how wide
+// the window gets. A utility should not stretch its buttons across a desktop.
+type column struct{ max float32 }
+
+func (c column) MinSize(objs []fyne.CanvasObject) fyne.Size {
+	return objs[0].MinSize()
+}
+
+func (c column) Layout(objs []fyne.CanvasObject, size fyne.Size) {
+	width := size.Width
+	if width > c.max {
+		width = c.max
+	}
+	x := (size.Width - width) / 2
+	objs[0].Resize(fyne.NewSize(width, size.Height))
+	objs[0].Move(fyne.NewPos(x, 0))
+}
+
 // rightLayout stacks children against the right edge, which Fyne's stock
 // layouts will not do for a block of text with different widths.
 type rightLayout struct{}

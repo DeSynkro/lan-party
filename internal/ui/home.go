@@ -84,13 +84,14 @@ func (a *App) showHome() {
 		centre = container.NewVScroll(block)
 	}
 
-	a.win.SetContent(container.NewPadded(container.NewBorder(
+	page := container.NewPadded(container.NewBorder(
 		nil,
 		a.footer(),
 		nil,
 		nil,
 		container.NewPadded(centre),
-	)))
+	))
+	a.win.SetContent(container.New(column{max: 460}, page))
 	a.win.Canvas().Unfocus()
 	a.win.SetTitle("LAN Party")
 }

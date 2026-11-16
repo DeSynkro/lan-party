@@ -47,13 +47,14 @@ func (a *App) showFriend(inv invite.Invite) {
 	body.Add(gap(24))
 	body.Add(container.NewHBox(newButton("Forget this group", buttonQuiet, func() { a.forget(inv) }), layout.NewSpacer()))
 
-	a.win.SetContent(container.NewPadded(container.NewBorder(
+	page := container.NewPadded(container.NewBorder(
 		container.NewPadded(header),
 		a.footer(),
 		nil,
 		nil,
 		container.NewScroll(pad(0, 12, body)),
-	)))
+	))
+	a.win.SetContent(container.New(column{max: 460}, page))
 	a.win.Canvas().Unfocus()
 	a.win.SetTitle("LAN Party · " + inv.GroupName)
 }
