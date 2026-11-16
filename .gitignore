@@ -9,6 +9,10 @@ frontend/dist/
 .cache/
 .tmp/
 
+# isolated agent workspaces
+.worktrees/
+.superpowers/
+
 # dependencies
 node_modules/
 
