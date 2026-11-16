@@ -19,78 +19,79 @@ import (
 
 // showHome lists saved groups, or introduces the app when there are none.
 func (a *App) showHome() {
-	title := canvas.NewText("LAN PARTY", hex("#e9edf5"))
-	title.TextSize = 28
-	title.TextStyle = fyne.TextStyle{Bold: true}
-	title.Alignment = fyne.TextAlignCenter
-
-	subtitle := canvas.NewText("One port, not the network.", hex("#757c8c"))
-	subtitle.TextSize = 12
-	subtitle.Alignment = fyne.TextAlignCenter
-
 	mark := canvas.NewImageFromResource(appIcon)
 	mark.FillMode = canvas.ImageFillContain
-	mark.SetMinSize(fyne.NewSize(84, 84))
+	mark.SetMinSize(fyne.NewSize(72, 72))
+
+	brand := canvas.NewText("LAN Party", hex("#e8eaee"))
+	brand.TextSize = 22
+	brand.TextStyle = fyne.TextStyle{Bold: true}
+	brand.Alignment = fyne.TextAlignCenter
+
+	tagline := canvas.NewText("One port, not the network.", hex("#6f737d"))
+	tagline.TextSize = sizeMeta
+	tagline.Alignment = fyne.TextAlignCenter
 
 	heading := container.NewVBox(
 		container.NewCenter(mark),
-		gap(10),
-		container.NewCenter(title),
-		container.NewCenter(subtitle),
+		gap(12),
+		container.NewCenter(brand),
+		container.NewCenter(tagline),
 	)
 
 	list := container.NewVBox()
 
 	if len(a.groups) > 0 {
-		list.Add(sectionHeader("Your groups", nil))
+		list.Add(sectionLabel("Your groups"))
+		list.Add(gap(4))
 		for _, g := range a.groups {
 			g := g
-			list.Add(widget.NewButton(fmt.Sprintf("%s · %d members", g.Name, len(g.Members)), func() {
-				a.showGroup(g)
-			}))
+			label := fmt.Sprintf("%s · %d members", g.Name, len(g.Members))
+			list.Add(newButton(label, buttonSecondary, func() { a.showGroup(g) }))
+			list.Add(gap(4))
 		}
+		list.Add(gap(16))
 	}
 
 	if len(a.joined) > 0 {
-		list.Add(sectionHeader("Groups you joined", nil))
+		list.Add(sectionLabel("Groups you joined"))
+		list.Add(gap(4))
 		for _, inv := range a.joined {
 			inv := inv
 			label := inv.GroupName + " · " + inv.HostName
-			list.Add(widget.NewButton(label, func() { a.openJoined(inv) }))
+			list.Add(newButton(label, buttonSecondary, func() { a.openJoined(inv) }))
+			list.Add(gap(4))
 		}
+		list.Add(gap(16))
 	}
 
-	if len(a.groups) > 0 || len(a.joined) > 0 {
-		list.Add(widget.NewSeparator())
-	}
+	list.Add(newButton("Start a group", buttonPrimary, a.newGroup))
+	list.Add(gap(8))
+	list.Add(newButton("Join a group", buttonSecondary, a.joinGroup))
+	list.Add(gap(12))
 
-	start := widget.NewButton("Start a group", a.newGroup)
-	start.Importance = widget.HighImportance
-
-	join := widget.NewButton("Join a group", a.joinGroup)
-
-	list.Add(start)
-	list.Add(join)
-
-	hint := canvas.NewText("Paste an invite to join someone else's LAN.", hex("#5c6373"))
-	hint.TextSize = 11
+	hint := canvas.NewText("Paste an invite to join someone else's LAN.", hex("#4d515a"))
+	hint.TextSize = sizeMeta
 	hint.Alignment = fyne.TextAlignCenter
 	list.Add(container.NewCenter(hint))
 
+	block := container.NewVBox(heading, gap(32), list)
+
 	var centre fyne.CanvasObject
 	if len(a.groups) == 0 && len(a.joined) == 0 {
-		centre = container.NewVBox(layout.NewSpacer(), list, layout.NewSpacer())
+		centre = container.NewVBox(layout.NewSpacer(), block, layout.NewSpacer())
 	} else {
-		centre = container.NewVScroll(list)
+		centre = container.NewVScroll(block)
 	}
 
 	a.win.SetContent(container.NewPadded(container.NewBorder(
-		container.NewPadded(heading),
+		nil,
 		a.footer(),
 		nil,
 		nil,
 		container.NewPadded(centre),
 	)))
+	a.win.Canvas().Unfocus()
 	a.win.SetTitle("LAN Party")
 }
 
@@ -189,16 +190,14 @@ func (a *App) remember(inv invite.Invite) {
 }
 
 func (a *App) footer() fyne.CanvasObject {
-	settings := quietButton("Settings", a.showSettings)
-
 	return container.NewVBox(
 		widget.NewSeparator(),
 		container.NewBorder(
 			nil,
 			nil,
 			nil,
-			settings,
-			container.NewCenter(muted(versionText())),
+			newButton("Settings", buttonQuiet, a.showSettings),
+			container.NewCenter(metaText(versionText())),
 		),
 	)
 }

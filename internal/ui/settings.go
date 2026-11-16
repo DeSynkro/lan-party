@@ -33,7 +33,7 @@ func (a *App) showSettings() {
 	body := container.NewVBox(
 		minimised,
 		boot,
-		muted("Closing the window keeps a live session running in the tray."),
+		metaText("Closing the window keeps a live session running in the tray."),
 	)
 
 	d := dialog.NewCustom("Settings", "Close", body, a.win)

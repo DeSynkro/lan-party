@@ -1,11 +1,12 @@
 package ui
 
 import (
+	"strings"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
-	"fyne.io/fyne/v2/widget"
 
 	"github.com/desynkro/lan-party/internal/invite"
 	"github.com/desynkro/lan-party/internal/session"
@@ -13,40 +14,47 @@ import (
 
 // showFriend is what a friend sees once they are connected.
 func (a *App) showFriend(inv invite.Invite) {
-	disconnect := quietButton("Disconnect", func() {
-		if a.friend != nil {
-			_ = a.friend.Close()
-			a.friend = nil
-		}
-		a.showHome()
-	})
-
 	header := container.NewVBox(
-		container.NewBorder(nil, nil, pill("CONNECTED", "#22c55e"), disconnect, layout.NewSpacer()),
+		container.NewBorder(nil, nil,
+			pill("Connected", "#4ade80"),
+			newButton("Disconnect", buttonQuiet, func() {
+				if a.friend != nil {
+					_ = a.friend.Close()
+					a.friend = nil
+				}
+				a.showHome()
+			}),
+			layout.NewSpacer(),
+		),
+		gap(8),
 		titleText(inv.GroupName),
-		muted("Hosted by "+inv.HostName),
+		metaText("Hosted by "+inv.HostName),
 	)
 
-	body := container.NewVBox(sectionHeader("Ready to play", nil))
+	body := container.NewVBox(sectionLabel("Ready to play"), gap(8))
 
 	bound := a.friend.Bound()
 	if len(bound) == 0 {
-		body.Add(muted("The host has not published anything yet."))
+		body.Add(metaText("The host has not published anything yet."))
 	}
-	for _, b := range bound {
+	for i, b := range bound {
+		if i > 0 {
+			body.Add(gap(8))
+		}
 		body.Add(boundCard(a, b))
 	}
 
-	forget := quietButton("Forget this group", func() { a.forget(inv) })
-	body.Add(container.NewHBox(forget, layout.NewSpacer()))
+	body.Add(gap(24))
+	body.Add(container.NewHBox(newButton("Forget this group", buttonQuiet, func() { a.forget(inv) }), layout.NewSpacer()))
 
 	a.win.SetContent(container.NewPadded(container.NewBorder(
 		container.NewPadded(header),
 		a.footer(),
 		nil,
 		nil,
-		container.NewScroll(body),
+		container.NewScroll(pad(0, 12, body)),
 	)))
+	a.win.Canvas().Unfocus()
 	a.win.SetTitle("LAN Party · " + inv.GroupName)
 }
 
@@ -71,22 +79,22 @@ func (a *App) forget(inv invite.Invite) {
 }
 
 func boundCard(a *App, b session.Bound) fyne.CanvasObject {
-	name := titleText(b.Service)
-	name.TextSize = 15
+	letter := strings.ToUpper(b.Service[:1])
 
-	left := container.NewVBox(name)
-	if b.Proto != "" {
-		left.Add(muted(b.Proto))
-	}
-	left.Add(addressText(b.Address))
+	left := container.NewHBox(
+		tile(letter),
+		gapW(12),
+		container.NewVBox(nameText(b.Service), gap(2), metaText(b.Proto)),
+	)
 
-	copyButton := widget.NewButton("Copy", func() {
-		a.fyneApp.Clipboard().SetContent(b.Address)
-	})
+	right := container.NewHBox(
+		addressText(b.Address),
+		gapW(10),
+		newButton("Copy", buttonSecondary, func() {
+			a.fyneApp.Clipboard().SetContent(b.Address)
+		}),
+	)
 
-	return card(container.NewBorder(
-		nil, nil, nil,
-		container.NewVBox(layout.NewSpacer(), copyButton, layout.NewSpacer()),
-		left,
-	))
+	return card(container.NewBorder(nil, nil, left,
+		container.NewVBox(layout.NewSpacer(), right, layout.NewSpacer()), nil))
 }

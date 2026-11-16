@@ -1,18 +1,15 @@
 package ui
 
 import (
-	"fmt"
-	"time"
-
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
-	"fyne.io/fyne/v2/widget"
+	"time"
 )
 
-// memberView is the bit of a roster row that changes while a session runs.
+// memberView is the part of a roster row that changes while a session runs.
 type memberView struct {
 	dot    *canvas.Text
-	status *widget.Label
+	status *canvas.Text
 }
 
 // refreshPresence redraws the roster from what WireGuard knows. It is called on
@@ -26,27 +23,21 @@ func (a *App) refreshPresence() {
 	now := time.Now()
 	for key, view := range a.memberViews {
 		last := presence[key]
-		if last.IsZero() {
-			view.dot.Color = hex("#6b7280")
-			view.status.SetText("waiting")
-		} else {
-			view.dot.Color = hex("#22c55e")
-			view.status.SetText("joined " + ago(now.Sub(last)))
-		}
-		canvas.Refresh(view.dot)
-	}
-}
 
-func ago(d time.Duration) string {
-	switch {
-	case d < 10*time.Second:
-		return "just now"
-	case d < time.Minute:
-		return fmt.Sprintf("%ds ago", int(d.Seconds()))
-	case d < time.Hour:
-		return fmt.Sprintf("%dm ago", int(d.Minutes()))
-	default:
-		return fmt.Sprintf("%dh ago", int(d.Hours()))
+		switch {
+		case last.IsZero():
+			view.dot.Color = hex("#6f737d")
+			view.status.Text = "waiting"
+		case now.Sub(last) < 2*time.Minute:
+			view.dot.Color = hex("#4ade80")
+			view.status.Text = "live"
+		default:
+			view.dot.Color = hex("#6f737d")
+			view.status.Text = "idle"
+		}
+
+		canvas.Refresh(view.dot)
+		canvas.Refresh(view.status)
 	}
 }
 
