@@ -10,6 +10,7 @@ import (
 
 	"github.com/desynkro/lan-party/internal/config"
 	"github.com/desynkro/lan-party/internal/group"
+	"github.com/desynkro/lan-party/internal/session"
 )
 
 // App holds the window, the stored groups and whatever the current screen is.
@@ -18,6 +19,7 @@ type App struct {
 	win     fyne.Window
 	store   *group.Store
 	groups  []group.Group
+	live    *session.Host
 }
 
 // Run starts the interface and blocks until the window closes.
@@ -33,6 +35,13 @@ func Run() {
 
 	app := &App{fyneApp: a, store: store, groups: groups}
 	app.win = a.NewWindow("LAN Party")
+	app.win.SetCloseIntercept(func() {
+		if app.live != nil {
+			_ = app.live.Close()
+			app.live = nil
+		}
+		app.win.Close()
+	})
 	app.showHome()
 
 	app.win.Resize(fyne.NewSize(420, 620))

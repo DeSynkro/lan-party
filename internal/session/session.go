@@ -88,6 +88,11 @@ func (h *Host) Close() error {
 	return nil
 }
 
+// AddPeer lets someone in while the session is already running.
+func (h *Host) AddPeer(p tunnel.Peer) error {
+	return h.dev.AddPeer(p)
+}
+
 // FriendConfig is what the friend's app starts with.
 type FriendConfig struct {
 	Invite invite.Invite
