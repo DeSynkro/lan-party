@@ -188,15 +188,27 @@ the preset. Custom presets live in the same store and are marked custom.
 
 Go core and a Fyne interface. One binary, no webview, no npm, no bundled browser.
 
-- Linux: the binary plus an AppImage. A small script assembles the AppDir and
-  runs `appimagetool`, pinned by version and checksum, because `fyne package`
-  produces a tarball and not an AppImage.
+- Linux: the binary plus an AppImage, built by `build/appimage.sh`. It assembles
+  the AppDir and runs `appimagetool`, pinned by version and checksum, so no
+  package is installed on the build machine.
 - Windows: one exe with the icon embedded, built on a Windows CI runner. Fyne
   draws through cgo, so crossing from Linux needs a mingw toolchain; the runner
   is the sane path.
-- Runtime needs OpenGL and X11 or Wayland, which every desktop already has. No
-  package to install before the app will start.
-- CI builds both on native runners and publishes checksums.
+- Runtime needs OpenGL and X11 or Wayland, which every desktop already has.
+- CI runs vet, tests, a build and `govulncheck` on every push, then builds both
+  artefacts on a tag and attaches them to a draft release with checksums.
+
+## Where it is now
+
+Working: groups, services, presets, invites, host sessions, friend sessions,
+TCP and UDP forwarding, presence from WireGuard handshakes, AppImage and exe
+builds.
+
+Missing: the control channel that pushes service and grant changes to a session
+that is already running, tray and start-on-boot, friend side port conflict
+warnings (it falls back quietly today, and shows which address it won), the
+self hosted relay, and encryption at rest for keys. Keys live in the group store
+at mode 0600, the way an SSH key does, until a vault is worth the friction.
 
 ## Dependencies
 

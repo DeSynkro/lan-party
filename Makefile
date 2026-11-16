@@ -16,7 +16,7 @@ export XDG_DATA_HOME := $(ROOT)/.tmp/data
 export XDG_CACHE_HOME := $(ROOT)/.tmp/cache
 export PATH := $(ROOT)/.tools/go/bin:$(PATH)
 
-.PHONY: help dirs env toolchain fmt vet test build run appimage icon clean
+.PHONY: help dirs env toolchain fmt vet test vuln build run appimage icon clean
 
 help: ## List targets
 	@awk 'BEGIN {FS = ":.*## "; print "Targets:"} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-10s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -39,6 +39,9 @@ vet: toolchain ## Vet Go code
 
 test: toolchain ## Run the test suite
 	@$(GO) test ./...
+
+vuln: toolchain ## Check the module for known vulnerabilities
+	@$(GO) run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
 build: toolchain ## Build the binary into bin/
 	@$(GO) build -trimpath -ldflags "$(LDFLAGS)" -o bin/lan-party .
