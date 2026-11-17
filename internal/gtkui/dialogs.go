@@ -302,6 +302,7 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 			setProtocol(protoIndex(item.Proto))
 			presetMenu.SetLabel(item.Name)
 			presetPopover.Popdown()
+			presetMenu.SetActive(false)
 		})
 		presetList.Append(button)
 	}
@@ -315,7 +316,10 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 	presetPopover.AddCSSClass("preset-popover")
 	presetPopover.SetHasArrow(false)
 	presetPopover.SetAutohide(true)
-	presetPopover.SetChild(presetScroll)
+	presetSurface := gtk.NewBox(gtk.OrientationVertical, 0)
+	presetSurface.AddCSSClass("preset-surface")
+	presetSurface.Append(presetScroll)
+	presetPopover.SetChild(presetSurface)
 	presetMenu = gtk.NewMenuButton()
 	presetMenu.SetLabel("Choose a preset")
 	presetMenu.AddCSSClass("preset-menu")
@@ -549,8 +553,16 @@ func (u *probeUI) dialog(title string) (*gtk.Window, *gtk.Box) {
 	win.SetDefaultSize(360, 320)
 	win.SetDecorated(false)
 
+	outer := gtk.NewBox(gtk.OrientationVertical, 0)
+
+	topDrag := gtk.NewWindowHandle()
+	topDrag.SetHExpand(true)
+	topDrag.SetSizeRequest(-1, 24)
+	u.enableWindowDrag(topDrag, win)
+	outer.Append(topDrag)
+
 	content := gtk.NewBox(gtk.OrientationVertical, 0)
-	content.SetMarginTop(20)
+	content.SetMarginTop(0)
 	content.SetMarginBottom(20)
 	content.SetMarginStart(20)
 	content.SetMarginEnd(20)
@@ -569,7 +581,8 @@ func (u *probeUI) dialog(title string) (*gtk.Window, *gtk.Box) {
 	header.Append(close)
 	content.Append(header)
 	content.Append(gapBox(12))
-	win.SetChild(content)
+	outer.Append(content)
+	win.SetChild(outer)
 	return win, content
 }
 

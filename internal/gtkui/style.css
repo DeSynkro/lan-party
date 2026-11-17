@@ -1,5 +1,6 @@
 @define-color ink #08040F;
 @define-color deep #120A2E;
+@define-color surface #150C2E;
 @define-color raised #1A1035;
 @define-color hairline #2C1A55;
 @define-color pale #FDF4FF;
@@ -9,6 +10,8 @@
 @define-color violet #8B5CF6;
 @define-color cyan #22D3EE;
 @define-color live #4ADE80;
+@define-color danger #FF6B81;
+@define-color warning #F5B942;
 
 window,
 window.csd,
@@ -456,3 +459,10 @@ box.preset-list {
   background-image: none;
 }
 
+box.preset-surface {
+  background-color: @surface;
+  background-image: none;
+  border: 1px solid @hairline;
+  border-radius: 10px;
+  padding: 6px;
+}
