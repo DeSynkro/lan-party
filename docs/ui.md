@@ -79,7 +79,7 @@ pairs.
 
 ### Home
 
-- Headline “One port, not the network.”
+- Headline “A LAN cable across the internet.”
 - One line explaining the loopback idea.
 - `Host a group` (primary) and `Join with an invite` (secondary).
 - A first-run link to the setup guide.
@@ -87,8 +87,6 @@ pairs.
   member count or host name, a live dot when the group has a session, and a
   quiet `Delete` action on host groups.
 - An empty-state card under `Your groups` when nothing is saved.
-- A `How it works` card with example addresses and one line about published
-  ports.
 
 ### Host group
 
@@ -142,10 +140,12 @@ pairs.
 
 ### How to Use
 
-A scrollable offline guide with Hosting, Joining, Problems and Security. The
-hosting section reads the current app port and local IPv4 address so the router
-line is concrete, for example `Forward UDP 51820 to 192.168.1.20`, with Copy.
-It says plainly that only the app port is forwarded and that a CGNAT host
+A scrollable offline guide. It opens with the `How it works` card: an example
+LAN address, an encrypted hop, and the friend-side loopback address, with a note
+that only published ports cross. Then Hosting, Joining, Problems and Security.
+The hosting section reads the current app port and local IPv4 address so the
+router line is concrete, for example `Forward UDP 51820 to 192.168.1.20`, with
+Copy. It says plainly that only the app port is forwarded and that a CGNAT host
 cannot be reached without a relay, which this version does not have.
 
 ### Dialogs

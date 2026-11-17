@@ -148,15 +148,17 @@ func TestHomeScreen(t *testing.T) {
 	got := screenText(u.win)
 	for _, want := range []string{
 		"LAN Party",
-		"One port, not the network.",
+		"A LAN cable across the internet.",
 		"Host a group",
 		"Join with an invite",
-		"How it works",
 		"First time? Read the setup guide",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("home missing %q", want)
 		}
+	}
+	if strings.Contains(got, "How it works") {
+		t.Error("home still shows the how-it-works card")
 	}
 }
 
@@ -221,7 +223,10 @@ func TestSettingsAndGuide(t *testing.T) {
 
 	u.showGuide(u.showHome)
 	got = screenText(u.win)
-	for _, want := range []string{"Hosting", "Joining", "Problems", "Security", "Forward UDP 51820"} {
+	for _, want := range []string{
+		"How it works", "192.168.1.50:25565", "127.0.0.1:25565",
+		"Hosting", "Joining", "Problems", "Security", "Forward UDP 51820",
+	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("guide missing %q", want)
 		}

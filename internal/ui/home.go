@@ -13,7 +13,7 @@ func (u *UI) showHome() {
 	u.screenName = "home"
 
 	hero := container.NewVBox(
-		titleText("One port, not the network."),
+		titleText("A LAN cable across the internet."),
 		gap(rowGap),
 		bodyLabel("Host a game on your LAN. Friends open it at 127.0.0.1; nothing else is reachable."),
 	)
@@ -74,9 +74,6 @@ func (u *UI) showHome() {
 		content.Add(card(mutedLabel("Nothing saved yet. Hosted and joined groups appear here.")))
 	}
 
-	content.Add(gap(sectionGap))
-	content.Add(u.howItWorks())
-
 	u.screen(u.appBar("", true), content, nil)
 }
 
@@ -96,22 +93,4 @@ func (u *UI) homeGroupRow(g group.Group) fyne.CanvasObject {
 
 	deleteButton := smallButton("Delete", buttonQuiet, func() { u.confirmDeleteGroup(g) })
 	return container.NewBorder(nil, nil, nil, container.NewCenter(deleteButton), row)
-}
-
-func (u *UI) howItWorks() fyne.CanvasObject {
-	left := container.NewBorder(nil, nil, nil, metaText("your server"), addressText("192.168.1.50:25565"))
-	middle := container.NewCenter(metaText("encrypted"))
-	right := container.NewBorder(nil, nil, nil, metaText("their game"), addressText("127.0.0.1:25565"))
-
-	return card(container.NewVBox(
-		sectionLabel("How it works"),
-		gap(rowGap),
-		left,
-		gap(tinyGap),
-		middle,
-		gap(tinyGap),
-		right,
-		gap(rowGap),
-		mutedLabel("Example addresses. Only published ports cross."),
-	))
 }

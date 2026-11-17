@@ -258,9 +258,6 @@
   .session-status .dot { width: 8px; height: 8px; flex-basis: 8px; }
   .service-card { display: flex; flex-direction: column; gap: var(--tiny-gap); }
   .service-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .how-card { display: flex; flex-direction: column; gap: var(--small-gap); }
-  .how-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-  .how-middle { text-align: center; color: var(--muted); font-size: var(--meta-size); }
   .person { display: flex; align-items: center; gap: 8px; padding: 8px 0; }
   .person .grow { flex: 1; }
   .person .line { display: flex; align-items: center; gap: 6px; }
@@ -342,7 +339,7 @@
       <div class="content" id="content">
 
         <div class="screen" data-screen="home">
-          <div class="title">One port, not the network.</div>
+          <div class="title">A LAN cable across the internet.</div>
           <div class="gap-row"></div>
           <div class="body">Host a game on your LAN. Friends open it at 127.0.0.1; nothing else is reachable.</div>
           <div class="gap-section"></div>
@@ -370,14 +367,6 @@
             <span class="grow row-title">Friday Night</span>
             <span class="row-meta">joined · hosted by Desynkro</span>
             <span class="chev">›</span>
-          </div>
-          <div class="gap-section"></div>
-          <div class="card how-card">
-            <div class="section-label">How it works</div>
-            <div class="how-row"><span class="address">192.168.1.50:25565</span><span class="meta">your server</span></div>
-            <div class="how-middle">encrypted</div>
-            <div class="how-row"><span class="address">127.0.0.1:25565</span><span class="meta">their game</span></div>
-            <div class="meta">Example addresses. Only published ports cross.</div>
           </div>
         </div>
 

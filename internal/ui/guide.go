@@ -93,6 +93,8 @@ func (u *UI) guideContent(returnTo func()) fyne.CanvasObject {
 	))
 
 	return container.NewVBox(
+		u.howItWorks(),
+		gap(sectionGap),
 		hosting,
 		gap(sectionGap),
 		joining,
@@ -103,4 +105,22 @@ func (u *UI) guideContent(returnTo func()) fyne.CanvasObject {
 		gap(rowGap),
 		mutedLabel("App port "+strconv.Itoa(settings.AppPort)+" · UDP"),
 	)
+}
+
+func (u *UI) howItWorks() fyne.CanvasObject {
+	left := container.NewBorder(nil, nil, nil, metaText("your server"), addressText("192.168.1.50:25565"))
+	middle := container.NewCenter(metaText("encrypted"))
+	right := container.NewBorder(nil, nil, nil, metaText("their game"), addressText("127.0.0.1:25565"))
+
+	return card(container.NewVBox(
+		sectionLabel("How it works"),
+		gap(rowGap),
+		left,
+		gap(tinyGap),
+		middle,
+		gap(tinyGap),
+		right,
+		gap(rowGap),
+		mutedLabel("Example addresses. Only published ports cross."),
+	))
 }
