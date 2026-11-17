@@ -22,6 +22,7 @@ type Conn struct {
 	dec      *json.Decoder
 	enc      *json.Encoder
 	writeMu  sync.Mutex
+	datagram sync.Mutex
 	messages chan ControlMessage
 	ctx      context.Context
 	cancel   context.CancelFunc
@@ -133,6 +134,8 @@ func (c *Conn) SendDatagram(p []byte) error {
 	if !c.qc.ConnectionState().SupportsDatagrams.Remote {
 		return errors.New("the peer does not accept datagrams")
 	}
+	c.datagram.Lock()
+	defer c.datagram.Unlock()
 	if err := c.qc.SendDatagram(p); err != nil {
 		return fmt.Errorf("send datagram: %w", err)
 	}
