@@ -156,7 +156,7 @@ func (u *probeUI) build() {
 	u.win.SetChild(root)
 }
 
-func (u *probeUI) enableDrag(handle *gtk.WindowHandle) {
+func (u *probeUI) enableWindowDrag(handle *gtk.WindowHandle, win *gtk.Window) {
 	gesture := gtk.NewGestureDrag()
 	gesture.SetButton(1)
 	gesture.ConnectDragBegin(func(x, y float64) {
@@ -170,7 +170,7 @@ func (u *probeUI) enableDrag(handle *gtk.WindowHandle) {
 		if device == nil {
 			return
 		}
-		surface := u.win.Widget.Native().Surface()
+		surface := win.Widget.Native().Surface()
 		if surface == nil {
 			return
 		}
@@ -209,7 +209,7 @@ func (u *probeUI) buildAppBar() *gtk.Box {
 	dragHandle := gtk.NewWindowHandle()
 	dragHandle.SetHExpand(true)
 	dragHandle.SetChild(dragArea)
-	u.enableDrag(dragHandle)
+	u.enableWindowDrag(dragHandle, &u.win.Window)
 	bar.Append(dragHandle)
 
 	u.help = gtk.NewButtonWithLabel("?")

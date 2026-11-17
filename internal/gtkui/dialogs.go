@@ -288,6 +288,8 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 	content.Append(gapBox(8))
 
 	presetList := gtk.NewBox(gtk.OrientationVertical, 0)
+	var presetMenu *gtk.MenuButton
+	var presetPopover *gtk.Popover
 	for _, item := range preset.All() {
 		item := item
 		button := gtk.NewButtonWithLabel(item.Name)
@@ -298,17 +300,23 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 			portsEntry.SetText(group.FormatPorts(item.Ports))
 			hintEntry.SetText(item.Hint)
 			setProtocol(protoIndex(item.Proto))
+			presetMenu.SetLabel(item.Name)
+			presetPopover.Popdown()
 		})
 		presetList.Append(button)
 	}
 	presetScroll := gtk.NewScrolledWindow()
+	presetScroll.AddCSSClass("preset-scroll")
 	presetScroll.SetPolicy(gtk.PolicyNever, gtk.PolicyAutomatic)
 	presetScroll.SetChild(presetList)
 	presetScroll.SetSizeRequest(300, 260)
-	presetPopover := gtk.NewPopover()
+	presetList.AddCSSClass("preset-list")
+	presetPopover = gtk.NewPopover()
+	presetPopover.AddCSSClass("preset-popover")
 	presetPopover.SetHasArrow(false)
+	presetPopover.SetAutohide(true)
 	presetPopover.SetChild(presetScroll)
-	presetMenu := gtk.NewMenuButton()
+	presetMenu = gtk.NewMenuButton()
 	presetMenu.SetLabel("Choose a preset")
 	presetMenu.AddCSSClass("preset-menu")
 	presetMenu.SetPopover(presetPopover)
@@ -550,7 +558,11 @@ func (u *probeUI) dialog(title string) (*gtk.Window, *gtk.Box) {
 	header := gtk.NewBox(gtk.OrientationHorizontal, 8)
 	titleLabel := textLabel(title, "card-title")
 	titleLabel.SetHExpand(true)
-	header.Append(titleLabel)
+	titleHandle := gtk.NewWindowHandle()
+	titleHandle.SetHExpand(true)
+	titleHandle.SetChild(titleLabel)
+	u.enableWindowDrag(titleHandle, win)
+	header.Append(titleHandle)
 	close := gtk.NewButtonWithLabel("×")
 	close.AddCSSClass("quiet")
 	close.ConnectClicked(func() { win.Close() })

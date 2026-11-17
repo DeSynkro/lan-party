@@ -438,3 +438,21 @@ popover button {
 popover button:hover {
   background-color: @raised;
 }
+
+popover.preset-popover,
+popover.preset-popover > contents,
+popover.preset-popover contents {
+  background-color: @surface;
+  background-image: none;
+  border: 1px solid @hairline;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+scrolledwindow.preset-scroll,
+scrolledwindow.preset-scroll > viewport,
+box.preset-list {
+  background-color: @surface;
+  background-image: none;
+}
+
