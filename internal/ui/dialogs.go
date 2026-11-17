@@ -3,10 +3,12 @@ package ui
 import (
 	"context"
 	"errors"
+	"image/color"
 	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
@@ -20,7 +22,9 @@ import (
 func (u *UI) formDialog(title, confirm string, content fyne.CanvasObject, onConfirm func() error) {
 	errLabel := widget.NewLabel("")
 	errLabel.Importance = widget.DangerImportance
-	body := container.NewVBox(content, gap(6), errLabel)
+	width := canvas.NewRectangle(color.Transparent)
+	width.SetMinSize(fyne.NewSize(320, 0))
+	body := container.NewStack(width, container.NewVBox(content, gap(6), errLabel))
 
 	d := dialog.NewCustomWithoutButtons(title, body, u.win)
 	d.SetButtons([]fyne.CanvasObject{
@@ -122,10 +126,10 @@ func (u *UI) inviteDialog(g group.Group) {
 }
 
 func (u *UI) showInviteCode(name, code string) {
-	label := widget.NewLabel(code)
+	label := widget.NewLabel(truncate(code, 120))
 	label.Wrapping = fyne.TextWrapBreak
 	label.TextStyle = fyne.TextStyle{Monospace: true}
-	box := container.NewGridWrap(fyne.NewSize(320, 120), label)
+	box := container.NewGridWrap(fyne.NewSize(320, 80), label)
 
 	var copyButton *button
 	copyButton = smallButton("Copy code", buttonSecondary, func() {
@@ -136,6 +140,7 @@ func (u *UI) showInviteCode(name, code string) {
 		bodyLabel("Send this to "+name+". It works once and expires in 24 hours."),
 		gap(8),
 		box,
+		mutedLabel("The button copies the full code."),
 		gap(8),
 		container.NewCenter(copyButton),
 	)
@@ -304,16 +309,17 @@ func (u *UI) showInviteDetails(g group.Group, inv group.Invite, code string) {
 		metaText(expiresIn(inv.ExpiresAt)),
 	)
 	if code != "" {
-		label := widget.NewLabel(code)
+		label := widget.NewLabel(truncate(code, 120))
 		label.Wrapping = fyne.TextWrapBreak
 		label.TextStyle = fyne.TextStyle{Monospace: true}
-		box := container.NewGridWrap(fyne.NewSize(320, 110), label)
+		box := container.NewGridWrap(fyne.NewSize(320, 80), label)
 		var copyButton *button
 		copyButton = smallButton("Copy code", buttonSecondary, func() {
 			u.copyText(code, copyButton)
 		})
 		content.Add(gap(8))
 		content.Add(box)
+		content.Add(mutedLabel("The button copies the full code."))
 		content.Add(container.NewCenter(copyButton))
 	} else {
 		content.Add(gap(8))

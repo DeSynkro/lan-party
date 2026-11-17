@@ -43,3 +43,18 @@ func TestDisableMissingEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestAppImagePath(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("APPIMAGE", "/opt/LAN-Party.AppImage")
+	if err := Set(home, true); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(home, "autostart", fileName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `Exec="/opt/LAN-Party.AppImage"`) {
+		t.Fatalf("entry does not use the AppImage path:\n%s", data)
+	}
+}

@@ -273,3 +273,14 @@ func capture(t *testing.T, w fyne.Window, path string) {
 		t.Fatal(err)
 	}
 }
+
+func TestHomeRowTap(t *testing.T) {
+	host := sampleHostGroup(t)
+	u := newTestUI(t, []group.Group{host})
+	u.showHome()
+	test.TapCanvas(u.win.Canvas(), fyne.NewPos(150, 340))
+	got := screenText(u.win)
+	if !strings.Contains(got, "Session off") {
+		t.Fatalf("tapping the group row did not open it:\n%s", got)
+	}
+}

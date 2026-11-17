@@ -18,8 +18,15 @@ func (u *UI) showSettings(returnTo func()) {
 
 	settings := u.app.Settings()
 
+	closeNote := "Closing the window keeps the app and a live session running in the tray."
+	minimiseNote := "Open in the tray instead of showing the window."
+	if !u.hasTray {
+		closeNote = "Your desktop did not report a system tray, so closing the window quits."
+		minimiseNote = "Your desktop did not report a system tray, so the window will still open."
+	}
+
 	closeToTray := u.checkRow("Close to tray",
-		"Closing the window keeps the app and a live session running in the tray.",
+		closeNote,
 		settings.CloseToTray,
 		func(value bool) error {
 			s := u.app.Settings()
@@ -37,7 +44,7 @@ func (u *UI) showSettings(returnTo func()) {
 		})
 
 	startMinimised := u.checkRow("Start minimised",
-		"Open in the tray instead of showing the window.",
+		minimiseNote,
 		settings.StartMinimised,
 		func(value bool) error {
 			s := u.app.Settings()

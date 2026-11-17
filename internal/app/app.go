@@ -140,11 +140,18 @@ func (a *App) SetAppPort(port int) error {
 	return a.SaveSettings(s)
 }
 
-// LiveGroupID is the group with a running session, if any.
+// LiveGroupID is the group with a running session, if any. A friend session
+// that has lost its host is not live, even though its saved group remains.
 func (a *App) LiveGroupID() string {
 	a.mu.Lock()
-	defer a.mu.Unlock()
-	return a.liveGroupID
+	id := a.liveGroupID
+	friend := a.friend
+	a.mu.Unlock()
+
+	if friend != nil && !friend.Presence().Live {
+		return ""
+	}
+	return id
 }
 
 // DefaultHostName is a reasonable first guess for the host's display name.

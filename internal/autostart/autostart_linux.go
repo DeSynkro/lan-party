@@ -27,6 +27,15 @@ func Set(configHome string, enabled bool) error {
 	if resolved, err := filepath.EvalSymlinks(executable); err == nil {
 		executable = resolved
 	}
+	// An AppImage runs from a temporary mount. The APPIMAGE variable points at
+	// the file the user actually downloaded.
+	if appImage := os.Getenv("APPIMAGE"); appImage != "" {
+		if absolute, err := filepath.Abs(appImage); err == nil {
+			executable = absolute
+		} else {
+			executable = appImage
+		}
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return fmt.Errorf("create autostart dir: %w", err)
 	}
