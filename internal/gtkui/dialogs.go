@@ -333,7 +333,7 @@ func (u *probeUI) confirm(title, message, confirmLabel string, onConfirm func())
 	cancel.AddCSSClass("quiet")
 	cancel.ConnectClicked(func() { win.Close() })
 	confirm := gtk.NewButtonWithLabel(confirmLabel)
-	confirm.AddCSSClass("danger")
+	confirm.AddCSSClass("secondary")
 	confirm.ConnectClicked(func() {
 		win.Close()
 		onConfirm()
@@ -368,6 +368,136 @@ func (u *probeUI) confirmDeleteGroup(g group.Group) {
 			}
 			u.showHome()
 		})
+}
+
+func (u *probeUI) showMemberDialog(g group.Group, m group.Member) {
+	win, content := u.dialog("Member")
+	content.Append(textLabel(m.Name, "card-title"))
+	content.Append(gapBox(10))
+	content.Append(cardText("Device: "+orUnknown(m.DeviceName), "desc"))
+	content.Append(cardText("Address: "+orUnknown(m.LastAddress), "desc"))
+	content.Append(cardText("Fingerprint: "+orUnknown(m.Fingerprint), "desc"))
+	content.Append(cardText("First seen: "+when(m.FirstSeen), "desc"))
+	content.Append(cardText("Last seen: "+when(m.LastSeen), "desc"))
+	status := "approved"
+	if !m.IsApproved() {
+		status = "waiting for approval"
+	}
+	content.Append(cardText("Status: "+status, "desc"))
+	content.Append(gapBox(14))
+
+	buttons := gtk.NewBox(gtk.OrientationHorizontal, 8)
+	cancel := gtk.NewButtonWithLabel("Close")
+	cancel.AddCSSClass("quiet")
+	cancel.ConnectClicked(func() { win.Close() })
+	remove := gtk.NewButtonWithLabel("Remove member")
+	remove.AddCSSClass("secondary")
+	remove.ConnectClicked(func() {
+		if err := u.state.RemoveMember(g.ID, m.ID); err != nil {
+			u.alert("Could not remove member", err.Error())
+			return
+		}
+		win.Close()
+		u.showGroup(g.ID)
+	})
+	buttons.Append(cancel)
+	buttons.Append(remove)
+	buttons.SetHAlign(gtk.AlignEnd)
+	content.Append(buttons)
+	win.Present()
+}
+
+func (u *probeUI) showServiceDialog(g group.Group, s group.Service) {
+	win, content := u.dialog("Service")
+	content.Append(textLabel(s.Name, "card-title"))
+	content.Append(gapBox(10))
+	content.Append(cardText("Protocol: "+protoName(s.Proto), "desc"))
+	content.Append(cardText("LAN target: "+s.Target, "desc"))
+	content.Append(cardText("Friend ports: "+group.FormatPorts(s.Ports), "desc"))
+	if s.Hint != "" {
+		content.Append(cardText("Hint: "+s.Hint, "desc"))
+	}
+	content.Append(gapBox(14))
+
+	buttons := gtk.NewBox(gtk.OrientationHorizontal, 8)
+	cancel := gtk.NewButtonWithLabel("Close")
+	cancel.AddCSSClass("quiet")
+	cancel.ConnectClicked(func() { win.Close() })
+	remove := gtk.NewButtonWithLabel("Remove service")
+	remove.AddCSSClass("secondary")
+	remove.ConnectClicked(func() {
+		if err := u.state.RemoveService(g.ID, s.ID); err != nil {
+			u.alert("Could not remove service", err.Error())
+			return
+		}
+		win.Close()
+		u.showGroup(g.ID)
+	})
+	buttons.Append(cancel)
+	buttons.Append(remove)
+	buttons.SetHAlign(gtk.AlignEnd)
+	content.Append(buttons)
+	win.Present()
+}
+
+func (u *probeUI) confirmEndSession(g group.Group) {
+	u.confirm("End the session?", "Connected friends will be disconnected. The group and its invites stay saved.", "End session", func() {
+		_ = u.state.StopSession()
+		u.showGroup(g.ID)
+	})
+}
+
+func (u *probeUI) confirmDisconnect(g group.Group) {
+	u.confirm("Disconnect?", "The group stays saved and you can reconnect later.", "Disconnect", func() {
+		_ = u.state.StopSession()
+		u.showGroup(g.ID)
+	})
+}
+
+func (u *probeUI) confirmLeaveGroup(g group.Group) {
+	u.confirm("Leave "+g.Name+"?", "This removes the saved group and its device key from this PC.", "Leave group", func() {
+		if err := u.state.DeleteGroup(g.ID); err != nil {
+			u.alert("Could not leave group", err.Error())
+			return
+		}
+		u.showHome()
+	})
+}
+
+func (u *probeUI) confirmCancelInvite(g group.Group, inv group.Invite) {
+	u.confirm("Cancel invite for "+inv.Name+"?", "The code will stop working immediately.", "Cancel invite", func() {
+		if err := u.state.RemoveInvite(g.ID, inv.ID); err != nil {
+			u.alert("Could not cancel invite", err.Error())
+			return
+		}
+		u.showGroup(g.ID)
+	})
+}
+
+func addClick(widget *gtk.Box, onTap func()) {
+	gesture := gtk.NewGestureClick()
+	gesture.SetButton(1)
+	gesture.ConnectReleased(func(nPress int, x, y float64) {
+		if nPress == 1 {
+			onTap()
+		}
+	})
+	gesture.SetPropagationPhase(gtk.PhaseBubble)
+	widget.AddController(gesture)
+}
+
+func orUnknown(value string) string {
+	if value == "" {
+		return "unknown"
+	}
+	return value
+}
+
+func when(at time.Time) string {
+	if at.IsZero() {
+		return "never"
+	}
+	return at.Local().Format("2 Jan 15:04")
 }
 
 func (u *probeUI) dialog(title string) (*gtk.Window, *gtk.Box) {

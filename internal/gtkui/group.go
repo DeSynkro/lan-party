@@ -3,7 +3,6 @@ package gtkui
 import (
 	"context"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -60,7 +59,7 @@ func (u *probeUI) buildGroupContent(g group.Group) *gtk.Box {
 		leave := gtk.NewButtonWithLabel("Leave group")
 		leave.AddCSSClass("secondary")
 		leave.ConnectClicked(func() {
-			log.Println("gtk probe: leave group dialog not ported yet")
+			u.confirmLeaveGroup(g)
 		})
 		page.Append(leave)
 		page.Append(gapBox(4))
@@ -94,8 +93,7 @@ func (u *probeUI) hostSessionCard(g group.Group, showError func(error)) *gtk.Box
 	}
 	action.ConnectClicked(func() {
 		if live {
-			_ = u.state.StopSession()
-			u.showGroup(g.ID)
+			u.confirmEndSession(g)
 			return
 		}
 		if err := u.state.StartSession(g.ID); err != nil {
@@ -153,7 +151,9 @@ func (u *probeUI) hostServices(g group.Group) *gtk.Box {
 		if i > 0 {
 			box.Append(gapBox(8))
 		}
-		box.Append(u.hostServiceCard(s))
+		card := u.hostServiceCard(s)
+		addClick(card, func() { u.showServiceDialog(g, s) })
+		box.Append(card)
 	}
 	return box
 }
@@ -193,7 +193,9 @@ func (u *probeUI) hostPeople(g group.Group) *gtk.Box {
 			}
 		}
 		box.Append(gapBox(8))
-		box.Append(personCard(m.Name, detail, live, ""))
+		card := personCard(m.Name, detail, live, "")
+		addClick(card, func() { u.showMemberDialog(g, m) })
+		box.Append(card)
 	}
 	if len(g.Members) == 0 {
 		box.Append(gapBox(8))
@@ -230,6 +232,10 @@ func (u *probeUI) hostInvites(g group.Group) *gtk.Box {
 			})
 			content.Append(copy)
 		}
+		cancel := gtk.NewButtonWithLabel("Cancel")
+		cancel.AddCSSClass("quiet")
+		cancel.ConnectClicked(func() { u.confirmCancelInvite(g, inv) })
+		content.Append(cancel)
 		row.SetChild(content)
 		box.Append(row)
 	}
@@ -261,8 +267,7 @@ func (u *probeUI) friendSessionCard(g group.Group, showError func(error)) *gtk.B
 	}
 	action.ConnectClicked(func() {
 		if live {
-			_ = u.state.StopSession()
-			u.showGroup(g.ID)
+			u.confirmDisconnect(g)
 			return
 		}
 		if err := u.state.Reconnect(context.Background(), g.ID); err != nil {
