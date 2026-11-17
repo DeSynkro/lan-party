@@ -5,7 +5,9 @@ import (
 	"strings"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
 	apppkg "github.com/desynkro/lan-party/internal/app"
@@ -23,7 +25,7 @@ func (u *UI) showSettings(returnTo func()) {
 	minimiseNote := "Open in the tray instead of showing the window."
 	if !u.hasTray {
 		closeNote = "Your desktop did not report a system tray, so closing the window quits even when this is ticked."
-		minimiseNote = "Your desktop did not report a system tray, so the window will still open."
+		minimiseNote = "No system tray; the window will still open."
 	}
 
 	closeToTray := u.checkRow("Close to tray", "", closeNote,
@@ -50,9 +52,9 @@ func (u *UI) showSettings(returnTo func()) {
 			return u.app.SaveSettings(s)
 		})
 
-	approve := u.checkRow("Approve new devices",
+	approve := u.checkRow("Approve new devices", "",
 		"A valid invite still asks you before a device joins. A changed device key always asks.",
-		"", settings.ApproveNewDevices,
+		settings.ApproveNewDevices,
 		func(value bool) error {
 			s := u.app.Settings()
 			s.ApproveNewDevices = value
@@ -187,25 +189,24 @@ func (u *UI) checkRow(title, description, help string, checked bool, onChanged f
 		}
 	}
 
-	box := container.NewCenter(container.NewGridWrap(
-		fyne.NewSize(settingCheckbox, settingCheckbox), check,
-	))
-	top := container.NewHBox(
-		box,
-		gapW(8),
-		container.NewCenter(settingTitle(title)),
-	)
+	checkBox := container.NewGridWrap(fyne.NewSize(settingCheckbox, settingCheckbox), check)
+	checkColumn := container.NewVBox(checkBox, layout.NewSpacer())
+	left := container.NewHBox(checkColumn, gapW(8))
+
+	titleRow := container.NewHBox(container.NewCenter(settingTitle(title)))
 	if help != "" {
-		top.Add(gapW(2))
-		top.Add(container.NewCenter(smallButton("?", buttonQuiet, func() {
+		titleRow.Add(gapW(2))
+		titleRow.Add(container.NewCenter(smallButton("?", buttonQuiet, func() {
 			u.showInfo(title, help)
 		})))
 	}
 
-	body := container.NewVBox(top)
+	text := container.NewVBox(titleRow)
 	if description != "" {
-		body.Add(gap(1))
-		body.Add(container.NewBorder(nil, nil, gapW(settingCheckbox+8), nil, mutedLabel(description)))
+		text.Add(gap(1))
+		desc := canvas.NewText(description, colourMuted)
+		desc.TextSize = sizeMeta
+		text.Add(desc)
 	}
-	return card(body)
+	return card(container.NewBorder(nil, nil, left, nil, text))
 }
