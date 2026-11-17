@@ -54,15 +54,15 @@ func (u *UI) showFriend(g group.Group) {
 
 	content := container.NewVBox(
 		view.statusPanel(g),
-		gap(20),
+		gap(16),
 		sectionLabel("Ready to play"),
 		gap(8),
 		view.services,
-		gap(20),
+		gap(16),
 		sectionLabel("People"),
 		gap(8),
 		view.people(g),
-		gap(20),
+		gap(16),
 		divider(),
 		newButton("Leave group", buttonDanger, func() { u.confirmLeaveGroup(g) }),
 		gap(6),

@@ -22,7 +22,7 @@ Working on Linux:
 - one-time invites, hashed at rest, 24-hour expiry
 - host approval for new devices and for changed device keys
 - presence, live service updates and revocation
-- a fixed 400×600 interface, tray icon, start on login and start minimised
+- a fixed 400×640 interface, tray icon, start on login and start minimised
 - AppImage packaging and CI
 
 Not in this version: a relay for CGNAT hosts, per-friend service grants,
@@ -73,7 +73,7 @@ fresh.
 - [docs/guide.md](docs/guide.md) — setup and troubleshooting
 - [docs/architecture.md](docs/architecture.md) — how a connection moves
 - [docs/security.md](docs/security.md) — identities, invites, threat model
-- [docs/ui.md](docs/ui.md) — the 400×600 rules and screens
+- [docs/ui.md](docs/ui.md) — the 400×640 rules and screens
 - [docs/development.md](docs/development.md) — layout, build, tests, release
 - [docs/design.md](docs/design.md) — the rewrite design
 - [docs/mockups/ui-v1.html](docs/mockups/ui-v1.html) — the reference mockup

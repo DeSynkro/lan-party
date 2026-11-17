@@ -118,6 +118,16 @@ The group stays saved. If the host goes offline, the screen says so and offers
 Reconnect. **Disconnect** ends the session but keeps the group. **Leave group**
 removes the saved group and its device key from your PC.
 
+## Window and tray
+
+By default, closing the window keeps LAN Party and a live session running in
+the system tray. The tray menu can show the window, open the guide or settings,
+and quit.
+
+If you untick **Close to tray** in Settings, closing the window quits the app
+and ends any live session. If your desktop does not report a system tray, that
+is what closing does anyway; the setting says so.
+
 ## Invites
 
 - Single use. The token is burned after a successful join.

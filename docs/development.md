@@ -81,7 +81,7 @@ mkdir -p .tmp/preview
 LANPARTY_PREVIEW="$PWD/.tmp/preview" go test ./internal/ui -run TestPreviewScreens -v
 ```
 
-This writes 400×600 PNGs for Home, the host group, the friend screen, Settings
+This writes 400×640 PNGs for Home, the host group, the friend screen, Settings
 and the guide.
 
 ## Runtime data

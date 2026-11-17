@@ -41,7 +41,7 @@ virtual network, no route and no peer-to-peer path.
 
 ## Goals
 
-- One window, fixed at 400×600, that looks like a finished desktop utility.
+- One window, fixed at 400×640, that looks like a finished desktop utility.
 - Publish any TCP and/or UDP port the host chooses, with an optional remap for
   the port friends see.
 - Invites are one-time, expire, and never contain a private key.
@@ -79,7 +79,7 @@ These would count as failures even if the app technically works:
 - Go 1.27.4, pinned in `.tools`, with the module and build caches inside the
   project.
 - Go and Fyne only. No webview, no npm, no bundled browser.
-- Fixed 400×600 window. No maximise, no resize.
+- Fixed 400×640 window. No maximise, no resize.
 - Linux runtime data in `~/.config/lan-party` and `~/.local/share/lan-party`.
   Development runs redirect those into `.tmp`.
 - No artifact, cache or build tool outside this directory. CI is the only
@@ -335,7 +335,7 @@ knows public keys and hashes.
 
 ## Interface
 
-One window, 400×600, fixed. Content scrolls under a 48px app bar. The native
+One window, 400×640, fixed. Content scrolls under a 48px app bar. The native
 title bar stays; the app does not pretend to be frameless.
 
 The working palette comes from the mockup: near-black background, slightly
@@ -356,7 +356,8 @@ Screens:
 - **Friend group.** Host status, then one card per published service with the
   loopback address, a copy button and the game's hint. People shows the host and
   you. Leave asks for confirmation.
-- **Settings.** Startup (close to tray, start on login, start minimised),
+- **Settings.** Startup (close to tray on by default; unticking makes closing
+  the window quit, start on login, start minimised),
   Network (public address, app port), Security (approve new devices), About
   (version, data location, keyring state).
 - **How to Use.** Offline guide with Hosting, Joining, Problems and Security
@@ -409,7 +410,7 @@ nothing lands in the home directory. `make test`, `make run`, `make build`,
 ## Build order
 
 1. Project reset, design document, README, mockup. (this commit)
-2. Project skeleton, local build tooling, config paths, bare 400×600 window.
+2. Project skeleton, local build tooling, config paths, bare 400×640 window.
 3. Secure keyring storage, host and device identities, fingerprints.
 4. Groups, services, presets, validation and storage.
 5. One-time invites, hashing, expiry.
@@ -430,7 +431,7 @@ comes after.
 
 Working on Linux: groups, services and presets; one-time invites; host approval
 of new devices; QUIC/TLS sessions; TCP and UDP forwarding; presence, service
-updates and revocation; the 400×600 interface; the in-app setup guide; tray,
+updates and revocation; the 400×640 interface; the in-app setup guide; tray,
 start on login and start minimised; AppImage packaging; CI.
 
 The end-to-end tests start a host and a friend app on loopback, create an

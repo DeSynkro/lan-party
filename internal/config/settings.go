@@ -29,6 +29,7 @@ type Settings struct {
 // DefaultSettings returns the first-run values.
 func DefaultSettings() Settings {
 	return Settings{
+		CloseToTray:       true,
 		ApproveNewDevices: true,
 		AppPort:           DefaultAppPort,
 	}

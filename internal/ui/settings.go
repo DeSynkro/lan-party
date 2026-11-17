@@ -18,10 +18,10 @@ func (u *UI) showSettings(returnTo func()) {
 
 	settings := u.app.Settings()
 
-	closeNote := "Closing the window keeps the app and a live session running in the tray."
+	closeNote := "Closing the window keeps the app and a live session running in the tray. Untick this to make closing the window quit the app."
 	minimiseNote := "Open in the tray instead of showing the window."
 	if !u.hasTray {
-		closeNote = "Your desktop did not report a system tray, so closing the window quits."
+		closeNote = "Your desktop did not report a system tray, so closing the window quits even when this is ticked."
 		minimiseNote = "Your desktop did not report a system tray, so the window will still open."
 	}
 
@@ -126,15 +126,15 @@ func (u *UI) showSettings(returnTo func()) {
 		startOnLogin,
 		gap(6),
 		startMinimised,
-		gap(20),
+		gap(16),
 		sectionLabel("Network"),
 		gap(6),
 		networkCard,
-		gap(20),
+		gap(16),
 		sectionLabel("Security"),
 		gap(6),
 		approve,
-		gap(20),
+		gap(16),
 		sectionLabel("About"),
 		gap(6),
 		card(about),

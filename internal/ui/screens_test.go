@@ -274,11 +274,36 @@ func capture(t *testing.T, w fyne.Window, path string) {
 	}
 }
 
-func TestHomeRowTap(t *testing.T) {
+func findRow(obj fyne.CanvasObject) *rowButton {
+	switch o := obj.(type) {
+	case *rowButton:
+		return o
+	case *fyne.Container:
+		for _, child := range o.Objects {
+			if row := findRow(child); row != nil {
+				return row
+			}
+		}
+	case fyne.Widget:
+		for _, child := range o.CreateRenderer().Objects() {
+			if row := findRow(child); row != nil {
+				return row
+			}
+		}
+	}
+	return nil
+}
+
+func TestHomeRowOpensGroup(t *testing.T) {
 	host := sampleHostGroup(t)
 	u := newTestUI(t, []group.Group{host})
 	u.showHome()
-	test.TapCanvas(u.win.Canvas(), fyne.NewPos(150, 340))
+
+	row := findRow(u.win.Canvas().Content())
+	if row == nil {
+		t.Fatal("the group row is missing")
+	}
+	test.Tap(row)
 	got := screenText(u.win)
 	if !strings.Contains(got, "Session off") {
 		t.Fatalf("tapping the group row did not open it:\n%s", got)

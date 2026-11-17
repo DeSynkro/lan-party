@@ -44,7 +44,7 @@ func (u *UI) showHome() {
 	}
 
 	if len(hostGroups) > 0 {
-		content.Add(gap(20))
+		content.Add(gap(16))
 		content.Add(sectionLabel("Your groups"))
 		content.Add(gap(8))
 		for i, g := range hostGroups {
@@ -56,7 +56,7 @@ func (u *UI) showHome() {
 	}
 
 	if len(joinedGroups) > 0 {
-		content.Add(gap(20))
+		content.Add(gap(16))
 		content.Add(sectionLabel("Groups you joined"))
 		content.Add(gap(8))
 		for i, g := range joinedGroups {
@@ -68,13 +68,13 @@ func (u *UI) showHome() {
 	}
 
 	if len(groups) == 0 {
-		content.Add(gap(20))
+		content.Add(gap(16))
 		content.Add(sectionLabel("Your groups"))
 		content.Add(gap(8))
 		content.Add(card(mutedLabel("Nothing saved yet. Hosted and joined groups appear here.")))
 	}
 
-	content.Add(gap(20))
+	content.Add(gap(16))
 	content.Add(u.howItWorks())
 
 	u.screen(u.appBar("", true), content, nil)
@@ -112,6 +112,6 @@ func (u *UI) howItWorks() fyne.CanvasObject {
 		gap(4),
 		right,
 		gap(10),
-		mutedLabel("The example addresses are a sketch. Only the ports you publish cross the tunnel."),
+		mutedLabel("Example addresses. Only published ports cross."),
 	))
 }

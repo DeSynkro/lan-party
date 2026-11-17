@@ -19,7 +19,7 @@ import (
 
 const (
 	windowWidth  = 400
-	windowHeight = 600
+	windowHeight = 640
 )
 
 // UI owns the window and the screen currently on it.
@@ -122,12 +122,14 @@ func (u *UI) closeWindow() {
 					return
 				}
 				_ = u.app.StopSession()
-				u.win.Close()
+				u.fyneApp.Quit()
 			}, u.win).Show()
 		return
 	}
 	_ = u.app.StopSession()
-	u.win.Close()
+	// Closing the window is not enough when a tray icon exists: the tray keeps
+	// the Fyne process alive. Quit explicitly.
+	u.fyneApp.Quit()
 }
 
 func startupError(fyneApp fyne.App, err error) fyne.CanvasObject {
@@ -290,7 +292,7 @@ func (u *UI) goBack() {
 }
 
 func (u *UI) screen(bar fyne.CanvasObject, content fyne.CanvasObject, refresh func()) {
-	body := container.NewVScroll(pad(16, 16, content))
+	body := container.NewVScroll(pad(14, 16, content))
 	u.setScreen(container.NewBorder(bar, nil, nil, nil, body), refresh)
 }
 

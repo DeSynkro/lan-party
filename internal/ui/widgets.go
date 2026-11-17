@@ -13,7 +13,7 @@ import (
 
 // Type scale. The compact window carries five sizes and no more.
 const (
-	sizeTitle       = 24
+	sizeTitle       = 22
 	sizeAppBar      = 15
 	sizeName        = 14
 	sizeBody        = 13
@@ -76,7 +76,7 @@ func surface(fill, border color.Color, radius float32) *canvas.Rectangle {
 func card(content fyne.CanvasObject) fyne.CanvasObject {
 	return container.NewStack(
 		surface(colourSurface, colourHairline, 12),
-		pad(16, 16, content),
+		pad(12, 12, content),
 	)
 }
 

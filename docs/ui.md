@@ -1,6 +1,6 @@
 # Interface
 
-One window, fixed at 400×600. The native title bar stays; the app does not
+One window, fixed at 400×640. The native title bar stays; the app does not
 pretend to be frameless. Content scrolls under a 48px app bar.
 
 This is a compact utility that sits beside a game. Density is deliberate:
@@ -8,11 +8,12 @@ small type, short labels, one primary action per screen.
 
 ## Rules
 
-- Window: 400×600, `SetFixedSize(true)`, centred on first open. No maximise, no
+- Window: 400×640, `SetFixedSize(true)`, centred on first open. No maximise, no
   resize.
 - App bar: 48px, a back button or the brand on the left, help and settings on
   the right. One hairline under it.
-- Page padding: 16px. Cards: 12px radius. Buttons: 8px radius.
+- Page padding: 14px top and bottom, 16px sides. Cards: 12px inner padding
+  and 12px radius. Buttons: 8px radius.
 - Space: 4px grid. Sections are 20px apart; rows inside a section are 6px
   apart.
 - One primary button per screen. Everything else is secondary or quiet.
@@ -52,7 +53,7 @@ pairs.
 - IBM Plex Sans for the interface; JetBrains Mono for addresses, ports and the
   version.
 - App bar title and names: 14–15, semibold.
-- Headline: 24, semibold.
+- Headline: 22, semibold.
 - Body: 13, regular.
 - Meta: 12, muted.
 - Addresses: 14; the large friend address: 16.
@@ -124,7 +125,8 @@ pairs.
 
 ### Settings
 
-- Startup: Close to tray, Start on login, Start minimised.
+- Startup: Close to tray (on by default; unticking makes closing the window
+  quit the app), Start on login, Start minimised.
 - Network: public address and app port, with a Save button and inline errors.
   The app port cannot change while a host session is live.
 - Security: Approve new devices.
@@ -174,5 +176,5 @@ LANPARTY_PREVIEW="$PWD/.tmp/preview" go test ./internal/ui -run TestPreviewScree
 ```
 
 The files are `home.png`, `host.png`, `friend.png`, `settings.png` and
-`guide.png` at 400×600. These are useful when changing spacing, type or the
+`guide.png` at 400×640. These are useful when changing spacing, type or the
 palette.

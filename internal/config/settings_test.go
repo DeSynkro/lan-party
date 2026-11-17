@@ -22,6 +22,9 @@ func TestSettingsDefaults(t *testing.T) {
 	if !s.ApproveNewDevices {
 		t.Fatal("ApproveNewDevices should be on by default")
 	}
+	if !s.CloseToTray {
+		t.Fatal("CloseToTray should be on by default")
+	}
 }
 
 func TestLoadSettingsMissingFile(t *testing.T) {
