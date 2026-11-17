@@ -169,6 +169,8 @@ func (u *UI) showSettings(returnTo func()) {
 	u.screen(u.appBar("Settings", false), content, nil)
 }
 
+const settingCheckbox = 24
+
 func (u *UI) checkRow(title, description, help string, checked bool, onChanged func(bool) error) fyne.CanvasObject {
 	reverting := false
 	check := widget.NewCheck("", nil)
@@ -185,9 +187,11 @@ func (u *UI) checkRow(title, description, help string, checked bool, onChanged f
 		}
 	}
 
-	checkWidth := check.MinSize().Width
+	box := container.NewCenter(container.NewGridWrap(
+		fyne.NewSize(settingCheckbox, settingCheckbox), check,
+	))
 	top := container.NewHBox(
-		container.NewCenter(check),
+		box,
 		gapW(8),
 		container.NewCenter(settingTitle(title)),
 	)
@@ -200,8 +204,8 @@ func (u *UI) checkRow(title, description, help string, checked bool, onChanged f
 
 	body := container.NewVBox(top)
 	if description != "" {
-		body.Add(gap(2))
-		body.Add(container.NewBorder(nil, nil, gapW(checkWidth+8), nil, mutedLabel(description)))
+		body.Add(gap(1))
+		body.Add(container.NewBorder(nil, nil, gapW(settingCheckbox+8), nil, mutedLabel(description)))
 	}
 	return card(body)
 }
