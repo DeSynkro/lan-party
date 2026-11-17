@@ -52,22 +52,22 @@ func (u *UI) showHostGroup(g group.Group) {
 
 	content := container.NewVBox(
 		view.sessionPanel(g),
-		gap(16),
+		gap(12),
 		u.publishedHeader(g),
-		gap(8),
+		gap(4),
 		u.servicesBox(g),
-		gap(16),
+		gap(12),
 		u.peopleHeader(g),
-		gap(8),
+		gap(4),
 		view.people,
-		gap(16),
+		gap(12),
 		sectionLabel("Invites"),
-		gap(8),
+		gap(4),
 		view.invite,
-		gap(16),
+		gap(12),
 		divider(),
 		newButton("Delete group", buttonDanger, func() { u.confirmDeleteGroup(g) }),
-		gap(6),
+		gap(4),
 		mutedLabel("This ends any running session and revokes every member. Friends keep a saved entry until they remove it."),
 	)
 
@@ -94,9 +94,9 @@ func (v *hostView) sessionPanel(g group.Group) fyne.CanvasObject {
 		top,
 		gap(4),
 		hostLine,
-		gap(10),
+		gap(4),
 		v.addressRow(g),
-		gap(6),
+		gap(4),
 		v.link,
 	)
 	return card(panel)
@@ -144,7 +144,7 @@ func (u *UI) servicesBox(g group.Group) fyne.CanvasObject {
 	}
 	for i, s := range g.Services {
 		if i > 0 {
-			box.Add(gap(8))
+			box.Add(gap(4))
 		}
 		box.Add(u.serviceCard(g, s))
 	}
@@ -165,9 +165,9 @@ func (u *UI) serviceCard(g group.Group, s group.Service) fyne.CanvasObject {
 		addressMuted(s.Target),
 	)
 
-	body := container.NewVBox(top, gap(8), friendLine, targetLine)
+	body := container.NewVBox(top, gap(4), friendLine, targetLine)
 	if s.Hint != "" {
-		body.Add(gap(6))
+		body.Add(gap(4))
 		body.Add(mutedLabel(s.Hint))
 	}
 	for _, warning := range group.ServiceWarnings(s) {
@@ -190,10 +190,10 @@ func (v *hostView) fillPeople(g group.Group) {
 	objs := []fyne.CanvasObject{v.hostRow(g)}
 	presence := v.u.app.HostPresence()
 	for _, member := range g.Members {
-		objs = append(objs, gap(6), v.memberRow(g, member, presence))
+		objs = append(objs, gap(4), v.memberRow(g, member, presence))
 	}
 	if len(g.Members) == 0 {
-		objs = append(objs, gap(8), mutedLabel("No friends yet. Create an invite when you're ready."))
+		objs = append(objs, gap(4), mutedLabel("No friends yet. Create an invite when you're ready."))
 	}
 	v.people.Objects = objs
 	v.people.Refresh()
@@ -239,7 +239,7 @@ func (v *hostView) fillInvites(g group.Group) {
 		})
 		row.setChevron(false)
 		if code == "" {
-			objs = append(objs, row, gap(6))
+			objs = append(objs, row, gap(4))
 			continue
 		}
 		var copyButton *button
@@ -248,7 +248,7 @@ func (v *hostView) fillInvites(g group.Group) {
 		})
 		objs = append(objs,
 			container.NewBorder(nil, nil, nil, container.NewCenter(copyButton), row),
-			gap(6),
+			gap(4),
 		)
 	}
 	v.invite.Objects = objs

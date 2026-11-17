@@ -155,15 +155,15 @@ func (u *UI) showSettings(returnTo func()) {
 		startOnLogin,
 		gap(6),
 		startMinimised,
-		gap(16),
+		gap(14),
 		sectionLabel("Network"),
 		gap(6),
 		networkCard,
-		gap(16),
+		gap(14),
 		sectionLabel("Security"),
 		gap(6),
 		approve,
-		gap(16),
+		gap(14),
 		sectionLabel("About"),
 		gap(6),
 		card(about),
@@ -174,7 +174,7 @@ func (u *UI) showSettings(returnTo func()) {
 
 func (u *UI) checkRow(title, description string, checked bool, onChanged func(bool) error) fyne.CanvasObject {
 	reverting := false
-	check := widget.NewCheck(title, nil)
+	check := widget.NewCheck("", nil)
 	check.SetChecked(checked)
 	check.OnChanged = func(value bool) {
 		if reverting {
@@ -187,5 +187,19 @@ func (u *UI) checkRow(title, description string, checked bool, onChanged func(bo
 			u.showError(err)
 		}
 	}
-	return card(container.NewVBox(check, mutedLabel(description)))
+
+	text := container.NewVBox(
+		nameText(title),
+		gap(2),
+		mutedLabel(description),
+	)
+	toggle := newTapArea(func() {
+		value := !check.Checked
+		check.SetChecked(value)
+		if check.OnChanged != nil {
+			check.OnChanged(value)
+		}
+	})
+	text = container.NewStack(text, toggle)
+	return card(container.NewBorder(nil, nil, container.NewCenter(check), nil, text))
 }

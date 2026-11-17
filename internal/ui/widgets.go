@@ -76,7 +76,7 @@ func surface(fill, border color.Color, radius float32) *canvas.Rectangle {
 func card(content fyne.CanvasObject) fyne.CanvasObject {
 	return container.NewStack(
 		surface(colourSurface, colourHairline, 12),
-		pad(12, 12, content),
+		pad(10, 10, content),
 	)
 }
 

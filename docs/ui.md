@@ -12,10 +12,10 @@ small type, short labels, one primary action per screen.
   resize.
 - App bar: 48px, a back button or the brand on the left, help and settings on
   the right. One hairline under it.
-- Page padding: 14px top and bottom, 16px sides. Cards: 12px inner padding
+- Page padding: 12px top and bottom, 16px sides. Cards: 10px inner padding
   and 12px radius. Buttons: 8px radius.
-- Space: 4px grid. Sections are 20px apart; rows inside a section are 6px
-  apart.
+- Space: 4px grid. Sections are 12–14px apart; rows inside a section are
+  4–6px apart.
 - One primary button per screen. Everything else is secondary or quiet.
 - No gradients, glows, coloured shadows, looping motion or emoji.
 - Sentence case. No exclamation marks.

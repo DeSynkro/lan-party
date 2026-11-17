@@ -73,7 +73,7 @@ type rowRenderer struct {
 	chev  *canvas.Text
 }
 
-func (r *rowRenderer) MinSize() fyne.Size { return fyne.NewSize(200, 42) }
+func (r *rowRenderer) MinSize() fyne.Size { return fyne.NewSize(200, 40) }
 
 func (r *rowRenderer) Layout(size fyne.Size) {
 	r.bg.Resize(size)

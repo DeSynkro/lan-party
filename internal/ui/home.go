@@ -25,7 +25,7 @@ func (u *UI) showHome() {
 
 	content := container.NewVBox(
 		hero,
-		gap(16),
+		gap(12),
 		actions,
 		container.NewCenter(smallButton("First time? Read the setup guide", buttonQuiet, func() {
 			u.showGuide(u.showHome)
@@ -44,9 +44,9 @@ func (u *UI) showHome() {
 	}
 
 	if len(hostGroups) > 0 {
-		content.Add(gap(16))
+		content.Add(gap(12))
 		content.Add(sectionLabel("Your groups"))
-		content.Add(gap(8))
+		content.Add(gap(6))
 		for i, g := range hostGroups {
 			if i > 0 {
 				content.Add(gap(6))
@@ -56,9 +56,9 @@ func (u *UI) showHome() {
 	}
 
 	if len(joinedGroups) > 0 {
-		content.Add(gap(16))
+		content.Add(gap(12))
 		content.Add(sectionLabel("Groups you joined"))
-		content.Add(gap(8))
+		content.Add(gap(6))
 		for i, g := range joinedGroups {
 			if i > 0 {
 				content.Add(gap(6))
@@ -68,13 +68,13 @@ func (u *UI) showHome() {
 	}
 
 	if len(groups) == 0 {
-		content.Add(gap(16))
+		content.Add(gap(12))
 		content.Add(sectionLabel("Your groups"))
-		content.Add(gap(8))
+		content.Add(gap(6))
 		content.Add(card(mutedLabel("Nothing saved yet. Hosted and joined groups appear here.")))
 	}
 
-	content.Add(gap(16))
+	content.Add(gap(12))
 	content.Add(u.howItWorks())
 
 	u.screen(u.appBar("", true), content, nil)
@@ -105,13 +105,13 @@ func (u *UI) howItWorks() fyne.CanvasObject {
 
 	return card(container.NewVBox(
 		sectionLabel("How it works"),
-		gap(10),
+		gap(6),
 		left,
-		gap(4),
+		gap(2),
 		middle,
-		gap(4),
+		gap(2),
 		right,
-		gap(10),
+		gap(6),
 		mutedLabel("Example addresses. Only published ports cross."),
 	))
 }

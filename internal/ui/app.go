@@ -292,7 +292,7 @@ func (u *UI) goBack() {
 }
 
 func (u *UI) screen(bar fyne.CanvasObject, content fyne.CanvasObject, refresh func()) {
-	body := container.NewVScroll(pad(14, 16, content))
+	body := container.NewVScroll(pad(12, 16, content))
 	u.setScreen(container.NewBorder(bar, nil, nil, nil, body), refresh)
 }
 

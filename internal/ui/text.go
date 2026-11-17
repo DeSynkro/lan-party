@@ -115,7 +115,7 @@ func hairline() fyne.CanvasObject {
 }
 
 func divider() fyne.CanvasObject {
-	return container.NewVBox(gap(10), hairline(), gap(10))
+	return container.NewVBox(gap(8), hairline(), gap(8))
 }
 
 func truncate(text string, max int) string {
