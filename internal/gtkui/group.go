@@ -33,9 +33,9 @@ func (u *probeUI) buildGroupContent(g group.Group) *gtk.Box {
 
 	if g.IsHost() {
 		page.Append(u.hostSessionCard(g, showError))
-		page.Append(sectionTitle("Published", strconv.Itoa(len(g.Services))))
+		page.Append(sectionTitleAction("Published", strconv.Itoa(len(g.Services)), "Add service", func() { u.showAddServiceDialog(g) }))
 		page.Append(u.hostServices(g))
-		page.Append(sectionTitle("People", plural(len(g.Members), "member")))
+		page.Append(sectionTitleAction("People", plural(len(g.Members), "member"), "Invite", func() { u.showInviteDialog(g) }))
 		page.Append(u.hostPeople(g))
 		page.Append(sectionTitle("Invites", ""))
 		page.Append(u.hostInvites(g))
@@ -221,6 +221,15 @@ func (u *probeUI) hostInvites(g group.Group) *gtk.Box {
 		name.SetHExpand(true)
 		content.Append(name)
 		content.Append(lineLabel(expiresIn(inv.ExpiresAt), "row-meta"))
+		if code := u.state.InviteCode(inv.ID); code != "" {
+			copy := gtk.NewButtonWithLabel("Copy")
+			copy.AddCSSClass("quiet")
+			copy.ConnectClicked(func() {
+				u.win.Widget.Clipboard().SetText(code)
+				copy.SetLabel("Copied")
+			})
+			content.Append(copy)
+		}
 		row.SetChild(content)
 		box.Append(row)
 	}
@@ -410,6 +419,10 @@ func tagLabel(text string) *gtk.Label {
 }
 
 func sectionTitle(title, count string) *gtk.Box {
+	return sectionTitleAction(title, count, "", nil)
+}
+
+func sectionTitleAction(title, count, action string, onAction func()) *gtk.Box {
 	row := gtk.NewBox(gtk.OrientationHorizontal, 8)
 	row.SetMarginTop(14)
 	row.SetMarginBottom(8)
@@ -420,6 +433,12 @@ func sectionTitle(title, count string) *gtk.Box {
 	label := lineLabel(text, "section")
 	label.SetHExpand(true)
 	row.Append(label)
+	if action != "" && onAction != nil {
+		button := gtk.NewButtonWithLabel(action)
+		button.AddCSSClass("quiet")
+		button.ConnectClicked(onAction)
+		row.Append(button)
+	}
 	return row
 }
 
@@ -463,4 +482,15 @@ func lineLabel(text, class string) *gtk.Label {
 	label.SetHAlign(gtk.AlignStart)
 	label.SetEllipsize(pango.EllipsizeEnd)
 	return label
+}
+
+func protoValue(index int) string {
+	switch index {
+	case 0:
+		return "tcp"
+	case 1:
+		return "udp"
+	default:
+		return "both"
+	}
 }

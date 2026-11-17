@@ -337,3 +337,26 @@ label.warning {
   font-family: "IBM Plex Sans";
   font-size: 12px;
 }
+
+dropdown.field {
+  background-color: @ink;
+  border: 1px solid @hairline;
+  border-radius: 8px;
+  color: @pale;
+  min-height: 32px;
+}
+
+dropdown.field button {
+  background-color: @ink;
+  background-image: none;
+  border: 1px solid @hairline;
+  border-radius: 8px;
+  color: @pale;
+  min-height: 32px;
+  padding: 0 9px;
+}
+
+dropdown.field button:hover {
+  background-color: @raised;
+  border-color: @violet;
+}

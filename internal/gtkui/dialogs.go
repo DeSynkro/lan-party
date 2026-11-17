@@ -9,6 +9,7 @@ import (
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
 	apppkg "github.com/desynkro/lan-party/internal/app"
+	"github.com/desynkro/lan-party/internal/group"
 )
 
 func (u *probeUI) showCreateGroupDialog() {
@@ -19,6 +20,7 @@ func (u *probeUI) showCreateGroupDialog() {
 	content.Append(gapBox(10))
 	content.Append(textLabel("Your name", "form-label"))
 	hostEntry := entry("User")
+	hostEntry.SetText(apppkg.DefaultHostName())
 	content.Append(hostEntry)
 	content.Append(gapBox(10))
 	errLabel := textLabel("", "error")
@@ -159,6 +161,142 @@ func (u *probeUI) showApprovalDialog(approval apppkg.Approval) {
 	buttons.Append(allow)
 	buttons.SetHAlign(gtk.AlignEnd)
 	content.Append(buttons)
+	win.Present()
+}
+
+func (u *probeUI) showInviteDialog(g group.Group) {
+	win, content := u.dialog("Invite a friend")
+	content.Append(textLabel("Friend's name", "form-label"))
+	nameEntry := entry("Ash")
+	content.Append(nameEntry)
+	content.Append(gapBox(10))
+	errLabel := textLabel("", "error")
+	errLabel.SetVisible(false)
+	content.Append(errLabel)
+	content.Append(gapBox(10))
+
+	buttons := gtk.NewBox(gtk.OrientationHorizontal, 8)
+	cancel := gtk.NewButtonWithLabel("Cancel")
+	cancel.AddCSSClass("quiet")
+	cancel.ConnectClicked(func() { win.Close() })
+	create := gtk.NewButtonWithLabel("Create invite")
+	create.AddCSSClass("primary")
+	create.ConnectClicked(func() {
+		name := strings.TrimSpace(nameEntry.Text())
+		if name == "" {
+			errLabel.SetText("Give the invite a name.")
+			errLabel.SetVisible(true)
+			return
+		}
+		code, err := u.state.CreateInvite(g.ID, name)
+		if err != nil {
+			errLabel.SetText(err.Error())
+			errLabel.SetVisible(true)
+			return
+		}
+		win.Close()
+		u.showInviteCodeDialog(g, name, code)
+	})
+	buttons.Append(cancel)
+	buttons.Append(create)
+	buttons.SetHAlign(gtk.AlignEnd)
+	content.Append(buttons)
+	nameEntry.GrabFocus()
+	win.Present()
+}
+
+func (u *probeUI) showInviteCodeDialog(g group.Group, name, code string) {
+	win, content := u.dialog("Invite for " + name)
+	codeLabel := textLabel(code, "mono")
+	codeLabel.SetSizeRequest(320, -1)
+	content.Append(codeLabel)
+	content.Append(gapBox(10))
+	content.Append(textLabel("Send this code privately. It works once and expires after 24 hours.", "desc"))
+	content.Append(gapBox(12))
+
+	buttons := gtk.NewBox(gtk.OrientationHorizontal, 8)
+	copy := gtk.NewButtonWithLabel("Copy")
+	copy.AddCSSClass("secondary")
+	copy.ConnectClicked(func() {
+		u.win.Widget.Clipboard().SetText(code)
+		copy.SetLabel("Copied")
+	})
+	done := gtk.NewButtonWithLabel("Done")
+	done.AddCSSClass("primary")
+	done.ConnectClicked(func() {
+		win.Close()
+		u.showGroup(g.ID)
+	})
+	buttons.Append(copy)
+	buttons.Append(done)
+	buttons.SetHAlign(gtk.AlignEnd)
+	content.Append(buttons)
+	win.Present()
+}
+
+func (u *probeUI) showAddServiceDialog(g group.Group) {
+	win, content := u.dialog("Publish a service")
+	win.SetDefaultSize(360, 420)
+	content.Append(textLabel("Service name", "form-label"))
+	nameEntry := entry("Minecraft: Java Edition")
+	content.Append(nameEntry)
+	content.Append(gapBox(8))
+	content.Append(textLabel("Protocol", "form-label"))
+	protocol := gtk.NewDropDownFromStrings([]string{"TCP", "UDP", "TCP + UDP"})
+	protocol.AddCSSClass("field")
+	content.Append(protocol)
+	content.Append(gapBox(8))
+	content.Append(textLabel("LAN target", "form-label"))
+	targetEntry := entry("192.168.0.10:25565")
+	content.Append(targetEntry)
+	content.Append(gapBox(8))
+	content.Append(textLabel("Friend ports", "form-label"))
+	portsEntry := entry("25565")
+	content.Append(portsEntry)
+	content.Append(gapBox(8))
+	content.Append(textLabel("Hint", "form-label"))
+	hintEntry := entry("Direct Connect in Minecraft")
+	content.Append(hintEntry)
+	content.Append(gapBox(8))
+	errLabel := textLabel("", "error")
+	errLabel.SetVisible(false)
+	content.Append(errLabel)
+	content.Append(gapBox(10))
+
+	buttons := gtk.NewBox(gtk.OrientationHorizontal, 8)
+	cancel := gtk.NewButtonWithLabel("Cancel")
+	cancel.AddCSSClass("quiet")
+	cancel.ConnectClicked(func() { win.Close() })
+	add := gtk.NewButtonWithLabel("Publish")
+	add.AddCSSClass("primary")
+	add.ConnectClicked(func() {
+		ports, err := group.ParsePorts(portsEntry.Text())
+		if err != nil {
+			errLabel.SetText(err.Error())
+			errLabel.SetVisible(true)
+			return
+		}
+		s := group.Service{
+			ID:     group.NewID(),
+			Name:   strings.TrimSpace(nameEntry.Text()),
+			Proto:  protoValue(int(protocol.Selected())),
+			Target: strings.TrimSpace(targetEntry.Text()),
+			Ports:  ports,
+			Hint:   strings.TrimSpace(hintEntry.Text()),
+		}
+		if err := u.state.AddService(g.ID, s); err != nil {
+			errLabel.SetText(err.Error())
+			errLabel.SetVisible(true)
+			return
+		}
+		win.Close()
+		u.showGroup(g.ID)
+	})
+	buttons.Append(cancel)
+	buttons.Append(add)
+	buttons.SetHAlign(gtk.AlignEnd)
+	content.Append(buttons)
+	nameEntry.GrabFocus()
 	win.Present()
 }
 

@@ -82,6 +82,16 @@ func RunProbe(argv []string) int {
 		case screen == "join":
 			ui.showHome()
 			ui.showJoinDialog()
+		case strings.HasPrefix(screen, "invite:"):
+			if g, ok := ui.state.Group(strings.TrimPrefix(screen, "invite:")); ok {
+				ui.showGroup(g.ID)
+				ui.showInviteDialog(g)
+			}
+		case strings.HasPrefix(screen, "service:"):
+			if g, ok := ui.state.Group(strings.TrimPrefix(screen, "service:")); ok {
+				ui.showGroup(g.ID)
+				ui.showAddServiceDialog(g)
+			}
 		case strings.HasPrefix(screen, "group:"):
 			ui.showGroup(strings.TrimPrefix(screen, "group:"))
 		default:
