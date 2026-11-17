@@ -48,6 +48,7 @@ type Friend struct {
 	tcp      []net.Listener
 	udp      []*net.UDPConn
 	udpChans map[int]chan []byte
+	services []tunnel.ServiceInfo
 	note     string
 }
 
@@ -92,6 +93,18 @@ func (f *Friend) Bound() []Bound {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]Bound(nil), f.bounds...)
+}
+
+// Services is the last service list the host sent.
+func (f *Friend) Services() []tunnel.ServiceInfo {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]tunnel.ServiceInfo, len(f.services))
+	for i, svc := range f.services {
+		out[i] = svc
+		out[i].Ports = append([]int(nil), svc.Ports...)
+	}
+	return out
 }
 
 // Presence reports whether the host connection is still live.
@@ -140,6 +153,12 @@ func (f *Friend) bind(services []tunnel.ServiceInfo) {
 	f.udp = nil
 	f.bounds = nil
 	f.udpChans = map[int]chan []byte{}
+	f.services = nil
+	for _, svc := range services {
+		copied := svc
+		copied.Ports = append([]int(nil), svc.Ports...)
+		f.services = append(f.services, copied)
+	}
 
 	for _, svc := range services {
 		for _, port := range svc.Ports {

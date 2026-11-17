@@ -101,6 +101,16 @@ func (g Group) FindMember(id string) (Member, bool) {
 	return Member{}, false
 }
 
+// FindMemberByName looks up a member by their display name.
+func (g Group) FindMemberByName(name string) (Member, bool) {
+	for _, m := range g.Members {
+		if m.Name == name {
+			return m, true
+		}
+	}
+	return Member{}, false
+}
+
 // FindMemberByKey looks up a member by the public key they present.
 func (g Group) FindMemberByKey(publicKey string) (Member, bool) {
 	if publicKey == "" {
