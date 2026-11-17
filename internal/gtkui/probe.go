@@ -96,9 +96,7 @@ func (u *probeUI) build() {
 	u.stack.AddNamed(u.buildHomePage(), "home")
 	u.stack.AddNamed(u.buildSettingsPage(), "settings")
 
-	appBar := gtk.NewWindowHandle()
-	appBar.SetChild(u.buildAppBar())
-	u.enableDrag(appBar)
+	appBar := u.buildAppBar()
 
 	root := gtk.NewBox(gtk.OrientationVertical, 0)
 	root.Append(appBar)
@@ -134,9 +132,6 @@ func (u *probeUI) buildAppBar() *gtk.Box {
 	bar := gtk.NewBox(gtk.OrientationHorizontal, 8)
 	bar.AddCSSClass("appbar")
 
-	u.logo = gtk.NewImageFromFile(filepath.Join(u.root, "brand", "png", "mark-22.png"))
-	bar.Append(u.logo)
-
 	u.back = gtk.NewButtonWithLabel("Back")
 	u.back.AddCSSClass("quiet")
 	u.back.SetVisible(false)
@@ -145,13 +140,25 @@ func (u *probeUI) buildAppBar() *gtk.Box {
 	})
 	bar.Append(u.back)
 
+	dragArea := gtk.NewBox(gtk.OrientationHorizontal, 8)
+	dragArea.SetHExpand(true)
+
+	u.logo = gtk.NewImageFromFile(filepath.Join(u.root, "brand", "png", "mark-22.png"))
+	dragArea.Append(u.logo)
+
 	u.title = gtk.NewLabel("LAN Party")
 	u.title.AddCSSClass("app-title")
-	bar.Append(u.title)
+	dragArea.Append(u.title)
 
 	spacer := gtk.NewBox(gtk.OrientationHorizontal, 0)
 	spacer.SetHExpand(true)
-	bar.Append(spacer)
+	dragArea.Append(spacer)
+
+	dragHandle := gtk.NewWindowHandle()
+	dragHandle.SetHExpand(true)
+	dragHandle.SetChild(dragArea)
+	u.enableDrag(dragHandle)
+	bar.Append(dragHandle)
 
 	u.help = gtk.NewButtonWithLabel("?")
 	u.help.AddCSSClass("quiet")
