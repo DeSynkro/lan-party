@@ -34,9 +34,16 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	startup.SetMarginBottom(8)
 	page.Append(startup)
 
+	closeNote := "Closing the window keeps the app and any live session running in the tray. Untick this to make closing the window quit."
+	minimiseNote := "Start hidden in the tray instead of opening the window."
+	if !u.trayAvailable {
+		closeNote = "No system tray was found, so closing the window quits."
+		minimiseNote = "No tray was found, so the window still opens."
+	}
+
 	page.Append(u.settingCard(
 		"Close to tray",
-		"Closing the window keeps the app and any live session running in the tray. Untick this to make closing the window quit.",
+		closeNote,
 		settings.CloseToTray,
 		func(v bool) error {
 			return saveSetting(func(s *config.Settings) { s.CloseToTray = v })
@@ -56,7 +63,7 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 
 	page.Append(u.settingCard(
 		"Start minimised",
-		"Start hidden in the tray instead of opening the window.",
+		minimiseNote,
 		settings.StartMinimised,
 		func(v bool) error {
 			return saveSetting(func(s *config.Settings) { s.StartMinimised = v })

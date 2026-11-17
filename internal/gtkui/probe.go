@@ -23,6 +23,11 @@ type probeUI struct {
 	root  string
 	state *apppkg.App
 
+	trayAvailable bool
+	trayOn        bool
+	held          bool
+	quitting      bool
+
 	stack    *gtk.Stack
 	logo     *gtk.Image
 	back     *gtk.Button
@@ -62,13 +67,18 @@ func RunProbe(argv []string) int {
 		} else {
 			ui.showHome()
 		}
-		ui.win.Present()
+		ui.start()
 	})
 	return app.Run(argv)
 }
 
 func newProbeUI(app *gtk.Application, root string, state *apppkg.App) *probeUI {
-	return &probeUI{app: app, root: root, state: state}
+	return &probeUI{
+		app:           app,
+		root:          root,
+		state:         state,
+		trayAvailable: statusNotifierAvailable(),
+	}
 }
 
 func (u *probeUI) build() {
@@ -76,6 +86,7 @@ func (u *probeUI) build() {
 	u.win.SetTitle("LAN Party")
 	u.win.SetDefaultSize(400, 640)
 	u.win.SetResizable(false)
+	u.win.SetDecorated(false)
 
 	theme := gtk.IconThemeGetForDisplay(gdk.DisplayGetDefault())
 	theme.AddSearchPath(filepath.Join(u.root, "internal", "gtkui", "assets", "icons"))
@@ -85,8 +96,38 @@ func (u *probeUI) build() {
 	u.stack.AddNamed(u.buildHomePage(), "home")
 	u.stack.AddNamed(u.buildSettingsPage(), "settings")
 
-	u.win.SetTitlebar(u.buildAppBar())
-	u.win.SetChild(u.stack)
+	appBar := gtk.NewWindowHandle()
+	appBar.SetChild(u.buildAppBar())
+	u.enableDrag(appBar)
+
+	root := gtk.NewBox(gtk.OrientationVertical, 0)
+	root.Append(appBar)
+	root.Append(u.stack)
+	u.win.SetChild(root)
+}
+
+func (u *probeUI) enableDrag(handle *gtk.WindowHandle) {
+	gesture := gtk.NewGestureDrag()
+	gesture.SetButton(1)
+	gesture.ConnectDragBegin(func(x, y float64) {
+		device := gesture.Device()
+		if device == nil {
+			seat := gdk.DisplayGetDefault().DefaultSeat()
+			if seat, ok := seat.(*gdk.Seat); ok {
+				device = seat.Pointer()
+			}
+		}
+		if device == nil {
+			return
+		}
+		surface := u.win.Widget.Native().Surface()
+		if surface == nil {
+			return
+		}
+		toplevel := &gdk.Toplevel{Surface: *gdk.BaseSurface(surface)}
+		toplevel.BeginMove(device, 1, x, y, gesture.CurrentEventTime())
+	})
+	handle.AddController(gesture)
 }
 
 func (u *probeUI) buildAppBar() *gtk.Box {
@@ -139,7 +180,7 @@ func (u *probeUI) buildAppBar() *gtk.Box {
 	closeButton.AddCSSClass("quiet")
 	closeButton.SetTooltipText("Close")
 	closeButton.ConnectClicked(func() {
-		u.app.Quit()
+		u.requestClose()
 	})
 	bar.Append(closeButton)
 
@@ -162,6 +203,56 @@ func (u *probeUI) showSettings() {
 	u.back.SetVisible(true)
 	u.help.SetVisible(false)
 	u.settings.SetVisible(false)
+}
+
+func (u *probeUI) start() {
+	u.trayOn = startTray(u)
+	if u.trayOn {
+		u.app.Hold()
+		u.held = true
+	}
+	u.win.ConnectCloseRequest(func() bool {
+		u.requestClose()
+		return true
+	})
+	if u.trayOn && u.state.Settings().StartMinimised {
+		return
+	}
+	u.reveal()
+}
+
+func (u *probeUI) reveal() {
+	u.win.SetVisible(true)
+	u.win.Present()
+}
+
+func (u *probeUI) requestClose() {
+	if u.trayOn && u.state.Settings().CloseToTray {
+		u.win.SetVisible(false)
+		return
+	}
+	u.quit()
+}
+
+func (u *probeUI) openSettings() {
+	u.reveal()
+	u.showSettings()
+}
+
+func (u *probeUI) quit() {
+	if u.quitting {
+		return
+	}
+	u.quitting = true
+	if u.trayOn {
+		u.trayOn = false
+		systrayQuit()
+	}
+	if u.held {
+		u.held = false
+		u.app.Release()
+	}
+	u.app.Quit()
 }
 
 func (u *probeUI) buildHomePage() *gtk.ScrolledWindow {
