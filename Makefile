@@ -3,7 +3,7 @@ SHELL := /bin/bash
 ROOT := $(CURDIR)
 CACHE := $(ROOT)/.cache
 GO := $(ROOT)/.tools/go/bin/go
-VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null | sed -e "s/^v//" -e "s/^$$/dev/")
+VERSION ?= $(shell git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null | sed -e "s/^v//" -e "s/^$$/dev/")
 LDFLAGS := -s -w -X github.com/desynkro/lan-party/internal/buildinfo.Version=$(VERSION)
 
 # Everything the build touches stays inside the project.
@@ -17,7 +17,7 @@ export XDG_DATA_HOME := $(ROOT)/.tmp/data
 export XDG_CACHE_HOME := $(ROOT)/.tmp/cache
 export PATH := $(ROOT)/.tools/go/bin:$(PATH)
 
-.PHONY: help dirs env toolchain tidy fmt vet test test-race vuln build run gtk-probe appimage icon clean
+.PHONY: help dirs env toolchain tidy fmt vet test test-race vuln build run gtk-probe appimage appimage-gtk icon clean
 
 help: ## List targets
 	@awk 'BEGIN {FS = ":.*## "; print "Targets:"} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -61,6 +61,9 @@ gtk-probe: toolchain ## Run the GTK4 interface probe
 
 appimage: toolchain ## Build the Linux AppImage into dist/
 	@VERSION=$(VERSION) build/appimage.sh
+
+appimage-gtk: toolchain ## Build the GTK test AppImage into dist/ (system GTK4)
+	@VERSION=$(VERSION) build/appimage-gtk.sh
 
 icon: toolchain ## Redraw internal/ui/assets/icon.png
 	@$(GO) run ./build/icon
