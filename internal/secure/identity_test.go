@@ -74,6 +74,21 @@ func TestFingerprintShape(t *testing.T) {
 	}
 }
 
+func TestEncodePublicKey(t *testing.T) {
+	identity := testIdentity(t)
+	encoded := EncodePublicKey(identity.Public)
+	got, err := DecodePublicKey(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, identity.Public) {
+		t.Fatal("public key did not round-trip")
+	}
+	if _, err := DecodePublicKey("short"); err == nil {
+		t.Fatal("short public key was accepted")
+	}
+}
+
 func TestPublicKeyFromCertificate(t *testing.T) {
 	identity := testIdentity(t)
 	cert, err := identity.Certificate(x509.ExtKeyUsageClientAuth)

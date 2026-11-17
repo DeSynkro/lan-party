@@ -133,6 +133,20 @@ func Fingerprint(pub ed25519.PublicKey) string {
 	return text[0:4] + "-" + text[4:8] + "-" + text[8:12] + "-" + text[12:16]
 }
 
+// EncodePublicKey is the form stored in group JSON. It is public data.
+func EncodePublicKey(pub ed25519.PublicKey) string {
+	return base64.RawStdEncoding.EncodeToString(pub)
+}
+
+// DecodePublicKey reads a public key written by EncodePublicKey.
+func DecodePublicKey(s string) (ed25519.PublicKey, error) {
+	raw, err := base64.RawStdEncoding.DecodeString(s)
+	if err != nil || len(raw) != ed25519.PublicKeySize {
+		return nil, errors.New("invalid public key")
+	}
+	return ed25519.PublicKey(raw), nil
+}
+
 // PublicKeyFromCertificate returns the Ed25519 key carried by a certificate.
 func PublicKeyFromCertificate(cert *x509.Certificate) (ed25519.PublicKey, error) {
 	if cert == nil {
