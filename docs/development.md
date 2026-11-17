@@ -90,6 +90,7 @@ Production:
 
 - `~/.config/lan-party/settings.json`
 - `~/.local/share/lan-party/groups.json`
+- `~/.config/autostart/lan-party.desktop` when Start on login is on
 - host and device private keys in the OS keyring
 
 Development sets `XDG_CONFIG_HOME`, `XDG_DATA_HOME` and `XDG_CACHE_HOME` to

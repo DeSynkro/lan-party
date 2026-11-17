@@ -58,6 +58,7 @@ At runtime the app writes:
 
 - `~/.config/lan-party/settings.json`
 - `~/.local/share/lan-party/groups.json`
+- `~/.config/autostart/lan-party.desktop` when Start on login is on
 - long-lived private keys in the OS keyring
 
 Both JSON files are owner-only (`0600`). Invites contain no private keys.
