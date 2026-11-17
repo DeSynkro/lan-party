@@ -188,14 +188,19 @@ func (u *probeUI) settingCard(title, description string, active bool, changed fu
 	checkRow.Append(checkTitle)
 
 	descriptionLabel := textLabel(description, "desc")
-	descriptionLabel.SetMarginStart(26)
-	descriptionLabel.SetMarginTop(2)
+	descriptionLabel.SetHExpand(true)
+
+	descriptionRow := gtk.NewBox(gtk.OrientationHorizontal, 0)
+	descriptionRow.Append(gapWidth(26))
+	descriptionRow.Append(descriptionLabel)
+	descriptionRow.Append(gapWidth(24))
+	descriptionRow.SetMarginTop(2)
 
 	card := gtk.NewBox(gtk.OrientationVertical, 0)
 	card.AddCSSClass("card")
 	card.SetMarginBottom(10)
 	card.Append(checkRow)
-	card.Append(descriptionLabel)
+	card.Append(descriptionRow)
 
 	reverting := false
 	check.ConnectToggled(func() {
@@ -229,6 +234,12 @@ func formRow(labelText string, entry *gtk.Entry) *gtk.Box {
 func gapBox(height int) *gtk.Box {
 	box := gtk.NewBox(gtk.OrientationVertical, 0)
 	box.SetSizeRequest(-1, height)
+	return box
+}
+
+func gapWidth(width int) *gtk.Box {
+	box := gtk.NewBox(gtk.OrientationHorizontal, 0)
+	box.SetSizeRequest(width, -1)
 	return box
 }
 
