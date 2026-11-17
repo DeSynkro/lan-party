@@ -14,11 +14,11 @@ import (
 func (u *probeUI) showCreateGroupDialog() {
 	win, content := u.dialog("Create a group")
 	content.Append(textLabel("Group name", "form-label"))
-	groupEntry := entry("Friday Night")
+	groupEntry := entry("LAN Party")
 	content.Append(groupEntry)
 	content.Append(gapBox(10))
 	content.Append(textLabel("Your name", "form-label"))
-	hostEntry := entry(apppkg.DefaultHostName())
+	hostEntry := entry("User")
 	content.Append(hostEntry)
 	content.Append(gapBox(10))
 	errLabel := textLabel("", "error")
@@ -35,8 +35,11 @@ func (u *probeUI) showCreateGroupDialog() {
 	create.ConnectClicked(func() {
 		name := strings.TrimSpace(groupEntry.Text())
 		host := strings.TrimSpace(hostEntry.Text())
-		if name == "" || host == "" {
-			errLabel.SetText("Give the group and yourself a name.")
+		if host == "" {
+			host = "User"
+		}
+		if name == "" {
+			errLabel.SetText("Give the group a name.")
 			errLabel.SetVisible(true)
 			return
 		}
