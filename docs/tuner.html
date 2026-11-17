@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LAN Party · UI tuner</title>
+<style>
+  @font-face {
+    font-family: "IBM Plex Sans";
+    src: url("../internal/ui/assets/fonts/IBMPlexSans-Regular.ttf") format("truetype");
+    font-weight: 400;
+  }
+  @font-face {
+    font-family: "IBM Plex Sans";
+    src: url("../internal/ui/assets/fonts/IBMPlexSans-Medium.ttf") format("truetype");
+    font-weight: 500;
+  }
+  @font-face {
+    font-family: "IBM Plex Sans";
+    src: url("../internal/ui/assets/fonts/IBMPlexSans-SemiBold.ttf") format("truetype");
+    font-weight: 600;
+  }
+  @font-face {
+    font-family: "JetBrains Mono";
+    src: url("../internal/ui/assets/fonts/JetBrainsMono-Regular.ttf") format("truetype");
+    font-weight: 400;
+  }
+
+  :root {
+    --page-bg: #0a0b0e;
+    --panel: #121319;
+    --panel-line: #262933;
+    --panel-text: #d8dce6;
+    --panel-muted: #777e8d;
+    --panel-accent: #5ad1e6;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: var(--page-bg);
+    color: var(--panel-text);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: 13px;
+  }
+
+  .top {
+    padding: 22px 28px 16px;
+    border-bottom: 1px solid var(--panel-line);
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .top h1 { font-size: 18px; font-weight: 600; margin: 0; letter-spacing: .01em; }
+  .top p { margin: 0; color: var(--panel-muted); font-size: 12px; }
+  .top .spacer { flex: 1; }
+  .top code { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--panel-accent); }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(440px, 1fr) 400px;
+    gap: 28px;
+    padding: 24px 28px 40px;
+    max-width: 1280px;
+    margin: 0 auto;
+    align-items: start;
+  }
+
+  .stage { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+  .tabs { display: flex; gap: 4px; padding: 4px; background: var(--panel); border: 1px solid var(--panel-line); border-radius: 8px; }
+  .tab {
+    border: 0; background: transparent; color: var(--panel-muted);
+    font: inherit; font-size: 12px; padding: 7px 13px; border-radius: 5px; cursor: pointer;
+  }
+  .tab:hover { color: var(--panel-text); }
+  .tab.active { background: #22252d; color: var(--panel-text); }
+
+  .phone {
+    width: var(--window-width);
+    height: var(--window-height);
+    min-width: var(--window-width);
+    min-height: var(--window-height);
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid #30333c;
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 18px 42px rgba(0,0,0,.45);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: var(--body-size);
+  }
+
+  .appbar {
+    height: var(--appbar-height);
+    flex: 0 0 var(--appbar-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--hairline);
+    background: var(--bg);
+  }
+  .appbar-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .appbar-title {
+    font-size: var(--appbar-size);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mark { width: 22px; height: 22px; display: block; border-radius: 3px; }
+  .back { color: var(--secondary); font-size: var(--meta-size); white-space: nowrap; }
+  .appbar-right { display: flex; align-items: center; gap: 10px; color: var(--secondary); font-size: 12px; }
+  .appbar-right .help { color: var(--muted); }
+
+  .content {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: var(--page-y) var(--page-x);
+    scrollbar-width: thin;
+    scrollbar-color: #343841 transparent;
+  }
+  .content::-webkit-scrollbar { width: 6px; }
+  .content::-webkit-scrollbar-thumb { background: #343841; border-radius: 3px; }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .section-label { font-size: var(--section-size); color: var(--muted); }
+  .gap-section { height: var(--section-gap); }
+  .gap-row { height: var(--row-gap); }
+  .gap-small { height: var(--small-gap); }
+  .gap-tiny { height: var(--tiny-gap); }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--card-radius);
+    padding: var(--card-pad);
+  }
+
+  .setting-top { display: flex; align-items: center; gap: 8px; min-height: var(--setting-checkbox); }
+  .checkbox {
+    width: var(--setting-checkbox);
+    height: var(--setting-checkbox);
+    flex: 0 0 var(--setting-checkbox);
+    background: var(--raised);
+    border: 1px solid var(--hairline);
+    border-radius: 5px;
+    position: relative;
+  }
+  .checkbox.checked { background: var(--primary-fill); border-color: var(--primary-fill); }
+  .checkbox.checked::after {
+    content: "";
+    position: absolute;
+    left: 32%;
+    top: 16%;
+    width: 28%;
+    height: 50%;
+    border: solid var(--primary-ink);
+    border-width: 0 2px 2px 0;
+    transform: rotate(42deg);
+  }
+  .setting-title { font-size: var(--setting-title-size); font-weight: 600; color: var(--text); line-height: 1.2; }
+  .setting-help { color: var(--muted); font-size: var(--meta-size); margin-left: 1px; }
+  .setting-desc {
+    margin-left: calc(var(--setting-checkbox) + 8px);
+    margin-top: var(--setting-desc-gap);
+    color: var(--muted);
+    font-size: var(--meta-size);
+    line-height: 1.45;
+  }
+
+  .title { font-size: var(--title-size); font-weight: 600; line-height: 1.15; margin: 0; }
+  .body { color: var(--secondary); font-size: var(--body-size); line-height: 1.5; margin: 0; }
+  .meta { color: var(--muted); font-size: var(--meta-size); }
+  .name { font-size: var(--name-size); font-weight: 600; color: var(--text); }
+  .address {
+    font-family: "JetBrains Mono", monospace;
+    font-size: var(--address-size);
+    color: var(--accent);
+    line-height: 1.45;
+  }
+  .address.hero { font-size: var(--address-hero-size); }
+  .address.muted { font-size: var(--meta-size); color: var(--secondary); }
+
+  .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: var(--button-radius);
+    font: inherit;
+    font-size: var(--body-size);
+    cursor: default;
+    border: 1px solid var(--hairline);
+    background: var(--raised);
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .button.primary { background: var(--primary-fill); border-color: transparent; color: var(--primary-ink); }
+  .button.quiet { background: transparent; border-color: transparent; color: var(--secondary); }
+  .button.danger { background: transparent; border-color: #4a302d; color: var(--danger); }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .center { display: flex; justify-content: center; }
+
+  .row {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--row-radius);
+    min-height: var(--row-height);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 14px;
+  }
+  .row .grow { flex: 1; min-width: 0; }
+  .row .chev { color: var(--muted); font-size: 16px; line-height: 1; }
+  .row .row-meta { color: var(--muted); font-size: var(--meta-size); white-space: nowrap; }
+  .row .row-title { font-size: var(--body-size); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 7px; background: var(--muted); }
+  .dot.live { background: var(--live); }
+
+  .tag {
+    border: 1px solid var(--hairline);
+    border-radius: var(--tag-radius);
+    color: var(--secondary);
+    font-size: var(--meta-size);
+    padding: 1px 6px;
+    white-space: nowrap;
+  }
+  .row-between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .inline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .divider { height: 1px; background: var(--hairline); margin: var(--divider-gap) 0; }
+
+  .field {
+    background: var(--bg);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: 7px 9px;
+    color: var(--text);
+    font-size: var(--body-size);
+    min-width: 0;
+    flex: 1;
+  }
+  .form-row { display: flex; align-items: center; gap: 10px; }
+  .form-label { width: 110px; flex: 0 0 110px; color: var(--secondary); font-size: var(--meta-size); }
+  .help-text { color: var(--muted); font-size: var(--meta-size); line-height: 1.45; }
+  .preview-line { font-family: "JetBrains Mono", monospace; font-size: var(--meta-size); color: var(--secondary); }
+
+  .session-card { display: flex; flex-direction: column; gap: var(--tiny-gap); }
+  .session-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .session-status { display: flex; align-items: center; gap: 6px; font-size: var(--name-size); font-weight: 600; }
+  .session-status .dot { width: 8px; height: 8px; flex-basis: 8px; }
+  .service-card { display: flex; flex-direction: column; gap: var(--tiny-gap); }
+  .service-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .how-card { display: flex; flex-direction: column; gap: var(--small-gap); }
+  .how-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .how-middle { text-align: center; color: var(--muted); font-size: var(--meta-size); }
+  .person { display: flex; align-items: center; gap: 8px; padding: 8px 0; }
+  .person .grow { flex: 1; }
+  .person .line { display: flex; align-items: center; gap: 6px; }
+
+  .controls {
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 10px;
+    padding: 18px;
+    max-height: calc(100vh - 130px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #343841 transparent;
+  }
+  .controls::-webkit-scrollbar { width: 6px; }
+  .controls::-webkit-scrollbar-thumb { background: #343841; border-radius: 3px; }
+  .controls h2 {
+    font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--panel-muted); margin: 18px 0 8px;
+  }
+  .controls h2:first-child { margin-top: 0; }
+  .control { display: block; margin: 0 0 9px; }
+  .control .head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .control .head span { color: var(--panel-text); font-size: 12px; }
+  .control .head b { color: var(--panel-accent); font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 400; }
+  .control input[type=range] { width: 100%; margin: 5px 0 0; accent-color: var(--panel-accent); }
+
+  .palette { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 12px; }
+  .color-control { display: flex; align-items: center; gap: 7px; color: var(--panel-muted); font-size: 11px; }
+  .color-control input { width: 26px; height: 22px; padding: 0; border: 1px solid var(--panel-line); border-radius: 4px; background: transparent; }
+
+  .tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+  .tool {
+    font: inherit; font-size: 11px; color: var(--panel-text); background: #1b1e25;
+    border: 1px solid var(--panel-line); border-radius: 6px; padding: 7px 9px; cursor: pointer;
+  }
+  .tool:hover { border-color: #3a3e49; }
+  .tool.primary { background: #123b42; border-color: #1b6a77; color: #d5f7ff; }
+  .status { min-height: 17px; margin-top: 8px; color: var(--panel-muted); font-size: 11px; }
+  .json {
+    background: #0c0d11; border: 1px solid var(--panel-line); border-radius: 7px;
+    color: #aeb6c4; font-family: "JetBrains Mono", monospace; font-size: 10.5px;
+    line-height: 1.5; padding: 10px; max-height: 210px; overflow: auto; white-space: pre;
+  }
+  .note { max-width: 520px; color: var(--panel-muted); font-size: 11.5px; line-height: 1.55; text-align: center; }
+  .note code { font-family: "JetBrains Mono", monospace; color: var(--panel-accent); }
+  .file { display: none; }
+
+  @media (max-width: 980px) {
+    .layout { grid-template-columns: 1fr; }
+    .stage { order: 2; }
+    .controls { order: 1; max-height: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>LAN Party · UI tuner</h1>
+  <p>A reference for the Fyne app. Move the values, then export <code>tokens.json</code>.</p>
+  <div class="spacer"></div>
+  <p>Window <code>400×640</code> · not a pixel-perfect Fyne render</p>
+</div>
+
+<div class="layout">
+  <section class="stage">
+    <div class="tabs">
+      <button class="tab" data-screen="home">Home</button>
+      <button class="tab" data-screen="host">Host</button>
+      <button class="tab" data-screen="friend">Friend</button>
+      <button class="tab active" data-screen="settings">Settings</button>
+    </div>
+
+    <div class="phone" id="phone">
+      <div class="appbar" id="appbar">
+        <div class="appbar-left" id="appbar-left"></div>
+        <div class="appbar-right" id="appbar-right"></div>
+      </div>
+      <div class="content" id="content">
+
+        <div class="screen" data-screen="home">
+          <div class="title">One port, not the network.</div>
+          <div class="gap-row"></div>
+          <div class="body">Host a game on your LAN. Friends open it at 127.0.0.1; nothing else is reachable.</div>
+          <div class="gap-section"></div>
+          <div class="actions">
+            <div class="button primary">Host a group</div>
+            <div class="button">Join with an invite</div>
+          </div>
+          <div class="gap-row"></div>
+          <div class="center"><div class="button quiet">First time? Read the setup guide</div></div>
+          <div class="gap-section"></div>
+          <div class="section-label">Your groups</div>
+          <div class="gap-row"></div>
+          <div class="row">
+            <span class="dot"></span>
+            <span class="grow row-title">Friday Night</span>
+            <span class="row-meta">host · 1 member</span>
+            <span class="chev">›</span>
+          </div>
+          <div class="center"><div class="button quiet" style="color:var(--secondary);font-size:11px">Delete</div></div>
+          <div class="gap-section"></div>
+          <div class="section-label">Groups you joined</div>
+          <div class="gap-row"></div>
+          <div class="row">
+            <span class="dot"></span>
+            <span class="grow row-title">Friday Night</span>
+            <span class="row-meta">joined · hosted by Desynkro</span>
+            <span class="chev">›</span>
+          </div>
+          <div class="gap-section"></div>
+          <div class="card how-card">
+            <div class="section-label">How it works</div>
+            <div class="how-row"><span class="address">192.168.1.50:25565</span><span class="meta">your server</span></div>
+            <div class="how-middle">encrypted</div>
+            <div class="how-row"><span class="address">127.0.0.1:25565</span><span class="meta">their game</span></div>
+            <div class="meta">Example addresses. Only published ports cross.</div>
+          </div>
+        </div>
+
+        <div class="screen" data-screen="host">
+          <div class="card session-card">
+            <div class="session-top">
+              <div class="session-status"><span class="dot"></span>Session off</div>
+              <div class="button primary">Start session</div>
+            </div>
+            <div class="meta">Hosting as Desynkro · 1 member</div>
+            <div class="gap-small"></div>
+            <div class="address">home.example.net:51820</div>
+            <div class="meta">UDP 51820 on this PC</div>
+            <div class="gap-small"></div>
+            <div class="meta">not running</div>
+          </div>
+          <div class="gap-section"></div>
+          <div class="row-between">
+            <div class="section-label">Published · 1</div>
+            <div class="button quiet" style="font-size:11px">Add service</div>
+          </div>
+          <div class="gap-row"></div>
+          <div class="card service-card">
+            <div class="service-top"><span class="name">Minecraft: Java Edition</span><span class="tag">TCP</span></div>
+            <div class="gap-small"></div>
+            <div class="inline"><span class="meta">Friends open</span><span class="address">127.0.0.1:25565</span></div>
+            <div class="inline"><span class="meta">On your LAN</span><span class="address muted">192.168.1.50:25565</span></div>
+            <div class="meta">Direct Connect in Minecraft</div>
+          </div>
+          <div class="gap-section"></div>
+          <div class="row-between">
+            <div class="section-label">People · 1 member</div>
+            <div class="button quiet" style="font-size:11px">Invite</div>
+          </div>
+          <div class="gap-row"></div>
+          <div class="card">
+            <div class="person">
+              <span class="dot live"></span>
+              <div class="grow"><div class="name">You (Desynkro)</div><div class="meta">this device</div></div>
+              <span class="tag">host</span>
+            </div>
+          </div>
+          <div class="gap-small"></div>
+          <div class="row">
+            <span class="dot"></span>
+            <span class="grow row-title">Ash</span>
+            <span class="row-meta">idle</span>
+            <span class="chev">›</span>
+          </div>
+          <div class="gap-section"></div>
+          <div class="section-label">Invites</div>
+          <div class="gap-row"></div>
+          <div class="row">
+            <span class="grow row-title">Jonah</span>
+            <span class="row-meta">expires in 5h</span>
+            <span class="chev">›</span>
+          </div>
+          <div class="gap-section"></div>
+          <div class="divider"></div>
+          <div class="button danger">Delete group</div>
+          <div class="gap-small"></div>
+          <div class="meta">This ends any running session and revokes every member.</div>
+        </div>
+
+        <div class="screen" data-screen="friend">
+          <div class="card session-card">
+            <div class="session-top">
+              <div class="session-status"><span class="dot"></span>Host offline</div>
+              <div class="button primary">Reconnect</div>
+            </div>
+            <div class="meta">Hosted by Desynkro</div>
+            <div class="meta">not connected</div>
+            <div class="gap-small"></div>
+            <div class="meta">Start the session on the host, then reconnect.</div>
+          </div>
+          <div class="gap-section"></div>
+          <div class="section-label">Ready to play</div>
+          <div class="gap-row"></div>
+          <div class="card service-card">
+            <div class="service-top"><span class="name">Minecraft: Java Edition</span><span class="tag">TCP</span></div>
+            <div class="meta">Port 25565</div>
+            <div class="meta">Host offline. Reconnect when the host is back.</div>
+          </div>
+          <div class="gap-section"></div>
+          <div class="section-label">People</div>
+          <div class="gap-row"></div>
+          <div class="card">
+            <div class="person"><span class="dot"></span><div class="grow"><div class="name">Desynkro</div><div class="meta">host</div></div><span class="tag">host</span></div>
+          </div>
+          <div class="gap-small"></div>
+          <div class="card">
+            <div class="person"><span class="dot live"></span><div class="grow"><div class="name">You (Ash)</div><div class="meta">Desynkro</div></div><span class="tag">you</span></div>
+          </div>
+          <div class="gap-section"></div>
+          <div class="divider"></div>
+          <div class="button danger">Leave group</div>
+          <div class="gap-small"></div>
+          <div class="meta">This removes the saved group and its device key from this PC.</div>
+        </div>
+
+        <div class="screen active" data-screen="settings">
+          <div class="section-label">Startup</div>
+          <div class="gap-row"></div>
+          <div class="card">
+            <div class="setting-top">
+              <span class="checkbox checked"></span>
+              <span class="setting-title">Close to tray</span>
+              <span class="setting-help">?</span>
+            </div>
+          </div>
+          <div class="gap-small"></div>
+          <div class="card">
+            <div class="setting-top">
+              <span class="checkbox"></span>
+              <span class="setting-title">Start on login</span>
+            </div>
+          </div>
+          <div class="gap-small"></div>
+          <div class="card">
+            <div class="setting-top">
+              <span class="checkbox"></span>
+              <span class="setting-title">Start minimised</span>
+            </div>
+            <div class="setting-desc">Open in the tray instead of showing the window.</div>
+          </div>
+          <div class="gap-section"></div>
+          <div class="section-label">Network</div>
+          <div class="gap-row"></div>
+          <div class="card">
+            <div class="form-row"><span class="form-label">Public address</span><span class="field">home.example.net</span></div>
+            <div class="gap-small"></div>
+            <div class="form-row"><span class="form-label">App port (UDP)</span><span class="field">51820</span></div>
+            <div class="gap-row"></div>
+            <div class="help-text">Use a hostname or IP. Leave the port off unless your router forwards a different outside port, for example home.example.net:40000. The app port is the UDP port on this PC.</div>
+            <div class="gap-row"></div>
+            <div class="preview-line">Friends connect to: home.example.net:51820</div>
+          </div>
+          <div class="gap-section"></div>
+          <div class="section-label">Security</div>
+          <div class="gap-row"></div>
+          <div class="card">
+            <div class="setting-top">
+              <span class="checkbox checked"></span>
+              <span class="setting-title">Approve new devices</span>
+              <span class="setting-help">?</span>
+            </div>
+          </div>
+          <div class="gap-section"></div>
+          <div class="section-label">About</div>
+          <div class="gap-row"></div>
+          <div class="card">
+            <div class="meta">LAN Party · dev</div>
+            <div class="gap-small"></div>
+            <div class="meta">Data: ~/.local/share/lan-party</div>
+            <div class="meta">Keys: the operating system keyring</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <p class="note">This page is a reference. Fyne renders the real window; text metrics, the native checkbox and dialogs differ slightly. The numbers are the same tokens the app reads.</p>
+  </section>
+
+  <aside class="controls">
+    <div id="controls"></div>
+
+    <div class="tools">
+      <button class="tool primary" id="download">Download tokens.json</button>
+      <button class="tool" id="copy">Copy JSON</button>
+      <label class="tool" for="load">Load tokens.json</label>
+      <input class="file" type="file" id="load" accept=".json,application/json">
+      <button class="tool" id="reset">Reset</button>
+    </div>
+    <div class="status" id="status"></div>
+
+    <h2>tokens.json</h2>
+    <pre class="json" id="json"></pre>
+  </aside>
+</div>
+
+<script>
+const defaults = {
+  windowWidth: 400,
+  windowHeight: 640,
+  appBarHeight: 48,
+  pagePaddingX: 16,
+  pagePaddingY: 12,
+  cardPadding: 10,
+  cardRadius: 12,
+  rowRadius: 10,
+  buttonRadius: 8,
+  tagRadius: 6,
+  sectionGap: 12,
+  rowGap: 6,
+  smallGap: 4,
+  tinyGap: 2,
+  dividerGap: 8,
+  settingDescriptionGap: 1,
+  titleSize: 22,
+  nameSize: 14,
+  bodySize: 13,
+  metaSize: 12,
+  sectionSize: 12,
+  appBarSize: 15,
+  addressSize: 14,
+  addressHeroSize: 16,
+  settingTitleSize: 15,
+  settingCheckbox: 24,
+  rowHeight: 40,
+  palette: {
+    background: "#0f1013",
+    surface: "#17181c",
+    raised: "#1d2025",
+    hairline: "#2a2d34",
+    text: "#e8eaee",
+    secondary: "#a3a7b0",
+    muted: "#7d8390",
+    accent: "#5ad1e6",
+    live: "#4ade80",
+    warning: "#e0b341",
+    danger: "#e0575c",
+    primaryFill: "#12778a",
+    primaryInk: "#eafcff"
+  }
+};
+
+let tokens = JSON.parse(JSON.stringify(defaults));
+
+const groups = [
+  ["Window", [
+    ["windowWidth", "Width", 320, 600, 2, "px"],
+    ["windowHeight", "Height", 480, 900, 2, "px"],
+    ["appBarHeight", "App bar height", 32, 80, 1, "px"]
+  ]],
+  ["Spacing", [
+    ["pagePaddingX", "Page padding · sides", 4, 32, 1, "px"],
+    ["pagePaddingY", "Page padding · top/bottom", 4, 32, 1, "px"],
+    ["cardPadding", "Card padding", 4, 24, 1, "px"],
+    ["cardRadius", "Card radius", 0, 24, 1, "px"],
+    ["rowRadius", "Row radius", 0, 24, 1, "px"],
+    ["buttonRadius", "Button radius", 0, 20, 1, "px"],
+    ["tagRadius", "Tag radius", 0, 16, 1, "px"],
+    ["sectionGap", "Section gap", 0, 32, 1, "px"],
+    ["rowGap", "Row gap", 0, 24, 1, "px"],
+    ["smallGap", "Small gap", 0, 20, 1, "px"],
+    ["tinyGap", "Tiny gap", 0, 16, 1, "px"],
+    ["dividerGap", "Divider gap", 0, 24, 1, "px"],
+    ["settingDescriptionGap", "Option description gap", 0, 12, 1, "px"],
+    ["rowHeight", "Row height", 24, 64, 1, "px"]
+  ]],
+  ["Type", [
+    ["titleSize", "Title", 14, 34, 1, "px"],
+    ["nameSize", "Name", 10, 22, 1, "px"],
+    ["bodySize", "Body", 9, 20, 1, "px"],
+    ["metaSize", "Meta", 8, 18, 1, "px"],
+    ["sectionSize", "Section label", 8, 18, 1, "px"],
+    ["appBarSize", "App bar", 10, 22, 1, "px"],
+    ["addressSize", "Address", 9, 22, 1, "px"],
+    ["addressHeroSize", "Hero address", 10, 24, 1, "px"],
+    ["settingTitleSize", "Setting title", 10, 24, 1, "px"],
+    ["settingCheckbox", "Checkbox", 12, 36, 1, "px"]
+  ]]
+];
+
+const paletteItems = [
+  ["background", "Background"],
+  ["surface", "Surface"],
+  ["raised", "Raised"],
+  ["hairline", "Hairline"],
+  ["text", "Text"],
+  ["secondary", "Secondary"],
+  ["muted", "Muted"],
+  ["accent", "Accent"],
+  ["live", "Live"],
+  ["warning", "Warning"],
+  ["danger", "Danger"],
+  ["primaryFill", "Primary fill"],
+  ["primaryInk", "Primary ink"]
+];
+
+const controlsEl = document.getElementById("controls");
+const phone = document.getElementById("phone");
+const jsonEl = document.getElementById("json");
+const statusEl = document.getElementById("status");
+const inputs = {};
+const outputs = {};
+const colorInputs = {};
+
+for (const [heading, items] of groups) {
+  const h = document.createElement("h2");
+  h.textContent = heading;
+  controlsEl.appendChild(h);
+  for (const [key, label, min, max, step, unit] of items) {
+    const wrap = document.createElement("label");
+    wrap.className = "control";
+    const head = document.createElement("div");
+    head.className = "head";
+    const name = document.createElement("span");
+    name.textContent = label;
+    const value = document.createElement("b");
+    head.appendChild(name);
+    head.appendChild(value);
+    const input = document.createElement("input");
+    input.type = "range";
+    input.min = min;
+    input.max = max;
+    input.step = step;
+    input.value = tokens[key];
+    input.addEventListener("input", () => {
+      tokens[key] = Number(input.value);
+      value.textContent = input.value + unit;
+      apply();
+    });
+    wrap.appendChild(head);
+    wrap.appendChild(input);
+    controlsEl.appendChild(wrap);
+    inputs[key] = input;
+    outputs[key] = { el: value, unit };
+  }
+}
+
+const paletteHeading = document.createElement("h2");
+paletteHeading.textContent = "Palette";
+controlsEl.appendChild(paletteHeading);
+const paletteGrid = document.createElement("div");
+paletteGrid.className = "palette";
+controlsEl.appendChild(paletteGrid);
+for (const [key, label] of paletteItems) {
+  const wrap = document.createElement("label");
+  wrap.className = "color-control";
+  const input = document.createElement("input");
+  input.type = "color";
+  input.value = tokens.palette[key];
+  input.addEventListener("input", () => {
+    tokens.palette[key] = input.value;
+    apply();
+  });
+  const text = document.createElement("span");
+  text.textContent = label;
+  wrap.appendChild(input);
+  wrap.appendChild(text);
+  paletteGrid.appendChild(wrap);
+  colorInputs[key] = input;
+}
+
+function setVar(name, value, unit = "") {
+  phone.style.setProperty(name, value + unit);
+}
+
+function apply() {
+  setVar("--window-width", tokens.windowWidth, "px");
+  setVar("--window-height", tokens.windowHeight, "px");
+  setVar("--appbar-height", tokens.appBarHeight, "px");
+  setVar("--page-x", tokens.pagePaddingX, "px");
+  setVar("--page-y", tokens.pagePaddingY, "px");
+  setVar("--card-pad", tokens.cardPadding, "px");
+  setVar("--card-radius", tokens.cardRadius, "px");
+  setVar("--row-radius", tokens.rowRadius, "px");
+  setVar("--button-radius", tokens.buttonRadius, "px");
+  setVar("--tag-radius", tokens.tagRadius, "px");
+  setVar("--section-gap", tokens.sectionGap, "px");
+  setVar("--row-gap", tokens.rowGap, "px");
+  setVar("--small-gap", tokens.smallGap, "px");
+  setVar("--tiny-gap", tokens.tinyGap, "px");
+  setVar("--divider-gap", tokens.dividerGap, "px");
+  setVar("--setting-desc-gap", tokens.settingDescriptionGap, "px");
+  setVar("--setting-checkbox", tokens.settingCheckbox, "px");
+  setVar("--row-height", tokens.rowHeight, "px");
+  setVar("--title-size", tokens.titleSize, "px");
+  setVar("--name-size", tokens.nameSize, "px");
+  setVar("--body-size", tokens.bodySize, "px");
+  setVar("--meta-size", tokens.metaSize, "px");
+  setVar("--section-size", tokens.sectionSize, "px");
+  setVar("--appbar-size", tokens.appBarSize, "px");
+  setVar("--address-size", tokens.addressSize, "px");
+  setVar("--address-hero-size", tokens.addressHeroSize, "px");
+  setVar("--setting-title-size", tokens.settingTitleSize, "px");
+
+  setVar("--bg", tokens.palette.background);
+  setVar("--surface", tokens.palette.surface);
+  setVar("--raised", tokens.palette.raised);
+  setVar("--hairline", tokens.palette.hairline);
+  setVar("--text", tokens.palette.text);
+  setVar("--secondary", tokens.palette.secondary);
+  setVar("--muted", tokens.palette.muted);
+  setVar("--accent", tokens.palette.accent);
+  setVar("--live", tokens.palette.live);
+  setVar("--warning", tokens.palette.warning);
+  setVar("--danger", tokens.palette.danger);
+  setVar("--primary-fill", tokens.palette.primaryFill);
+  setVar("--primary-ink", tokens.palette.primaryInk);
+
+  jsonEl.textContent = JSON.stringify(tokens, null, 2);
+}
+
+function sync() {
+  for (const [key, input] of Object.entries(inputs)) {
+    input.value = tokens[key];
+    outputs[key].el.textContent = tokens[key] + outputs[key].unit;
+  }
+  for (const [key, input] of Object.entries(colorInputs)) {
+    input.value = tokens.palette[key];
+  }
+  apply();
+}
+
+function setChrome(screen) {
+  const left = document.getElementById("appbar-left");
+  const right = document.getElementById("appbar-right");
+  if (screen === "home") {
+    left.innerHTML = '<img class="mark" src="../internal/ui/assets/icon.png" alt=""><span class="appbar-title">LAN Party</span>';
+    right.innerHTML = '<span class="help">?</span><span>Settings</span>';
+  } else if (screen === "host" || screen === "friend") {
+    left.innerHTML = '<span class="back">Back</span><span class="appbar-title">Friday Night</span>';
+    right.innerHTML = '<span class="help">?</span><span>Settings</span>';
+  } else {
+    left.innerHTML = '<span class="back">Back</span><span class="appbar-title">Settings</span>';
+    right.innerHTML = '<span class="help">?</span>';
+  }
+}
+
+document.querySelectorAll(".tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    const screen = tab.dataset.screen;
+    document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t === tab));
+    document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("active", s.dataset.screen === screen));
+    setChrome(screen);
+    document.getElementById("content").scrollTop = 0;
+  });
+});
+
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([jsonEl.textContent + "\n"], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "tokens.json";
+  a.click();
+  URL.revokeObjectURL(url);
+  statusEl.textContent = "Downloaded tokens.json. Replace internal/ui/tokens.json with it.";
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(jsonEl.textContent);
+    statusEl.textContent = "Copied tokens.json to the clipboard.";
+  } catch (err) {
+    statusEl.textContent = "Clipboard blocked. Select the JSON and copy it.";
+  }
+});
+
+document.getElementById("reset").addEventListener("click", () => {
+  tokens = JSON.parse(JSON.stringify(defaults));
+  sync();
+  statusEl.textContent = "Reset to the current app defaults.";
+});
+
+document.getElementById("load").addEventListener("change", (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const loaded = JSON.parse(reader.result);
+      tokens = Object.assign({}, defaults, loaded, {
+        palette: Object.assign({}, defaults.palette, loaded.palette || {})
+      });
+      sync();
+      statusEl.textContent = "Loaded " + file.name + ".";
+    } catch (err) {
+      statusEl.textContent = "That file is not valid JSON.";
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = "";
+});
+
+setChrome("settings");
+sync();
+</script>
+</body>
+</html>

@@ -84,6 +84,25 @@ LANPARTY_PREVIEW="$PWD/.tmp/preview" go test ./internal/ui -run TestPreviewScree
 This writes 400×640 PNGs for Home, the host group, the friend screen, Settings
 and the guide.
 
+## Theming and tuning
+
+`internal/ui/tokens.json` holds the window size, spacing, type sizes and
+palette. `internal/ui/tokens.go` embeds it, validates it and applies it at
+startup. The app falls back to the built-in defaults if the file is missing,
+malformed or out of range.
+
+`docs/tuner.html` is a browser page that edits the same keys with a live
+400×640 reference. Export `tokens.json`, replace the file in `internal/ui` and
+run `make run`. The tuner's defaults match the checked-in file; the file is the
+source of truth.
+
+The tuner is a reference, not a Fyne render. If local fonts do not load, run
+`python3 -m http.server 8000` from the repository root and open
+`http://localhost:8000/docs/tuner.html`.
+
+Structure still belongs in Go. The tokens do not move sections or create
+components; they only change measured values and colours.
+
 ## Runtime data
 
 Production:

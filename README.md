@@ -74,6 +74,7 @@ fresh.
 - [docs/architecture.md](docs/architecture.md) — how a connection moves
 - [docs/security.md](docs/security.md) — identities, invites, threat model
 - [docs/ui.md](docs/ui.md) — the 400×640 rules and screens
+- [docs/tuner.html](docs/tuner.html) — live browser tuner for the interface tokens
 - [docs/development.md](docs/development.md) — layout, build, tests, release
 - [docs/design.md](docs/design.md) — the rewrite design
 - [docs/mockups/ui-v1.html](docs/mockups/ui-v1.html) — the reference mockup

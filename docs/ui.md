@@ -173,6 +173,31 @@ cannot be reached without a relay, which this version does not have.
   gone, and the host creates a new one.
 - The guide and settings say what is actually forwarded and what is not.
 
+## Tuning the interface
+
+The measurements live in `internal/ui/tokens.json`. The app embeds that file at
+build time, so the real screens and the tuner use the same values.
+
+Open `docs/tuner.html` in a browser. It shows a live 400×640 reference with
+Home, Host, Friend and Settings tabs and sliders for window size, spacing,
+type sizes and the palette. Use **Download tokens.json**, replace
+`internal/ui/tokens.json` with the file, and run `make run`.
+
+If the fonts do not load when the page is opened directly, serve the repository
+locally:
+
+```sh
+python3 -m http.server 8000
+# http://localhost:8000/docs/tuner.html
+```
+
+The tuner is a browser reference, not a Fyne render. Text metrics, the native
+checkbox, scrollbars and dialogs differ slightly. The numbers are exact, and
+the real window is one `make run` away.
+
+The token file controls measurements and colours, not structure. Section order,
+layout, wording and new components still live in the Go screens.
+
 ## Previewing
 
 The UI tests render screens with Fyne's test driver. To write PNGs:
