@@ -48,7 +48,7 @@ func (u *probeUI) buildGroupContent(g group.Group) *gtk.Box {
 		})
 		page.Append(leave)
 		page.Append(gapBox(4))
-		page.Append(measuredText("This ends any running session and revokes every member.", "desc"))
+		page.Append(cardText("This ends any running session and revokes every member.", "desc"))
 	} else {
 		page.Append(u.friendSessionCard(g, showError))
 		page.Append(sectionTitle("Ready to play", ""))
@@ -64,7 +64,7 @@ func (u *probeUI) buildGroupContent(g group.Group) *gtk.Box {
 		})
 		page.Append(leave)
 		page.Append(gapBox(4))
-		page.Append(measuredText("This removes the saved group and its device key from this PC.", "desc"))
+		page.Append(cardText("This removes the saved group and its device key from this PC.", "desc"))
 	}
 
 	return page
@@ -107,12 +107,12 @@ func (u *probeUI) hostSessionCard(g group.Group, showError func(error)) *gtk.Box
 	top.Append(action)
 	card.Append(top)
 	card.Append(gapBox(10))
-	card.Append(measuredText("Hosting as "+g.HostName+" · "+plural(len(g.Members), "member"), "desc"))
+	card.Append(cardText("Hosting as "+g.HostName+" · "+plural(len(g.Members), "member"), "desc"))
 	card.Append(gapBox(8))
 
 	endpoint, err := u.state.CurrentEndpoint()
 	if err != nil {
-		card.Append(measuredText("No public address — friends can't join.", "warning"))
+		card.Append(cardText("No public address — friends can't join.", "warning"))
 	} else {
 		addr := lineLabel(endpoint, "mono")
 		addr.SetHExpand(true)
@@ -126,7 +126,7 @@ func (u *probeUI) hostSessionCard(g group.Group, showError func(error)) *gtk.Box
 		row.Append(change)
 		card.Append(row)
 	}
-	card.Append(measuredText("UDP "+strconv.Itoa(u.state.Settings().AppPort)+" on this PC", "desc"))
+	card.Append(cardText("UDP "+strconv.Itoa(u.state.Settings().AppPort)+" on this PC", "desc"))
 	card.Append(gapBox(6))
 	if live {
 		presence := u.state.HostPresence()
@@ -136,9 +136,9 @@ func (u *probeUI) hostSessionCard(g group.Group, showError func(error)) *gtk.Box
 				connected++
 			}
 		}
-		card.Append(measuredText(fmt.Sprintf("%d connected", connected), "desc"))
+		card.Append(cardText(fmt.Sprintf("%d connected", connected), "desc"))
 	} else {
-		card.Append(measuredText("not running", "desc"))
+		card.Append(cardText("not running", "desc"))
 	}
 	return card
 }
@@ -146,7 +146,7 @@ func (u *probeUI) hostSessionCard(g group.Group, showError func(error)) *gtk.Box
 func (u *probeUI) hostServices(g group.Group) *gtk.Box {
 	box := gtk.NewBox(gtk.OrientationVertical, 0)
 	if len(g.Services) == 0 {
-		box.Append(measuredText("Nothing published yet. Add the game server you want friends to reach.", "desc"))
+		box.Append(cardText("Nothing published yet. Add the game server you want friends to reach.", "desc"))
 		return box
 	}
 	for i, s := range g.Services {
@@ -168,11 +168,11 @@ func (u *probeUI) hostServiceCard(s group.Service) *gtk.Box {
 	top.Append(tagLabel(protoName(s.Proto)))
 	card.Append(top)
 	card.Append(gapBox(8))
-	card.Append(measuredText("Friends open 127.0.0.1:"+group.FormatPorts(s.Ports), "desc"))
-	card.Append(measuredText("On your LAN "+s.Target, "desc"))
+	card.Append(cardText("Friends open 127.0.0.1:"+group.FormatPorts(s.Ports), "desc"))
+	card.Append(cardText("On your LAN "+s.Target, "desc"))
 	if s.Hint != "" {
 		card.Append(gapBox(6))
-		card.Append(measuredText(s.Hint, "desc"))
+		card.Append(cardText(s.Hint, "desc"))
 	}
 	return card
 }
@@ -197,7 +197,7 @@ func (u *probeUI) hostPeople(g group.Group) *gtk.Box {
 	}
 	if len(g.Members) == 0 {
 		box.Append(gapBox(8))
-		box.Append(measuredText("No friends yet. Create an invite when you're ready.", "desc"))
+		box.Append(cardText("No friends yet. Create an invite when you're ready.", "desc"))
 	}
 	return box
 }
@@ -206,7 +206,7 @@ func (u *probeUI) hostInvites(g group.Group) *gtk.Box {
 	box := gtk.NewBox(gtk.OrientationVertical, 0)
 	open := g.OpenInvites(time.Now())
 	if len(open) == 0 {
-		box.Append(measuredText("No open invites.", "desc"))
+		box.Append(cardText("No open invites.", "desc"))
 		return box
 	}
 	for i, inv := range open {
@@ -265,13 +265,13 @@ func (u *probeUI) friendSessionCard(g group.Group, showError func(error)) *gtk.B
 	top.Append(action)
 	card.Append(top)
 	card.Append(gapBox(10))
-	card.Append(measuredText("Hosted by "+g.HostName, "desc"))
+	card.Append(cardText("Hosted by "+g.HostName, "desc"))
 	if live {
-		card.Append(measuredText(presence.RTT.Round(time.Millisecond).String(), "desc"))
+		card.Append(cardText(presence.RTT.Round(time.Millisecond).String(), "desc"))
 	} else if note := u.state.FriendNote(); note != "" {
-		card.Append(measuredText(note, "desc"))
+		card.Append(cardText(note, "desc"))
 	} else {
-		card.Append(measuredText("Start the session on the host, then reconnect.", "desc"))
+		card.Append(cardText("Start the session on the host, then reconnect.", "desc"))
 	}
 	return card
 }
@@ -281,7 +281,7 @@ func (u *probeUI) friendServices(g group.Group) *gtk.Box {
 	live := u.state.LiveGroupID() == g.ID && u.state.FriendPresence().Live
 	if !live {
 		if len(g.Services) == 0 {
-			box.Append(measuredText("No service open. The host has not published anything yet.", "desc"))
+			box.Append(cardText("No service open. The host has not published anything yet.", "desc"))
 			return box
 		}
 		for i, s := range g.Services {
@@ -295,7 +295,7 @@ func (u *probeUI) friendServices(g group.Group) *gtk.Box {
 
 	bounds := u.state.FriendBounds()
 	if len(bounds) == 0 {
-		box.Append(measuredText("No service open. The host has not published anything yet.", "desc"))
+		box.Append(cardText("No service open. The host has not published anything yet.", "desc"))
 		return box
 	}
 	for i, b := range bounds {
@@ -311,15 +311,15 @@ func (u *probeUI) friendServices(g group.Group) *gtk.Box {
 		top.Append(tagLabel(protoName(b.Proto)))
 		card.Append(top)
 		card.Append(gapBox(8))
-		card.Append(measuredText(b.Address, "mono"))
+		card.Append(cardText(b.Address, "mono"))
 		if b.Error != "" {
-			card.Append(measuredText(b.Error, "warning"))
+			card.Append(cardText(b.Error, "warning"))
 		} else if b.Port != b.PublishedPort {
-			card.Append(measuredText(fmt.Sprintf("Port %d was busy; this game uses %d.", b.PublishedPort, b.Port), "desc"))
+			card.Append(cardText(fmt.Sprintf("Port %d was busy; this game uses %d.", b.PublishedPort, b.Port), "desc"))
 		}
 		if b.Hint != "" {
 			card.Append(gapBox(6))
-			card.Append(measuredText(b.Hint, "desc"))
+			card.Append(cardText(b.Hint, "desc"))
 		}
 		box.Append(card)
 	}
@@ -336,11 +336,11 @@ func (u *probeUI) offlineFriendServiceCard(s group.Service) *gtk.Box {
 	top.Append(tagLabel(protoName(s.Proto)))
 	card.Append(top)
 	card.Append(gapBox(8))
-	card.Append(measuredText("Port "+group.FormatPorts(s.Ports), "desc"))
-	card.Append(measuredText("Host offline. Reconnect when the host is back.", "desc"))
+	card.Append(cardText("Port "+group.FormatPorts(s.Ports), "desc"))
+	card.Append(cardText("Host offline. Reconnect when the host is back.", "desc"))
 	if s.Hint != "" {
 		card.Append(gapBox(6))
-		card.Append(measuredText(s.Hint, "desc"))
+		card.Append(cardText(s.Hint, "desc"))
 	}
 	return card
 }
@@ -373,7 +373,7 @@ func personCard(name, detail string, live bool, role string) *gtk.Box {
 		title.Append(tagLabel(role))
 	}
 	text.Append(title)
-	text.Append(measuredText(detail, "desc"))
+	text.Append(cardText(detail, "desc"))
 	card.Append(text)
 	return card
 }

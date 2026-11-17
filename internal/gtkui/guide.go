@@ -33,7 +33,7 @@ func (u *probeUI) buildGuidePage() *gtk.ScrolledWindow {
 	how.Append(gapBox(2))
 	how.Append(guideAddressRow("127.0.0.1:25565", "their game"))
 	how.Append(gapBox(10))
-	how.Append(measuredText("Example addresses. Only published ports cross.", "desc"))
+	how.Append(cardText("Example addresses. Only published ports cross.", "desc"))
 	page.Append(how)
 
 	hosting := gtk.NewBox(gtk.OrientationVertical, 0)
@@ -41,9 +41,9 @@ func (u *probeUI) buildGuidePage() *gtk.ScrolledWindow {
 	hosting.SetMarginBottom(10)
 	hosting.Append(textLabel("Hosting", "card-title"))
 	hosting.Append(gapBox(10))
-	hosting.Append(measuredText("1. Open your group and add the game server you want to share. Use the IP and port it listens on.", "desc"))
+	hosting.Append(cardText("1. Open your group and add the game server you want to share. Use the IP and port it listens on.", "desc"))
 	hosting.Append(gapBox(10))
-	hosting.Append(measuredText("2. Forward one UDP port on your router. That is the app port, not the game port.", "desc"))
+	hosting.Append(cardText("2. Forward one UDP port on your router. That is the app port, not the game port.", "desc"))
 	hosting.Append(gapBox(10))
 
 	copyButton := gtk.NewButtonWithLabel("Copy")
@@ -59,14 +59,14 @@ func (u *probeUI) buildGuidePage() *gtk.ScrolledWindow {
 	ruleRow.Append(copyButton)
 	hosting.Append(ruleRow)
 	hosting.Append(gapBox(10))
-	hosting.Append(measuredText("Only this one port faces the internet. The game ports themselves stay closed.", "desc"))
+	hosting.Append(cardText("Only this one port faces the internet. The game ports themselves stay closed.", "desc"))
 	hosting.Append(gapBox(10))
 
 	addressLine := "No public address set yet. Open Settings and fill it in."
 	if strings.TrimSpace(settings.PublicAddress) != "" {
 		addressLine = "Your public address: " + settings.PublicAddress
 	}
-	hosting.Append(measuredText(addressLine, "desc"))
+	hosting.Append(cardText(addressLine, "desc"))
 	settingsButton := gtk.NewButtonWithLabel("Settings")
 	settingsButton.AddCSSClass("quiet")
 	settingsButton.SetHAlign(gtk.AlignStart)
@@ -75,9 +75,9 @@ func (u *probeUI) buildGuidePage() *gtk.ScrolledWindow {
 	})
 	hosting.Append(settingsButton)
 	hosting.Append(gapBox(10))
-	hosting.Append(measuredText("3. Start the session, create an invite, and send the code to your friend.", "desc"))
+	hosting.Append(cardText("3. Start the session, create an invite, and send the code to your friend.", "desc"))
 	hosting.Append(gapBox(10))
-	hosting.Append(measuredText("4. When your friend joins, an approval card shows their device name and address. Allow it once.", "desc"))
+	hosting.Append(cardText("4. When your friend joins, an approval card shows their device name and address. Allow it once.", "desc"))
 	page.Append(hosting)
 
 	joining := gtk.NewBox(gtk.OrientationVertical, 0)
@@ -85,9 +85,9 @@ func (u *probeUI) buildGuidePage() *gtk.ScrolledWindow {
 	joining.SetMarginBottom(10)
 	joining.Append(textLabel("Joining", "card-title"))
 	joining.Append(gapBox(10))
-	joining.Append(measuredText("Paste the invite code and wait for the host to approve your device.", "desc"))
+	joining.Append(cardText("Paste the invite code and wait for the host to approve your device.", "desc"))
 	joining.Append(gapBox(10))
-	joining.Append(measuredText("Open the game, then use the address shown under Ready to play. For Minecraft Java that is usually Direct Connect.", "desc"))
+	joining.Append(cardText("Open the game, then use the address shown under Ready to play. For Minecraft Java that is usually Direct Connect.", "desc"))
 	page.Append(joining)
 
 	problems := gtk.NewBox(gtk.OrientationVertical, 0)
@@ -95,17 +95,17 @@ func (u *probeUI) buildGuidePage() *gtk.ScrolledWindow {
 	problems.SetMarginBottom(10)
 	problems.Append(textLabel("Problems", "card-title"))
 	problems.Append(gapBox(10))
-	problems.Append(measuredText("A friend can't reach you", "setting-title"))
-	problems.Append(measuredText("Check the public address in Settings, the UDP rule on your router, and the firewall on this PC. A VPN on the host can also hide the address. If your router's WAN address differs from your public address, your ISP may use carrier-grade NAT; this version has no relay, so direct hosting will not work.", "desc"))
+	problems.Append(cardText("A friend can't reach you", "setting-title"))
+	problems.Append(cardText("Check the public address in Settings, the UDP rule on your router, and the firewall on this PC. A VPN on the host can also hide the address. If your router's WAN address differs from your public address, your ISP may use carrier-grade NAT; this version has no relay, so direct hosting will not work.", "desc"))
 	problems.Append(gapBox(10))
-	problems.Append(measuredText("Your public address changed", "setting-title"))
-	problems.Append(measuredText("Update it in Settings. Old invites still point at the old address, so create new ones after the change.", "desc"))
+	problems.Append(cardText("Your public address changed", "setting-title"))
+	problems.Append(cardText("Update it in Settings. Old invites still point at the old address, so create new ones after the change.", "desc"))
 	problems.Append(gapBox(10))
-	problems.Append(measuredText("A port is already in use", "setting-title"))
-	problems.Append(measuredText("The friend app tries the next local port and shows the address it actually got. The host's published port does not change.", "desc"))
+	problems.Append(cardText("A port is already in use", "setting-title"))
+	problems.Append(cardText("The friend app tries the next local port and shows the address it actually got. The host's published port does not change.", "desc"))
 	problems.Append(gapBox(10))
-	problems.Append(measuredText("An invite expired or was already used", "setting-title"))
-	problems.Append(measuredText("Create a new invite. Codes work once and expire after 24 hours.", "desc"))
+	problems.Append(cardText("An invite expired or was already used", "setting-title"))
+	problems.Append(cardText("Create a new invite. Codes work once and expire after 24 hours.", "desc"))
 	page.Append(problems)
 
 	security := gtk.NewBox(gtk.OrientationVertical, 0)
@@ -113,17 +113,17 @@ func (u *probeUI) buildGuidePage() *gtk.ScrolledWindow {
 	security.SetMarginBottom(10)
 	security.Append(textLabel("Security", "card-title"))
 	security.Append(gapBox(10))
-	security.Append(measuredText("Invites are single use, expire after 24 hours, and need the host to be online when they are redeemed.", "desc"))
+	security.Append(cardText("Invites are single use, expire after 24 hours, and need the host to be online when they are redeemed.", "desc"))
 	security.Append(gapBox(10))
-	security.Append(measuredText("The host approves each device. A different device key asks again.", "desc"))
+	security.Append(cardText("The host approves each device. A different device key asks again.", "desc"))
 	security.Append(gapBox(10))
-	security.Append(measuredText("Only the services you publish exist. Friends cannot reach your router, your other devices, or each other.", "desc"))
+	security.Append(cardText("Only the services you publish exist. Friends cannot reach your router, your other devices, or each other.", "desc"))
 	security.Append(gapBox(10))
-	security.Append(measuredText("Keep invite codes private. Anyone with a code can try to redeem it.", "desc"))
+	security.Append(cardText("Keep invite codes private. Anyone with a code can try to redeem it.", "desc"))
 	page.Append(security)
 
 	page.Append(gapBox(10))
-	page.Append(measuredText("App port "+strconv.Itoa(settings.AppPort)+" · UDP", "desc"))
+	page.Append(cardText("App port "+strconv.Itoa(settings.AppPort)+" · UDP", "desc"))
 
 	scroll := gtk.NewScrolledWindow()
 	scroll.SetPolicy(gtk.PolicyNever, gtk.PolicyAutomatic)
@@ -141,12 +141,6 @@ func guideAddressRow(address, note string) *gtk.Box {
 	return row
 }
 
-func measuredText(text, class string) *gtk.Label {
-	label := textLabel(text, class)
-	label.SetSizeRequest(descriptionWidth, -1)
-	return label
-}
-
 func localIPv4() string {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
@@ -162,4 +156,12 @@ func localIPv4() string {
 		}
 	}
 	return "this PC"
+}
+
+const cardTextWidth = 300
+
+func cardText(text, class string) *gtk.Label {
+	label := textLabel(text, class)
+	label.SetSizeRequest(cardTextWidth, -1)
+	return label
 }

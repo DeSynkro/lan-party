@@ -412,7 +412,7 @@ func (u *probeUI) buildHomeContent() *gtk.Box {
 		page.Append(section)
 		empty := gtk.NewBox(gtk.OrientationVertical, 0)
 		empty.AddCSSClass("card")
-		empty.Append(measuredText("Nothing saved yet. Hosted and joined groups appear here.", "desc"))
+		empty.Append(cardText("Nothing saved yet. Hosted and joined groups appear here.", "desc"))
 		page.Append(empty)
 	}
 
