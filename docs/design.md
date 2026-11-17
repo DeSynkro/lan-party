@@ -115,8 +115,8 @@ port over QUIC. The QUIC handshake is TLS 1.3. The host certificate is
 self-signed and pinned by its public key hash, which travels in the invite and
 is stored in the friend's group entry.
 
-The host's identity key is generated when the group is created and kept in the
-OS keyring. The certificate is built from that key, so re-generating the
+The host's identity key is generated when the group is created and kept in an
+owner-only file. The certificate is built from that key, so re-generating the
 certificate does not change the pin.
 
 ### Publishing a service
@@ -183,11 +183,11 @@ friend shows the host as live only while connected.
 There are two kinds of long-lived key, and neither is ever sent anywhere.
 
 - **Host identity, one per group.** Ed25519. Generated when the group is
-  created, stored in the OS keyring. Its public key hash is the pin friends
-  check.
+  created, stored in an owner-only key file. Its public key hash is the pin
+  friends check.
 - **Device identity, one per group on each friend's machine.** Ed25519.
-  Generated when the friend redeems an invite, stored in the OS keyring. The
-  host stores the public key as the member's identity.
+  Generated when the friend redeems an invite, stored in an owner-only key file.
+  The host stores the public key as the member's identity.
 
 Both sides present a self-signed certificate built from their key. The TLS
 handshake proves possession of the private key. The host compares the client
@@ -253,13 +253,15 @@ kick anyone. The key is the identity.
 | --- | --- | --- |
 | Groups, services, members, public keys, invite hashes | `~/.local/share/lan-party/groups.json` | 0600 |
 | Settings | `~/.config/lan-party/settings.json` | 0600 |
-| Host and device private keys | OS keyring (Secret Service) | managed by the keyring |
+| Host and device private keys | `~/.local/share/lan-party/keys/` | 0600 files in a 0700 directory |
 
 Writes are atomic: temp file in the same directory, then rename. Directories
 are 0700. Nothing writes a private key or an invite token to JSON or logs.
 
-If the keyring is unavailable or locked, the app fails with a clear message and
-does not silently fall back to a plaintext file.
+There is no keyring daemon, session bus or unlock prompt. A key file that other
+users can read is refused. The key files are not passphrase-encrypted, so
+full-disk encryption is what protects a stolen disk; this is the same trade-off
+as an SSH private key.
 
 ### Limits
 
@@ -281,9 +283,9 @@ does not silently fall back to a plaintext file.
 | Curious friend | Only published services exist. No routing, no peer-to-peer, no access to the host's other devices. |
 | Malicious friend | Cannot reach anything else. Stream, flow and connection limits cap resource use. |
 | Stolen device key | Can impersonate that member until revoked. A changed source address is visible; the host can revoke and issue a new invite. |
-| Stolen host key | Can impersonate the host to friends who already have the pin. The keyring is the protection. |
+| Stolen host key | Can impersonate the host to friends who already have the pin. Owner-only file permissions and full-disk encryption are the protection. |
 | Malicious host | The host is the gateway and can see what they publish. Documented, not hidden. |
-| Same-user malware | Can read the keyring while it is unlocked and can read the app's files. Out of scope for a desktop app. |
+| Same-user malware | Can read the key files, groups and settings as your user. Out of scope for a desktop app. |
 | Supply chain | Few dependencies, pinned versions, `govulncheck` in CI, no runtime downloads. |
 
 What the app cannot fix: the game server's own vulnerabilities. An offline-mode
@@ -360,7 +362,7 @@ Screens:
   the window quit, start on login, start minimised),
   Network (public hostname or IP, optional outside port in the address, app
   port, live endpoint preview), Security (approve new devices), About
-  (version, data location, keyring state).
+  (version, data location, key location).
 - **How to Use.** Offline guide with Hosting, Joining, Problems and Security
   sections. It reads the real app port and the host's local address, so the
   port-forward line is concrete, e.g. “Forward UDP 51820 to 192.168.1.20”, with a
@@ -389,7 +391,7 @@ Layout:
 cmd/lan-party/          entry point
 internal/app/           wiring and application state
 internal/config/        XDG paths and settings
-internal/secure/        keyring, identities, fingerprints
+internal/secure/        key files, identities, fingerprints
 internal/group/         groups, services, presets, store
 internal/invite/        one-time codes
 internal/tunnel/        QUIC listener/dialer, TLS, control stream
@@ -412,7 +414,7 @@ nothing lands in the home directory. `make test`, `make run`, `make build`,
 
 1. Project reset, design document, README, mockup. (this commit)
 2. Project skeleton, local build tooling, config paths, bare 400×640 window.
-3. Secure keyring storage, host and device identities, fingerprints.
+3. Secure owner-only key storage, host and device identities, fingerprints.
 4. Groups, services, presets, validation and storage.
 5. One-time invites, hashing, expiry.
 6. QUIC listener and dialer, pinned host identity, control stream.

@@ -22,7 +22,8 @@ game -> 127.0.0.1:25565 -> friend app -> [QUIC stream] -> host app
      -> 192.168.1.50:25565
 ```
 
-1. The host created a group, which created a host identity in the OS keyring.
+1. The host created a group, which created a host identity in an owner-only
+   key file.
 2. The host added a service: name, protocol, LAN target and the port friends
    see.
 3. The host started a session. The app opened a UDP socket and a QUIC listener.
@@ -59,7 +60,7 @@ party, and it says so.
 | `cmd/lan-party` | entry point; calls `ui.Run` |
 | `internal/app` | groups, settings, invites, approval, live sessions |
 | `internal/config` | XDG paths and `settings.json` |
-| `internal/secure` | OS keyring, Ed25519 identities, certs, pins, fingerprints |
+| `internal/secure` | owner-only key files, Ed25519 identities, certs, pins, fingerprints |
 | `internal/group` | group, service, member and invite records; validation; store |
 | `internal/invite` | one-time token and pasteable invite code |
 | `internal/tunnel` | QUIC listener/dialer, TLS pinning, control stream, data streams, datagrams |
@@ -116,7 +117,10 @@ the whole datagram under 1200 bytes.
 | --- | --- | --- |
 | settings | `~/.config/lan-party/settings.json` | 0600 |
 | groups, services, members, public keys, invite hashes | `~/.local/share/lan-party/groups.json` | 0600 |
-| private host and device keys | OS keyring | managed by the keyring |
+| private host and device keys | `~/.local/share/lan-party/keys/` | 0600 files in a 0700 directory |
+
+Private keys are never written to the JSON, an invite or a log. A key file that
+other users can read is refused.
 
 The group store uses a versioned JSON wrapper and an atomic replace: write a
 temporary file in the same directory, chmod it, sync it, rename it. Directories

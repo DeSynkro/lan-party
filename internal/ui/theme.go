@@ -196,7 +196,7 @@ func (appTheme) Size(name fyne.ThemeSizeName) float32 {
 	case theme.SizeNameText:
 		return 13
 	case theme.SizeNameCaptionText:
-		return 12
+		return sizeMeta
 	case theme.SizeNameSubHeadingText:
 		return 15
 	case theme.SizeNameHeadingText:

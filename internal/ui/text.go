@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -74,6 +75,19 @@ func mutedLabel(text string) *widget.Label {
 	label.Importance = widget.LowImportance
 	label.Wrapping = fyne.TextWrapWord
 	return label
+}
+
+// metaParagraph is a wrapping description at the meta token size and colour.
+func metaParagraph(text string) *widget.RichText {
+	paragraph := widget.NewRichText(&widget.TextSegment{
+		Style: widget.RichTextStyle{
+			ColorName: theme.ColorNamePlaceHolder,
+			SizeName:  theme.SizeNameCaptionText,
+		},
+		Text: text,
+	})
+	paragraph.Wrapping = fyne.TextWrapWord
+	return paragraph
 }
 
 // bodyLabel is a wrapping paragraph in the normal text colour.

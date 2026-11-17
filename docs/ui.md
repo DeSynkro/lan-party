@@ -125,17 +125,17 @@ pairs.
 
 - Startup: Close to tray (on by default; unticking makes closing the window
   quit the app), Start on login, Start minimised. Each option is a card with
-  the tickbox and title on one line. Close to tray has a `?` that opens the
-  longer explanation; Start on login is self-explanatory and has no
-  description; Start minimised puts its description underneath. Descriptions
-  are smaller text under the title, not beside the tickbox.
+  the tickbox and title on one line and a plain description underneath, aligned
+  with the title. There is no `?` on individual settings; the description is
+  always visible. Descriptions are smaller text under the title, not beside the
+  tickbox.
 - Network: public address and app port, with a live preview of the endpoint
   that will go into invites, a Save button and inline errors. The public
   address is usually just a hostname or IP; a `:port` suffix is only for an
   outside port that differs from the app port. The app port cannot change
   while a host session is live.
 - Security: Approve new devices.
-- About: version, data directory, keyring note.
+- About: version, data directory, key location.
 - Links to the setup guide.
 
 ### How to Use

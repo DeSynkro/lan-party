@@ -7,39 +7,39 @@ import (
 	"crypto/ed25519"
 	"errors"
 	"io"
+	"io/fs"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/desynkro/lan-party/internal/secure"
-	"github.com/zalando/go-keyring"
 )
 
-type memKeyring map[string]string
+type memStore map[string]string
 
-func (m memKeyring) slot(service, user string) string { return service + "\x00" + user }
+func (m memStore) slot(service, user string) string { return service + "\x00" + user }
 
-func (m memKeyring) Get(service, user string) (string, error) {
+func (m memStore) Get(service, user string) (string, error) {
 	value, ok := m[m.slot(service, user)]
 	if !ok {
-		return "", keyring.ErrNotFound
+		return "", fs.ErrNotExist
 	}
 	return value, nil
 }
 
-func (m memKeyring) Set(service, user, secret string) error {
+func (m memStore) Set(service, user, secret string) error {
 	m[m.slot(service, user)] = secret
 	return nil
 }
 
-func (m memKeyring) Delete(service, user string) error {
+func (m memStore) Delete(service, user string) error {
 	delete(m, m.slot(service, user))
 	return nil
 }
 
 func testIdentity(t *testing.T, name string) secure.Identity {
 	t.Helper()
-	store := secure.NewStore(memKeyring{})
+	store := secure.NewStore(memStore{})
 	identity, err := store.LoadOrCreate(name)
 	if err != nil {
 		t.Fatal(err)

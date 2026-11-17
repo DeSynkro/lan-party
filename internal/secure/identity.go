@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// Identity is one Ed25519 keypair. The private half never leaves the keyring.
+// Identity is one Ed25519 keypair. The private half never leaves its key file.
 type Identity struct {
 	Private ed25519.PrivateKey
 	Public  ed25519.PublicKey

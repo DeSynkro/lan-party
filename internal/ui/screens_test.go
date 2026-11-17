@@ -2,6 +2,7 @@ package ui
 
 import (
 	"image/png"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,31 +13,30 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/test"
 	"fyne.io/fyne/v2/widget"
-	"github.com/zalando/go-keyring"
 
 	apppkg "github.com/desynkro/lan-party/internal/app"
 	"github.com/desynkro/lan-party/internal/config"
 	"github.com/desynkro/lan-party/internal/group"
 )
 
-type testKeyring map[string]string
+type testStore map[string]string
 
-func (m testKeyring) slot(service, user string) string { return service + "\x00" + user }
+func (m testStore) slot(service, user string) string { return service + "\x00" + user }
 
-func (m testKeyring) Get(service, user string) (string, error) {
+func (m testStore) Get(service, user string) (string, error) {
 	value, ok := m[m.slot(service, user)]
 	if !ok {
-		return "", keyring.ErrNotFound
+		return "", fs.ErrNotExist
 	}
 	return value, nil
 }
 
-func (m testKeyring) Set(service, user, secret string) error {
+func (m testStore) Set(service, user, secret string) error {
 	m[m.slot(service, user)] = secret
 	return nil
 }
 
-func (m testKeyring) Delete(service, user string) error {
+func (m testStore) Delete(service, user string) error {
 	delete(m, m.slot(service, user))
 	return nil
 }
@@ -52,7 +52,7 @@ func newTestUI(t *testing.T, groups []group.Group) *UI {
 			t.Fatal(err)
 		}
 	}
-	state, err := apppkg.NewWithKeyring(paths, testKeyring{})
+	state, err := apppkg.NewWithStore(paths, testStore{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -297,6 +297,45 @@ func findRow(obj fyne.CanvasObject) *rowButton {
 		}
 	}
 	return nil
+}
+
+func collectCheckBoxes(obj fyne.CanvasObject, out *[]*checkBox) {
+	switch o := obj.(type) {
+	case *checkBox:
+		*out = append(*out, o)
+	case *fyne.Container:
+		for _, child := range o.Objects {
+			collectCheckBoxes(child, out)
+		}
+	case fyne.Widget:
+		for _, child := range o.CreateRenderer().Objects() {
+			collectCheckBoxes(child, out)
+		}
+	}
+}
+
+func TestSettingCheckboxesToggleAndSave(t *testing.T) {
+	u := newTestUI(t, nil)
+	u.showSettings(u.showHome)
+
+	var checks []*checkBox
+	collectCheckBoxes(u.win.Canvas().Content(), &checks)
+	if len(checks) != 4 {
+		t.Fatalf("found %d setting checkboxes, want 4", len(checks))
+	}
+	if !checks[0].checked || checks[1].checked || checks[2].checked || !checks[3].checked {
+		t.Fatalf("initial checks = %v %v %v %v", checks[0].checked, checks[1].checked, checks[2].checked, checks[3].checked)
+	}
+
+	checks[1].Tapped(nil)
+	if !u.app.Settings().StartOnLogin {
+		t.Error("Start on login did not save")
+	}
+
+	checks[0].Tapped(nil)
+	if u.app.Settings().CloseToTray {
+		t.Error("Close to tray did not save")
+	}
 }
 
 func TestHomeRowOpensGroup(t *testing.T) {

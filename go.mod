@@ -5,7 +5,6 @@ go 1.27.4
 require (
 	fyne.io/fyne/v2 v2.8.2
 	github.com/quic-go/quic-go v0.65.0
-	github.com/zalando/go-keyring v0.2.8
 )
 
 require (
@@ -14,7 +13,6 @@ require (
 	github.com/FyshOS/fancyfs v0.0.1 // indirect
 	github.com/anthonynsimon/bild v0.14.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
-	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fyne-io/gl-js v0.2.1-0.20260315212741-029c47fd27e8 // indirect
 	github.com/fyne-io/glfw-js v0.4.0 // indirect

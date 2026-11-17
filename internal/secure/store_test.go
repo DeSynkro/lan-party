@@ -2,38 +2,37 @@ package secure
 
 import (
 	"errors"
+	"io/fs"
 	"testing"
-
-	"github.com/zalando/go-keyring"
 )
 
-type fakeKeyring struct {
+type fakeStore struct {
 	values    map[string]string
 	getErr    error
 	setErr    error
 	deleteErr error
 }
 
-func newFakeKeyring() *fakeKeyring {
-	return &fakeKeyring{values: map[string]string{}}
+func newFakeStore() *fakeStore {
+	return &fakeStore{values: map[string]string{}}
 }
 
 func slot(service, user string) string {
 	return service + "\x00" + user
 }
 
-func (f *fakeKeyring) Get(service, user string) (string, error) {
+func (f *fakeStore) Get(service, user string) (string, error) {
 	if f.getErr != nil {
 		return "", f.getErr
 	}
 	value, ok := f.values[slot(service, user)]
 	if !ok {
-		return "", keyring.ErrNotFound
+		return "", fs.ErrNotExist
 	}
 	return value, nil
 }
 
-func (f *fakeKeyring) Set(service, user, secret string) error {
+func (f *fakeStore) Set(service, user, secret string) error {
 	if f.setErr != nil {
 		return f.setErr
 	}
@@ -41,19 +40,19 @@ func (f *fakeKeyring) Set(service, user, secret string) error {
 	return nil
 }
 
-func (f *fakeKeyring) Delete(service, user string) error {
+func (f *fakeStore) Delete(service, user string) error {
 	if f.deleteErr != nil {
 		return f.deleteErr
 	}
 	if _, ok := f.values[slot(service, user)]; !ok {
-		return keyring.ErrNotFound
+		return fs.ErrNotExist
 	}
 	delete(f.values, slot(service, user))
 	return nil
 }
 
 func TestLoadOrCreatePersists(t *testing.T) {
-	kr := newFakeKeyring()
+	kr := newFakeStore()
 	store := NewStore(kr)
 
 	first, err := store.LoadOrCreate("host/group-1")
@@ -74,7 +73,7 @@ func TestLoadOrCreatePersists(t *testing.T) {
 }
 
 func TestLoadMissingIdentity(t *testing.T) {
-	store := NewStore(newFakeKeyring())
+	store := NewStore(newFakeStore())
 	_, ok, err := store.Load("host/group-1")
 	if err != nil {
 		t.Fatal(err)
@@ -84,22 +83,22 @@ func TestLoadMissingIdentity(t *testing.T) {
 	}
 }
 
-func TestLoadOrCreateRejectsLockedKeyring(t *testing.T) {
-	kr := newFakeKeyring()
-	kr.getErr = errors.New("keyring is locked")
+func TestLoadOrCreateRejectsFailingStore(t *testing.T) {
+	kr := newFakeStore()
+	kr.getErr = errors.New("the store is locked")
 	store := NewStore(kr)
 
 	if _, err := store.LoadOrCreate("host/group-1"); err == nil {
-		t.Fatal("a locked keyring was treated as a missing key")
+		t.Fatal("a failing store was treated as a missing key")
 	}
 	if len(kr.values) != 0 {
-		t.Fatal("an identity was written while the keyring was failing")
+		t.Fatal("an identity was written while the store was failing")
 	}
 }
 
 func TestLoadOrCreateRejectsCorruptSecret(t *testing.T) {
-	kr := newFakeKeyring()
-	kr.values[slot(keyringService, "host/group-1")] = "not base64"
+	kr := newFakeStore()
+	kr.values[slot(keyService, "host/group-1")] = "not base64"
 	store := NewStore(kr)
 
 	if _, err := store.LoadOrCreate("host/group-1"); err == nil {
@@ -108,7 +107,7 @@ func TestLoadOrCreateRejectsCorruptSecret(t *testing.T) {
 }
 
 func TestDeleteIdentity(t *testing.T) {
-	kr := newFakeKeyring()
+	kr := newFakeStore()
 	store := NewStore(kr)
 	if _, err := store.LoadOrCreate("device/group-1"); err != nil {
 		t.Fatal(err)

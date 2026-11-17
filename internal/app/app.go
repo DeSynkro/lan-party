@@ -39,13 +39,13 @@ type App struct {
 	limiter     *attemptLimiter
 }
 
-// New opens the stores and starts with the OS keyring.
+// New opens the stores and uses owner-only key files under the data dir.
 func New(paths config.Paths) (*App, error) {
-	return NewWithKeyring(paths, secure.OSKeyring())
+	return NewWithStore(paths, secure.NewFileStore(filepath.Join(paths.DataDir, "keys")))
 }
 
-// NewWithKeyring is New with an injectable keyring, used by the tests.
-func NewWithKeyring(paths config.Paths, kr secure.Keyring) (*App, error) {
+// NewWithStore is New with an injectable key store, used by the tests.
+func NewWithStore(paths config.Paths, kr secure.SecretStore) (*App, error) {
 	settings, err := config.LoadSettings(paths)
 	if err != nil {
 		return nil, err
@@ -347,7 +347,7 @@ func (a *App) CreateInvite(groupID, peerName string) (string, error) {
 		return "", err
 	}
 	if !ok {
-		return "", errors.New("the host key for this group is missing")
+		return "", errors.New("the host key for this group is missing. If this group came from an older build, delete it and create it again")
 	}
 
 	token, hash, err := invite.NewToken()
@@ -445,7 +445,7 @@ func (a *App) StartSession(groupID string) error {
 		return err
 	}
 	if !ok {
-		return errors.New("the host key for this group is missing")
+		return errors.New("the host key for this group is missing. If this group came from an older build, delete it and create it again")
 	}
 
 	host, err := session.StartHost(context.Background(), session.HostConfig{
@@ -582,7 +582,7 @@ func (a *App) Reconnect(ctx context.Context, groupID string) error {
 		return err
 	}
 	if !ok {
-		return errors.New("the device key for this group is missing")
+		return errors.New("the device key for this group is missing. If this group came from an older build, delete it and join again")
 	}
 
 	friend, err := session.Join(ctx, session.JoinConfig{

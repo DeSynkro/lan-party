@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
@@ -21,14 +20,14 @@ func (u *UI) showSettings(returnTo func()) {
 
 	settings := u.app.Settings()
 
-	closeNote := "Closing the window keeps the app and a live session running in the tray. Untick this to make closing the window quit the app."
-	minimiseNote := "Open in the tray instead of showing the window."
+	closeNote := "Closing the window keeps the app and any live session running in the tray. Untick this to make closing the window quit."
+	minimiseNote := "Start hidden in the tray instead of opening the window."
 	if !u.hasTray {
-		closeNote = "Your desktop did not report a system tray, so closing the window quits even when this is ticked."
-		minimiseNote = "No system tray; the window will still open."
+		closeNote = "Your desktop did not report a tray, so closing the window quits anyway."
+		minimiseNote = "No tray is available, so the window still opens."
 	}
 
-	closeToTray := u.checkRow("Close to tray", "", closeNote,
+	closeToTray := u.checkRow("Close to tray", closeNote,
 		settings.CloseToTray,
 		func(value bool) error {
 			s := u.app.Settings()
@@ -36,7 +35,7 @@ func (u *UI) showSettings(returnTo func()) {
 			return u.app.SaveSettings(s)
 		})
 
-	startOnLogin := u.checkRow("Start on login", "", "",
+	startOnLogin := u.checkRow("Start on login", "Launch LAN Party automatically when you sign in.",
 		settings.StartOnLogin,
 		func(value bool) error {
 			s := u.app.Settings()
@@ -44,7 +43,7 @@ func (u *UI) showSettings(returnTo func()) {
 			return u.app.SaveSettings(s)
 		})
 
-	startMinimised := u.checkRow("Start minimised", minimiseNote, "",
+	startMinimised := u.checkRow("Start minimised", minimiseNote,
 		settings.StartMinimised,
 		func(value bool) error {
 			s := u.app.Settings()
@@ -52,8 +51,7 @@ func (u *UI) showSettings(returnTo func()) {
 			return u.app.SaveSettings(s)
 		})
 
-	approve := u.checkRow("Approve new devices", "",
-		"A valid invite still asks you before a device joins. A changed device key always asks.",
+	approve := u.checkRow("Approve new devices", "Ask before a new friend's device joins. Off accepts any valid invite without asking. A changed device key still asks.",
 		settings.ApproveNewDevices,
 		func(value bool) error {
 			s := u.app.Settings()
@@ -73,7 +71,21 @@ func (u *UI) showSettings(returnTo func()) {
 	preview.Importance = widget.MediumImportance
 	preview.TextStyle = fyne.TextStyle{Monospace: true}
 	preview.Wrapping = fyne.TextWrapWord
+
+	networkError := widget.NewLabel("")
+	networkError.Importance = widget.DangerImportance
+	networkError.Wrapping = fyne.TextWrapWord
+	networkError.Hide()
+
+	networkStatus := widget.NewLabel("")
+	networkStatus.Importance = widget.MediumImportance
+	networkStatus.Wrapping = fyne.TextWrapWord
+	networkStatus.Hide()
+
 	updatePreview := func(string) {
+		networkError.Hide()
+		networkStatus.Hide()
+
 		public := strings.TrimSpace(publicEntry.Text)
 		port, err := strconv.Atoi(strings.TrimSpace(portEntry.Text))
 		if public == "" {
@@ -95,17 +107,13 @@ func (u *UI) showSettings(returnTo func()) {
 	portEntry.OnChanged = updatePreview
 	updatePreview("")
 
-	networkError := widget.NewLabel("")
-	networkError.Importance = widget.DangerImportance
-	networkStatus := widget.NewLabel("")
-	networkStatus.Importance = widget.MediumImportance
-
 	saveNetwork := newButton("Save network settings", buttonPrimary, func() {
-		networkError.SetText("")
-		networkStatus.SetText("")
+		networkError.Hide()
+		networkStatus.Hide()
 		port, err := strconv.Atoi(strings.TrimSpace(portEntry.Text))
 		if err != nil {
 			networkError.SetText("The app port must be a number.")
+			networkError.Show()
 			return
 		}
 		s := u.app.Settings()
@@ -113,9 +121,11 @@ func (u *UI) showSettings(returnTo func()) {
 		s.AppPort = port
 		if err := u.app.SaveSettings(s); err != nil {
 			networkError.SetText(err.Error())
+			networkError.Show()
 			return
 		}
 		networkStatus.SetText("Saved.")
+		networkStatus.Show()
 	})
 
 	networkForm := widget.NewForm(
@@ -143,7 +153,7 @@ func (u *UI) showSettings(returnTo func()) {
 	about := container.NewVBox(
 		metaText("LAN Party · "+buildinfo.Version),
 		mutedLabel("Data: "+u.app.DataDir()),
-		mutedLabel("Keys: the operating system keyring"),
+		mutedLabel("Keys: owner-only files in keys/"),
 	)
 
 	content := container.NewVBox(
@@ -173,40 +183,25 @@ func (u *UI) showSettings(returnTo func()) {
 
 var settingCheckbox float32 = 24
 
-func (u *UI) checkRow(title, description, help string, checked bool, onChanged func(bool) error) fyne.CanvasObject {
-	reverting := false
-	check := widget.NewCheck("", nil)
-	check.SetChecked(checked)
-	check.OnChanged = func(value bool) {
-		if reverting {
-			return
-		}
+func (u *UI) checkRow(title, description string, checked bool, onChanged func(bool) error) fyne.CanvasObject {
+	var check *checkBox
+	check = newCheckBox(checked, func(value bool) {
 		if err := onChanged(value); err != nil {
-			reverting = true
 			check.SetChecked(!value)
-			reverting = false
 			u.showError(err)
 		}
-	}
+	})
 
-	checkBox := container.NewGridWrap(fyne.NewSize(settingCheckbox, settingCheckbox), check)
-	checkColumn := container.NewVBox(checkBox, layout.NewSpacer())
-	left := container.NewHBox(checkColumn, gapW(8))
+	header := container.New(layout.NewCustomPaddedHBoxLayout(0),
+		vCentered(check),
+		gapW(8),
+		vCentered(settingTitle(title)),
+	)
 
-	titleRow := container.NewHBox(container.NewCenter(settingTitle(title)))
-	if help != "" {
-		titleRow.Add(gapW(2))
-		titleRow.Add(container.NewCenter(smallButton("?", buttonQuiet, func() {
-			u.showInfo(title, help)
-		})))
-	}
-
-	text := container.NewVBox(titleRow)
+	text := container.NewVBox(header)
 	if description != "" {
 		text.Add(gap(settingDescriptionGap))
-		desc := canvas.NewText(description, colourMuted)
-		desc.TextSize = sizeMeta
-		text.Add(desc)
+		text.Add(container.NewBorder(nil, nil, gapW(settingCheckbox+8), nil, metaParagraph(description)))
 	}
-	return card(container.NewBorder(nil, nil, left, nil, text))
+	return card(text)
 }

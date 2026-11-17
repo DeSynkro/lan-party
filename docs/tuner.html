@@ -165,7 +165,6 @@
     transform: rotate(42deg);
   }
   .setting-title { font-size: var(--setting-title-size); font-weight: 600; color: var(--text); line-height: 1.2; }
-  .setting-help { color: var(--muted); font-size: var(--meta-size); margin-left: 1px; }
   .setting-desc {
     margin-left: calc(var(--setting-checkbox) + 8px);
     margin-top: var(--setting-desc-gap);
@@ -474,23 +473,24 @@
             <div class="setting-top">
               <span class="checkbox checked"></span>
               <span class="setting-title">Close to tray</span>
-              <span class="setting-help">?</span>
             </div>
+            <div class="setting-desc">Closing the window keeps the app and any live session running in the tray. Untick this to make closing the window quit.</div>
           </div>
-          <div class="gap-small"></div>
+          <div class="gap-row"></div>
           <div class="card">
             <div class="setting-top">
               <span class="checkbox"></span>
               <span class="setting-title">Start on login</span>
             </div>
+            <div class="setting-desc">Launch LAN Party automatically when you sign in.</div>
           </div>
-          <div class="gap-small"></div>
+          <div class="gap-row"></div>
           <div class="card">
             <div class="setting-top">
               <span class="checkbox"></span>
               <span class="setting-title">Start minimised</span>
             </div>
-            <div class="setting-desc">Open in the tray instead of showing the window.</div>
+            <div class="setting-desc">Start hidden in the tray instead of opening the window.</div>
           </div>
           <div class="gap-section"></div>
           <div class="section-label">Network</div>
@@ -503,6 +503,11 @@
             <div class="help-text">Use a hostname or IP. Leave the port off unless your router forwards a different outside port, for example home.example.net:40000. The app port is the UDP port on this PC.</div>
             <div class="gap-row"></div>
             <div class="preview-line">Friends connect to: home.example.net:51820</div>
+            <div class="gap-row"></div>
+            <div class="inline">
+              <div class="button primary">Save network settings</div>
+              <div class="button quiet">Setup guide</div>
+            </div>
           </div>
           <div class="gap-section"></div>
           <div class="section-label">Security</div>
@@ -511,8 +516,8 @@
             <div class="setting-top">
               <span class="checkbox checked"></span>
               <span class="setting-title">Approve new devices</span>
-              <span class="setting-help">?</span>
             </div>
+            <div class="setting-desc">Ask before a new friend's device joins. Off accepts any valid invite without asking. A changed device key still asks.</div>
           </div>
           <div class="gap-section"></div>
           <div class="section-label">About</div>
@@ -521,7 +526,7 @@
             <div class="meta">LAN Party · dev</div>
             <div class="gap-small"></div>
             <div class="meta">Data: ~/.local/share/lan-party</div>
-            <div class="meta">Keys: the operating system keyring</div>
+            <div class="meta">Keys: owner-only files in keys/</div>
           </div>
         </div>
 

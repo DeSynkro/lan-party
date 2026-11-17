@@ -186,12 +186,20 @@ service card shows the error.
 
 Create a new invite. Codes work once and expire after 24 hours.
 
-### The app says the keyring is unavailable
+### Where are my keys stored?
 
-The app keeps private keys in the desktop keyring. On GNOME that is GNOME
-Keyring; on KDE it is usually KWallet with the Secret Service interface
-enabled. Make sure the keyring is unlocked and the session bus is available.
-The app does not fall back to a plaintext key file.
+The app keeps private keys in `~/.local/share/lan-party/keys/`. Each key is a
+`0600` file in a `0700` directory, so only your user account can read it. There
+is no keyring, session bus or unlock prompt.
+
+The keys are not passphrase-protected. Keep the folder private and use full-disk
+encryption if the disk could be stolen.
+
+### A group says its key is missing
+
+That group came from an older build that kept keys in the desktop keyring. This
+version does not import them and will not silently make a new key. Delete the
+group and create it again, then send a new invite.
 
 ### The app port is not 51820
 

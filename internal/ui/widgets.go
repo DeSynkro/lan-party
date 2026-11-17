@@ -80,6 +80,137 @@ func card(content fyne.CanvasObject) fyne.CanvasObject {
 	)
 }
 
+// vCenter centres one object vertically at its minimum size. The stock HBox
+// stretches children to the row height, which leaves a small tickbox sitting
+// above the text it belongs to.
+type vCenter struct{}
+
+func (vCenter) MinSize(objects []fyne.CanvasObject) fyne.Size {
+	return objects[0].MinSize()
+}
+
+func (vCenter) Layout(objects []fyne.CanvasObject, size fyne.Size) {
+	min := objects[0].MinSize()
+	objects[0].Resize(min)
+	objects[0].Move(fyne.NewPos(0, (size.Height-min.Height)/2))
+}
+
+func vCentered(object fyne.CanvasObject) fyne.CanvasObject {
+	return container.New(vCenter{}, object)
+}
+
+// checkBox is the small square used by settings rows. Drawing it here keeps
+// the box and tick on the same optical centre as the title, which the stock
+// Fyne check does not at small token sizes.
+type checkBox struct {
+	widget.BaseWidget
+
+	checked   bool
+	onChanged func(bool)
+	focused   bool
+}
+
+func newCheckBox(checked bool, onChanged func(bool)) *checkBox {
+	c := &checkBox{checked: checked, onChanged: onChanged}
+	c.ExtendBaseWidget(c)
+	return c
+}
+
+func (c *checkBox) SetChecked(checked bool) {
+	if c.checked == checked {
+		return
+	}
+	c.checked = checked
+	c.Refresh()
+}
+
+func (c *checkBox) Tapped(*fyne.PointEvent) {
+	c.checked = !c.checked
+	c.Refresh()
+	if c.onChanged != nil {
+		c.onChanged(c.checked)
+	}
+}
+
+func (c *checkBox) FocusGained() { c.focused = true; c.Refresh() }
+func (c *checkBox) FocusLost()   { c.focused = false; c.Refresh() }
+
+func (c *checkBox) TypedKey(event *fyne.KeyEvent) {
+	if event == nil {
+		return
+	}
+	switch event.Name {
+	case fyne.KeySpace, fyne.KeyReturn, fyne.KeyEnter:
+		c.Tapped(nil)
+	}
+}
+
+func (c *checkBox) Cursor() desktop.Cursor { return desktop.PointerCursor }
+
+func (c *checkBox) CreateRenderer() fyne.WidgetRenderer {
+	r := &checkBoxRenderer{
+		check: c,
+		bg:    surface(colourRaised, colourHairline, 4),
+		tickA: canvas.NewLine(colourPrimaryInk),
+		tickB: canvas.NewLine(colourPrimaryInk),
+	}
+	r.tickA.StrokeWidth = 2
+	r.tickB.StrokeWidth = 2
+	r.Refresh()
+	return r
+}
+
+type checkBoxRenderer struct {
+	check *checkBox
+	bg    *canvas.Rectangle
+	tickA *canvas.Line
+	tickB *canvas.Line
+}
+
+func (r *checkBoxRenderer) MinSize() fyne.Size {
+	return fyne.NewSize(settingCheckbox, settingCheckbox)
+}
+
+func (r *checkBoxRenderer) Layout(size fyne.Size) {
+	r.bg.Resize(size)
+	r.bg.Move(fyne.NewPos(0, 0))
+	r.tickA.Position1 = fyne.NewPos(size.Width*0.24, size.Height*0.54)
+	r.tickA.Position2 = fyne.NewPos(size.Width*0.43, size.Height*0.72)
+	r.tickB.Position1 = fyne.NewPos(size.Width*0.43, size.Height*0.72)
+	r.tickB.Position2 = fyne.NewPos(size.Width*0.79, size.Height*0.30)
+	r.tickA.Refresh()
+	r.tickB.Refresh()
+}
+
+func (r *checkBoxRenderer) Refresh() {
+	if r.check.checked {
+		r.bg.FillColor = colourPrimaryFill
+		r.bg.StrokeColor = colourPrimaryFill
+	} else {
+		r.bg.FillColor = colourRaised
+		r.bg.StrokeColor = colourHairline
+	}
+	if r.check.focused {
+		r.bg.StrokeColor = colourAccent
+		r.bg.StrokeWidth = 2
+	} else {
+		r.bg.StrokeWidth = 1
+	}
+	r.tickA.Hidden = !r.check.checked
+	r.tickB.Hidden = !r.check.checked
+	r.tickA.StrokeColor = colourPrimaryInk
+	r.tickB.StrokeColor = colourPrimaryInk
+	r.bg.Refresh()
+	r.tickA.Refresh()
+	r.tickB.Refresh()
+}
+
+func (r *checkBoxRenderer) Objects() []fyne.CanvasObject {
+	return []fyne.CanvasObject{r.bg, r.tickA, r.tickB}
+}
+
+func (r *checkBoxRenderer) Destroy() {}
+
 // tapArea is an invisible tappable layer, so a card can open a detail dialog
 // without a visible button on it.
 type tapArea struct {

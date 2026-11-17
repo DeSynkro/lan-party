@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"io/fs"
 	"net"
 	"strconv"
 	"sync"
@@ -14,34 +15,33 @@ import (
 	"github.com/desynkro/lan-party/internal/invite"
 	"github.com/desynkro/lan-party/internal/secure"
 	"github.com/desynkro/lan-party/internal/tunnel"
-	"github.com/zalando/go-keyring"
 )
 
-type testKeyring map[string]string
+type testStore map[string]string
 
-func (m testKeyring) slot(service, user string) string { return service + "\x00" + user }
+func (m testStore) slot(service, user string) string { return service + "\x00" + user }
 
-func (m testKeyring) Get(service, user string) (string, error) {
+func (m testStore) Get(service, user string) (string, error) {
 	value, ok := m[m.slot(service, user)]
 	if !ok {
-		return "", keyring.ErrNotFound
+		return "", fs.ErrNotExist
 	}
 	return value, nil
 }
 
-func (m testKeyring) Set(service, user, secret string) error {
+func (m testStore) Set(service, user, secret string) error {
 	m[m.slot(service, user)] = secret
 	return nil
 }
 
-func (m testKeyring) Delete(service, user string) error {
+func (m testStore) Delete(service, user string) error {
 	delete(m, m.slot(service, user))
 	return nil
 }
 
 func testIdentity(t *testing.T, name string) secure.Identity {
 	t.Helper()
-	identity, err := secure.NewStore(testKeyring{}).LoadOrCreate(name)
+	identity, err := secure.NewStore(testStore{}).LoadOrCreate(name)
 	if err != nil {
 		t.Fatal(err)
 	}

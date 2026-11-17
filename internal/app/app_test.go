@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,27 +15,26 @@ import (
 	"github.com/desynkro/lan-party/internal/invite"
 	"github.com/desynkro/lan-party/internal/secure"
 	"github.com/desynkro/lan-party/internal/tunnel"
-	"github.com/zalando/go-keyring"
 )
 
-type memKeyring map[string]string
+type memStore map[string]string
 
-func (m memKeyring) slot(service, user string) string { return service + "\x00" + user }
+func (m memStore) slot(service, user string) string { return service + "\x00" + user }
 
-func (m memKeyring) Get(service, user string) (string, error) {
+func (m memStore) Get(service, user string) (string, error) {
 	value, ok := m[m.slot(service, user)]
 	if !ok {
-		return "", keyring.ErrNotFound
+		return "", fs.ErrNotExist
 	}
 	return value, nil
 }
 
-func (m memKeyring) Set(service, user, secret string) error {
+func (m memStore) Set(service, user, secret string) error {
 	m[m.slot(service, user)] = secret
 	return nil
 }
 
-func (m memKeyring) Delete(service, user string) error {
+func (m memStore) Delete(service, user string) error {
 	delete(m, m.slot(service, user))
 	return nil
 }
@@ -45,7 +45,7 @@ func newTestApp(t *testing.T) *App {
 		ConfigDir: filepath.Join(t.TempDir(), "config"),
 		DataDir:   filepath.Join(t.TempDir(), "data"),
 	}
-	a, err := NewWithKeyring(paths, memKeyring{})
+	a, err := NewWithStore(paths, memStore{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func newTestApp(t *testing.T) *App {
 
 func newTestIdentity(t *testing.T, name string) secure.Identity {
 	t.Helper()
-	identity, err := secure.NewStore(memKeyring{}).LoadOrCreate(name)
+	identity, err := secure.NewStore(memStore{}).LoadOrCreate(name)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,6 +105,46 @@ func authRequest(inv invite.Invite, identity secure.Identity, token string) tunn
 		RemoteAddr:  "203.0.113.5:5555",
 		PublicKey:   identity.Public,
 		Fingerprint: secure.Fingerprint(identity.Public),
+	}
+}
+
+func TestNewStoresKeysAsOwnerOnlyFiles(t *testing.T) {
+	root := t.TempDir()
+	paths := config.Paths{
+		ConfigDir: filepath.Join(root, "config"),
+		DataDir:   filepath.Join(root, "data"),
+	}
+	a, err := New(paths)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = a.Close() })
+
+	if _, err := a.CreateGroup("Friday Night", "Desynkro"); err != nil {
+		t.Fatal(err)
+	}
+
+	keyDir := filepath.Join(paths.DataDir, "keys")
+	entries, err := os.ReadDir(keyDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("wrote %d key files, want 1", len(entries))
+	}
+	info, err := entries[0].Info()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Fatalf("key file mode is %o, want 600", perm)
+	}
+	dirInfo, err := os.Stat(keyDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := dirInfo.Mode().Perm(); perm != 0o700 {
+		t.Fatalf("key directory mode is %o, want 700", perm)
 	}
 }
 

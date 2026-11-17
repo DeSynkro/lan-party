@@ -12,7 +12,7 @@ internal/forward/       TCP pipes and UDP flows
 internal/group/         group, service, member, invite, store
 internal/invite/        one-time tokens and pasteable codes
 internal/preset/        shipped game ports
-internal/secure/        keyring, identities, certificates, pins
+internal/secure/        key files, identities, certificates, pins
 internal/session/       host and friend sessions
 internal/tunnel/        QUIC, TLS pinning, control stream
 internal/ui/            Fyne theme, widgets and screens
@@ -45,9 +45,8 @@ The first build installs the Go version from `.go-version` into `.tools/go`.
 
 No global `go install`, npm or package is used.
 
-Dependencies are Fyne for the window, quic-go for the encrypted transport,
-and go-keyring for the OS secret store. There is no webview, no bundled browser
-and no npm tree.
+Dependencies are Fyne for the window and quic-go for the encrypted transport.
+There is no webview, no bundled browser, no npm tree and no keyring daemon.
 
 ## Tests
 
@@ -60,7 +59,7 @@ make vuln
 The tests cover:
 
 - settings defaults, validation and file permissions
-- keyring identity creation, certificates, pins and fingerprints
+- key file identity creation, permissions, certificates, pins and fingerprints
 - groups, services, target validation, port conflicts, invites and the store
 - invite encoding, expiry, normalization and tampering
 - QUIC handshake, pin mismatch, denial, control messages, streams and datagrams
@@ -71,8 +70,8 @@ The tests cover:
   TCP echo, revoke
 - UI screen text and a render smoke test
 
-The end-to-end app test uses in-memory keyrings. The real keyring is only used
-at runtime, so tests never write to the user's keyring.
+The end-to-end app test uses in-memory key stores. Tests never write to the
+real data or key directories.
 
 ### UI previews
 
@@ -110,7 +109,8 @@ Production:
 - `~/.config/lan-party/settings.json`
 - `~/.local/share/lan-party/groups.json`
 - `~/.config/autostart/lan-party.desktop` when Start on login is on
-- host and device private keys in the OS keyring
+- host and device private keys as `0600` files in
+  `~/.local/share/lan-party/keys/`
 
 Development sets `XDG_CONFIG_HOME`, `XDG_DATA_HOME` and `XDG_CACHE_HOME` to
 `.tmp`, so running `make run` does not touch your real config.
@@ -123,6 +123,11 @@ no migration: the identities and invite format changed. If the old file is
 still there, the new app shows a clear error and does not overwrite it. Move
 the old folder aside (`mv ~/.local/share/lan-party ~/.local/share/lan-party-old`)
 and start fresh. The old code and design are kept in the `legacy` branch.
+
+The earlier build of this rewrite kept keys in the OS keyring. This build stores
+them in `keys/` and does not import keyring entries. Delete a group created by
+that build and create it again; the app will not silently replace a missing
+identity.
 
 ## Packaging
 
@@ -146,7 +151,7 @@ Version strings come from `git describe` and are passed to
 
 - Small commits with past-tense messages: “Added…”, “Fixed…”, “Removed…”.
 - Keep packages focused; avoid a package that only wraps another.
-- No silent fallbacks for secrets. A keyring error is an error.
+- No silent fallbacks for secrets. A key file error is an error.
 - No invented state in the interface. A live light means a real connection.
 - Prefer standard library crypto and the QUIC/TLS stack. Do not hand-roll a
   cipher or a certificate chain.
@@ -155,8 +160,8 @@ Version strings come from `git describe` and are passed to
 ## Windows
 
 The code is written so the UI and group logic are not tied to Linux. The
-remaining work is a platform keyring implementation, a Windows autostart entry,
-a MinGW build and a tray check. It is not part of this version.
+remaining work is a Windows autostart entry, a MinGW build and a tray check.
+It is not part of this version.
 
 ## Design and plan
 

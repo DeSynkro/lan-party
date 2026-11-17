@@ -34,8 +34,8 @@ read [docs/guide.md](docs/guide.md).
 ## What it needs
 
 - Linux with X11 or Wayland and working OpenGL.
-- A Secret Service keyring (GNOME Keyring, KWallet, or another provider) for
-  the long-lived keys.
+- No keyring daemon: long-lived keys are owner-only files in the app's data
+  folder.
 - One UDP port forwarded on the host's router. Friends do not need a forward.
 - A public address that reaches the host: a hostname, a static IP, or a
   dynamic DNS name.
@@ -59,14 +59,18 @@ At runtime the app writes:
 - `~/.config/lan-party/settings.json`
 - `~/.local/share/lan-party/groups.json`
 - `~/.config/autostart/lan-party.desktop` when Start on login is on
-- long-lived private keys in the OS keyring
+- long-lived private keys as `0600` files in `~/.local/share/lan-party/keys/`
 
-Both JSON files are owner-only (`0600`). Invites contain no private keys.
+The JSON files and key files are owner-only (`0600`); the data and key
+directories are `0700`. Invites contain no private keys.
 
 The new group file is not compatible with the old WireGuard version. If an old
 `groups.json` is still in the data folder, the app says so and refuses to
 overwrite it. Move the old `~/.local/share/lan-party` folder aside and start
 fresh.
+
+Keys from the earlier keyring build are not imported either. Delete those groups
+and create them again; the app will not silently replace a missing identity.
 
 ## Docs
 

@@ -11,8 +11,8 @@ This document is honest about what that does and does not prove.
 ### Host identity
 
 One Ed25519 key per group, created when the group is created. The private half
-is in the OS keyring under `lanparty` / `host/<group id>`. The public half is
-used to build a self-signed TLS certificate.
+is an owner-only file under `~/.local/share/lan-party/keys/` (mode `0600`). The
+public half is used to build a self-signed TLS certificate.
 
 Friends store a SHA-256 pin of the host's public key. The pin travels in the
 invite and is saved in the friend's group entry. Certificate renewal does not
@@ -25,8 +25,9 @@ new key for a saved group.
 ### Device identity
 
 One Ed25519 key per group on each friend's machine, created when the friend
-redeems an invite. The private half is in the OS keyring under
-`lanparty` / `device/<group id>`. The host stores only the public half.
+redeems an invite. The private half is an owner-only file under
+`~/.local/share/lan-party/keys/` (mode `0600`). The host stores only the public
+half.
 
 The TLS handshake proves the client owns that private key. The host compares
 the public key with the member list. A new key for a known member is a new
@@ -152,12 +153,15 @@ Target validation:
 - Group data is JSON at `~/.local/share/lan-party/groups.json`, mode `0600`,
   directory `0700`.
 - Settings are JSON at `~/.config/lan-party/settings.json`, mode `0600`.
-- Private keys are in the OS keyring. They are never written to the JSON, the
+- Private keys are separate files in `~/.local/share/lan-party/keys/`, mode
+  `0600`, in a `0700` directory. They are never written to the JSON, the
   invite, a log or the clipboard.
 - Invite tokens are hashed with SHA-256 before storage.
-- The keyring is the only secret store. If it is unavailable or locked, the
-  operation that needs a key fails with an error. The app does not fall back to
-  a plaintext key file.
+- There is no keyring daemon, session bus or unlock prompt. A key file that is
+  readable by another user is refused instead of used.
+- The key files are not passphrase-encrypted. Anyone who can read your user
+  account can read them, so full-disk encryption is what protects a stolen
+  disk. This is the same trade-off as an SSH private key.
 
 The app writes no secrets to logs. It has no telemetry and no auto-update.
 
@@ -181,16 +185,16 @@ The app writes no secrets to logs. It has no telemetry and no auto-update.
 | Curious friend | Only published services exist. No route, no peer-to-peer path, no access to the host's router or other devices. |
 | Malicious friend | Cannot reach anything else. Stream, flow, member and rate limits cap resource use. |
 | Stolen device key | Can impersonate that member until the host revokes it. A changed source address may be visible, but the key is the credential. Revoke and issue a new invite. |
-| Stolen host key | Can impersonate the host to friends who already have the pin. The keyring is the protection. |
+| Stolen host key | Can impersonate the host to friends who already have the pin. Owner-only file permissions and full-disk encryption are the protection. |
 | Malicious host | The host is the gateway and can see the traffic it publishes. That is inherent in the design. |
-| Same-user malware | Can read the keyring while it is unlocked and can read the app's files. A desktop app cannot defend against a compromised desktop. |
+| Same-user malware | Can read the key files, settings and groups as your user. A desktop app cannot defend against a compromised desktop. |
 | Supply chain | Few dependencies, pinned versions, `govulncheck` in CI, no runtime downloads. |
 | Game server vulnerability | Not fixed by this app. An offline-mode Minecraft server is still an offline-mode Minecraft server. |
 
 ## What this does not protect
 
 - The game server's own bugs, weak passwords or missing whitelists.
-- A machine that is already compromised while the keyring is unlocked.
+- A machine that is already compromised as your user.
 - A host behind carrier-grade NAT. This version has no relay.
 - Someone who reads the invite before the intended friend redeems it. The
   approval card is the last chance to deny a stranger.
