@@ -196,6 +196,7 @@ func (u *probeUI) settingCard(title, description string, active bool, changed fu
 
 	descriptionLabel := textLabel(description, "desc")
 	descriptionLabel.SetHExpand(true)
+	descriptionLabel.SetSizeRequest(280, -1)
 
 	descriptionRow := gtk.NewBox(gtk.OrientationHorizontal, 0)
 	descriptionRow.Append(gapWidth(26))

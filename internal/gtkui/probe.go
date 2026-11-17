@@ -274,11 +274,18 @@ func (u *probeUI) buildHomePage() *gtk.ScrolledWindow {
 	page.SetMarginStart(20)
 	page.SetMarginEnd(20)
 
-	title := textLabel("A LAN cable across the internet.", "title")
-	title.SetMarginBottom(10)
-	page.Append(title)
+	lockup := gtk.NewPictureForFilename(filepath.Join(u.root, "brand", "png", "lockup-horizontal-dark-640.png"))
+	lockup.SetSizeRequest(340, 81)
+	lockup.SetCanShrink(true)
+	lockup.SetContentFit(gtk.ContentFitContain)
+	lockup.SetHAlign(gtk.AlignCenter)
+	lockup.SetMarginBottom(10)
+	page.Append(lockup)
 
 	body := textLabel("Host a game on your LAN. Friends open it at 127.0.0.1; nothing else is reachable.", "body")
+	body.SetHAlign(gtk.AlignFill)
+	body.SetXAlign(0.5)
+	body.SetJustify(gtk.JustifyCenter)
 	body.SetMarginBottom(16)
 	page.Append(body)
 
