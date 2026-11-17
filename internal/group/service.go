@@ -220,3 +220,85 @@ func splitTarget(target string) (host, port string, hasPort bool, err error) {
 	}
 	return parsed, "", false, nil
 }
+
+// ParseTargetIP checks a bare game server IP. A port in this field is rejected
+// so the form can keep the address and port separate.
+func ParseTargetIP(s string) (string, error) {
+	parsed, _, err := ParseTarget(s)
+	if err != nil {
+		return "", err
+	}
+	if _, _, splitErr := net.SplitHostPort(parsed); splitErr == nil {
+		return "", errors.New("use a bare IP address, without a port")
+	}
+	return parsed, nil
+}
+
+// ComposeServiceTarget builds a service target from the split form fields.
+// A blank friend port means friends use the same port(s) as the game server.
+func ComposeServiceTarget(ip string, gamePorts, friendPorts []int) (string, []int, error) {
+	host, err := ParseTargetIP(ip)
+	if err != nil {
+		return "", nil, err
+	}
+	if len(gamePorts) == 0 {
+		return "", nil, errors.New("give the game server port(s)")
+	}
+
+	if len(friendPorts) > 0 {
+		if len(friendPorts) != 1 {
+			return "", nil, errors.New("the friend port must be a single port")
+		}
+		if len(gamePorts) != 1 {
+			return "", nil, errors.New("a game port range needs the same friend range; leave the friend port blank")
+		}
+		target := net.JoinHostPort(host, strconv.Itoa(gamePorts[0]))
+		ports := []int{friendPorts[0]}
+		if err := ValidateService(Service{Name: "service", Proto: "tcp", Target: target, Ports: ports}); err != nil {
+			return "", nil, err
+		}
+		return target, ports, nil
+	}
+
+	ports := append([]int(nil), gamePorts...)
+	if err := ValidateService(Service{Name: "service", Proto: "tcp", Target: host, Ports: ports}); err != nil {
+		return "", nil, err
+	}
+	return host, ports, nil
+}
+
+// GamePorts returns the port(s) on the game server. A remapped target has one
+// port; otherwise the published ports are the game ports.
+func (s Service) GamePorts() ([]int, error) {
+	_, targetPort, hasPort, err := splitTarget(s.Target)
+	if err != nil {
+		return nil, err
+	}
+	if hasPort {
+		port, convErr := strconv.Atoi(targetPort)
+		if convErr != nil {
+			return nil, convErr
+		}
+		return []int{port}, nil
+	}
+	return append([]int(nil), s.Ports...), nil
+}
+
+// GameAddress returns the game server address for display, with its port(s).
+func (s Service) GameAddress() (string, error) {
+	host, _, hasPort, err := splitTarget(s.Target)
+	if err != nil {
+		return "", err
+	}
+	ports, err := s.GamePorts()
+	if err != nil {
+		return "", err
+	}
+	if len(ports) == 0 {
+		return "", errors.New("the service has no ports")
+	}
+	if hasPort {
+		return net.JoinHostPort(host, strconv.Itoa(ports[0])), nil
+	}
+	return net.JoinHostPort(host, FormatPorts(ports)), nil
+}

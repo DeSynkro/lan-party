@@ -23,19 +23,23 @@ Open the app, create a group, then choose **Add service**.
 - **Name:** what the game is called, for example `Minecraft: Java Edition`.
 - **Protocol:** TCP, UDP or both. Check the game's own documentation; most
   survival games use UDP, Minecraft Java and Terraria use TCP.
-- **On my LAN:** the address the server listens on, for example
-  `192.168.1.50:25565`. A name is not accepted; use the IP. If the server runs
-  on the same PC, `127.0.0.1:25565` works.
-- **Friends open:** the port the friend will use, usually the same number.
-  You can publish a different port for a single-port service, for example a
-  server on `25566` that friends reach on `25565`.
+- **Game server IP:** the IP of the machine running the server, for example
+  `192.168.1.50`. A name is not accepted; use the IP. If the server runs on the
+  same PC as LAN Party, `127.0.0.1` works.
+- **Game server port(s):** the port or ports the game listens on, for example
+  `25565`, `2456-2458` or `2456,2600,2610`.
+- **Friend port (optional):** the local port friends use. Leave it blank to use
+  the same port(s) as the game server. Fill it in only when friends should use
+  a different single port, for example a game on `25566` that friends reach on
+  `25565`.
 - **Hint:** what to paste the address into, for example
   `Direct Connect in Minecraft`.
 
-A bare IP with several ports publishes those same port numbers. That is how a
-game with a range such as Valheim's `2456-2458` is added. An `IP:port` target
-with several published ports is rejected because the mapping would be
-ambiguous.
+A blank friend port maps every game port to the same number on the friend's PC.
+That covers a range such as Valheim's `2456-2458` and a non-adjacent list such
+as `2456,2600`. A different friend port only works with a single game port;
+multiple game ports with one friend port are rejected because the mapping would
+be ambiguous. A service can publish up to eight ports.
 
 ### 2. Forward one UDP port
 

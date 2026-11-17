@@ -237,15 +237,17 @@ func (u *probeUI) showInviteCodeDialog(g group.Group, name, code string) {
 
 func (u *probeUI) showAddServiceDialog(g group.Group) {
 	win, content := u.dialog("Publish a service")
-	win.SetDefaultSize(360, 470)
+	win.SetDefaultSize(360, 540)
 	content.Append(textLabel("Game preset", "form-label"))
 	presetArea := gtk.NewBox(gtk.OrientationVertical, 0)
 	content.Append(presetArea)
 	content.Append(gapBox(8))
+
 	content.Append(textLabel("Service name", "form-label"))
 	nameEntry := entry("Minecraft: Java Edition")
 	content.Append(nameEntry)
 	content.Append(gapBox(8))
+
 	content.Append(textLabel("Protocol", "form-label"))
 	protocolRow := gtk.NewBox(gtk.OrientationHorizontal, 6)
 	protocolRow.SetHomogeneous(true)
@@ -274,18 +276,53 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 	setProtocol(0)
 	content.Append(protocolRow)
 	content.Append(gapBox(8))
-	content.Append(textLabel("LAN target", "form-label"))
-	targetEntry := entry("192.168.0.10:25565")
-	content.Append(targetEntry)
+
+	content.Append(textLabel("Game server IP", "form-label"))
+	ipEntry := entry("192.168.0.10")
+	ipEntry.SetTooltipText("The IP of the PC running the game. Use 127.0.0.1 if it runs on this PC.")
+	content.Append(ipEntry)
 	content.Append(gapBox(8))
-	content.Append(textLabel("Friend ports", "form-label"))
-	portsEntry := entry("25565")
-	content.Append(portsEntry)
+
+	portRow := gtk.NewBox(gtk.OrientationHorizontal, 8)
+	gameCol := gtk.NewBox(gtk.OrientationVertical, 0)
+	gameCol.SetHExpand(true)
+	gameCol.Append(lineLabel("Game server port(s)", "form-label"))
+	gamePortsEntry := entry("25565 or 2456-2458")
+	gamePortsEntry.SetTooltipText("Port(s) the game server listens on, e.g. 25565, 2456-2458 or 2456,2600.")
+	gameCol.Append(gamePortsEntry)
+	portRow.Append(gameCol)
+
+	friendCol := gtk.NewBox(gtk.OrientationVertical, 0)
+	friendCol.SetHExpand(true)
+	friendCol.Append(lineLabel("Friend port (optional)", "form-label"))
+	friendPortsEntry := entry("Same as game port(s)")
+	friendPortsEntry.SetTooltipText("The local port your friends use. Leave blank to use the game server port(s).")
+	friendCol.Append(friendPortsEntry)
+	portRow.Append(friendCol)
+	content.Append(portRow)
 	content.Append(gapBox(8))
+
 	content.Append(textLabel("Hint", "form-label"))
 	hintEntry := entry("Direct Connect in Minecraft")
 	content.Append(hintEntry)
 	content.Append(gapBox(8))
+
+	preview := textLabel("", "desc")
+	content.Append(preview)
+	content.Append(gapBox(4))
+
+	errLabel := textLabel("", "error")
+	errLabel.SetVisible(false)
+	content.Append(errLabel)
+	content.Append(gapBox(10))
+
+	updatePreview := func() {
+		preview.SetText(serviceRoutePreview(ipEntry.Text(), gamePortsEntry.Text(), friendPortsEntry.Text()))
+		errLabel.SetVisible(false)
+	}
+	ipEntry.ConnectChanged(func() { updatePreview() })
+	gamePortsEntry.ConnectChanged(func() { updatePreview() })
+	friendPortsEntry.ConnectChanged(func() { updatePreview() })
 
 	presetList := gtk.NewBox(gtk.OrientationVertical, 0)
 	var presetMenu *gtk.MenuButton
@@ -297,12 +334,14 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 		button.SetHAlign(gtk.AlignStart)
 		button.ConnectClicked(func() {
 			nameEntry.SetText(item.Name)
-			portsEntry.SetText(group.FormatPorts(item.Ports))
+			gamePortsEntry.SetText(group.FormatPorts(item.Ports))
+			friendPortsEntry.SetText("")
 			hintEntry.SetText(item.Hint)
 			setProtocol(protoIndex(item.Proto))
 			presetMenu.SetLabel(item.Name)
 			presetPopover.Popdown()
 			presetMenu.SetActive(false)
+			updatePreview()
 		})
 		presetList.Append(button)
 	}
@@ -325,10 +364,8 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 	presetMenu.AddCSSClass("preset-menu")
 	presetMenu.SetPopover(presetPopover)
 	presetArea.Append(presetMenu)
-	errLabel := textLabel("", "error")
-	errLabel.SetVisible(false)
-	content.Append(errLabel)
-	content.Append(gapBox(10))
+
+	updatePreview()
 
 	buttons := gtk.NewBox(gtk.OrientationHorizontal, 8)
 	cancel := gtk.NewButtonWithLabel("Cancel")
@@ -337,7 +374,22 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 	add := gtk.NewButtonWithLabel("Publish")
 	add.AddCSSClass("primary")
 	add.ConnectClicked(func() {
-		ports, err := group.ParsePorts(portsEntry.Text())
+		gamePorts, err := group.ParsePorts(gamePortsEntry.Text())
+		if err != nil {
+			errLabel.SetText("Game server port(s): " + err.Error())
+			errLabel.SetVisible(true)
+			return
+		}
+		var friendPorts []int
+		if strings.TrimSpace(friendPortsEntry.Text()) != "" {
+			friendPorts, err = group.ParsePorts(friendPortsEntry.Text())
+			if err != nil {
+				errLabel.SetText("Friend port: " + err.Error())
+				errLabel.SetVisible(true)
+				return
+			}
+		}
+		target, ports, err := group.ComposeServiceTarget(ipEntry.Text(), gamePorts, friendPorts)
 		if err != nil {
 			errLabel.SetText(err.Error())
 			errLabel.SetVisible(true)
@@ -347,7 +399,7 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 			ID:     group.NewID(),
 			Name:   strings.TrimSpace(nameEntry.Text()),
 			Proto:  protoValue(selectedProtocol),
-			Target: strings.TrimSpace(targetEntry.Text()),
+			Target: target,
 			Ports:  ports,
 			Hint:   strings.TrimSpace(hintEntry.Text()),
 		}
@@ -362,6 +414,7 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 	buttons.Append(cancel)
 	buttons.Append(add)
 	buttons.SetHAlign(gtk.AlignEnd)
+	win.SetDefaultWidget(add)
 	content.Append(buttons)
 	nameEntry.GrabFocus()
 	win.Present()
@@ -456,8 +509,15 @@ func (u *probeUI) showServiceDialog(g group.Group, s group.Service) {
 	content.Append(textLabel(s.Name, "card-title"))
 	content.Append(gapBox(10))
 	content.Append(cardText("Protocol: "+protoName(s.Proto), "desc"))
-	content.Append(cardText("LAN target: "+s.Target, "desc"))
-	content.Append(cardText("Friend ports: "+group.FormatPorts(s.Ports), "desc"))
+	game := s.Target
+	if address, err := s.GameAddress(); err == nil {
+		game = address
+	}
+	content.Append(cardText("Game server: "+game, "desc"))
+	if gamePorts, err := s.GamePorts(); err == nil {
+		content.Append(cardText("Game port(s): "+group.FormatPorts(gamePorts), "desc"))
+	}
+	content.Append(cardText("Friend port(s): "+group.FormatPorts(s.Ports), "desc"))
 	if s.Hint != "" {
 		content.Append(cardText("Hint: "+s.Hint, "desc"))
 	}

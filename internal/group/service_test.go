@@ -144,6 +144,172 @@ func TestTargetFor(t *testing.T) {
 	}
 }
 
+func TestParseTargetIP(t *testing.T) {
+	valid := []struct {
+		in   string
+		want string
+	}{
+		{"192.168.1.50", "192.168.1.50"},
+		{"127.0.0.1", "127.0.0.1"},
+		{"::1", "::1"},
+	}
+	for _, tc := range valid {
+		got, err := ParseTargetIP(tc.in)
+		if err != nil {
+			t.Errorf("ParseTargetIP(%q): %v", tc.in, err)
+			continue
+		}
+		if got != tc.want {
+			t.Errorf("ParseTargetIP(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+
+	invalid := []string{
+		"",
+		"example.com",
+		"0.0.0.0",
+		"224.0.0.1",
+		"255.255.255.255",
+		"192.168.1.50:25565",
+		"[::1]:25565",
+	}
+	for _, in := range invalid {
+		if _, err := ParseTargetIP(in); err == nil {
+			t.Errorf("ParseTargetIP(%q) accepted an invalid value", in)
+		}
+	}
+}
+
+func TestComposeServiceTarget(t *testing.T) {
+	cases := []struct {
+		name        string
+		ip          string
+		gamePorts   []int
+		friendPorts []int
+		wantTarget  string
+		wantPorts   []int
+	}{
+		{
+			name:       "same single port",
+			ip:         "192.168.1.50",
+			gamePorts:  []int{25565},
+			wantTarget: "192.168.1.50",
+			wantPorts:  []int{25565},
+		},
+		{
+			name:       "same range",
+			ip:         "192.168.1.50",
+			gamePorts:  []int{2456, 2457, 2458},
+			wantTarget: "192.168.1.50",
+			wantPorts:  []int{2456, 2457, 2458},
+		},
+		{
+			name:       "same list",
+			ip:         "192.168.1.50",
+			gamePorts:  []int{2456, 2600},
+			wantTarget: "192.168.1.50",
+			wantPorts:  []int{2456, 2600},
+		},
+		{
+			name:        "remapped single port",
+			ip:          "192.168.1.50",
+			gamePorts:   []int{25566},
+			friendPorts: []int{25565},
+			wantTarget:  "192.168.1.50:25566",
+			wantPorts:   []int{25565},
+		},
+		{
+			name:        "remapped loopback",
+			ip:          "127.0.0.1",
+			gamePorts:   []int{25566},
+			friendPorts: []int{25565},
+			wantTarget:  "127.0.0.1:25566",
+			wantPorts:   []int{25565},
+		},
+	}
+	for _, tc := range cases {
+		target, ports, err := ComposeServiceTarget(tc.ip, tc.gamePorts, tc.friendPorts)
+		if err != nil {
+			t.Errorf("%s: %v", tc.name, err)
+			continue
+		}
+		if target != tc.wantTarget || !reflect.DeepEqual(ports, tc.wantPorts) {
+			t.Errorf("%s = %q, %v; want %q, %v", tc.name, target, ports, tc.wantTarget, tc.wantPorts)
+		}
+	}
+
+	invalid := []struct {
+		name        string
+		ip          string
+		gamePorts   []int
+		friendPorts []int
+	}{
+		{"no game ports", "192.168.1.50", nil, nil},
+		{"bad ip", "example.com", []int{25565}, nil},
+		{"ip with port", "192.168.1.50:25565", []int{25565}, nil},
+		{"one friend port for a range", "192.168.1.50", []int{2456, 2457}, []int{25565}},
+		{"many friend ports", "192.168.1.50", []int{25566}, []int{25565, 25566}},
+		{"duplicate game ports", "192.168.1.50", []int{25565, 25565}, nil},
+		{"invalid game port", "192.168.1.50", []int{0}, nil},
+	}
+	for _, tc := range invalid {
+		if _, _, err := ComposeServiceTarget(tc.ip, tc.gamePorts, tc.friendPorts); err == nil {
+			t.Errorf("%s was accepted", tc.name)
+		}
+	}
+}
+
+func TestServiceGamePorts(t *testing.T) {
+	same := Service{Name: "Valheim", Proto: "udp", Target: "192.168.1.50", Ports: []int{2456, 2457}}
+	got, err := same.GamePorts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, []int{2456, 2457}) {
+		t.Fatalf("same game ports = %v", got)
+	}
+
+	remap := Service{Name: "Remap", Proto: "tcp", Target: "192.168.1.50:25566", Ports: []int{25565}}
+	got, err = remap.GamePorts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, []int{25566}) {
+		t.Fatalf("remap game ports = %v", got)
+	}
+
+	bad := Service{Name: "Bad", Proto: "tcp", Target: "example.com", Ports: []int{25565}}
+	if _, err := bad.GamePorts(); err == nil {
+		t.Fatal("an invalid target was accepted")
+	}
+}
+
+func TestServiceGameAddress(t *testing.T) {
+	cases := []struct {
+		service Service
+		want    string
+	}{
+		{Service{Target: "192.168.1.50", Ports: []int{2456, 2457}}, "192.168.1.50:2456-2457"},
+		{Service{Target: "192.168.1.50:25566", Ports: []int{25565}}, "192.168.1.50:25566"},
+		{Service{Target: "::1", Ports: []int{25565}}, "[::1]:25565"},
+	}
+	for _, tc := range cases {
+		got, err := tc.service.GameAddress()
+		if err != nil {
+			t.Errorf("%q: %v", tc.service.Target, err)
+			continue
+		}
+		if got != tc.want {
+			t.Errorf("GameAddress(%q, %v) = %q, want %q", tc.service.Target, tc.service.Ports, got, tc.want)
+		}
+	}
+
+	bad := Service{Target: "example.com", Ports: []int{25565}}
+	if _, err := bad.GameAddress(); err == nil {
+		t.Fatal("an invalid target was accepted")
+	}
+}
+
 func TestServiceWarnings(t *testing.T) {
 	warnings := ServiceWarnings(Service{
 		Name:   "SSH",

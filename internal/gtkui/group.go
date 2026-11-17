@@ -203,7 +203,11 @@ func (u *probeUI) hostServiceCard(s group.Service) *gtk.Box {
 	card.Append(top)
 	card.Append(gapBox(8))
 	card.Append(cardText("Friends open 127.0.0.1:"+group.FormatPorts(s.Ports), "desc"))
-	card.Append(cardText("On your LAN "+s.Target, "desc"))
+	game := s.Target
+	if address, err := s.GameAddress(); err == nil {
+		game = address
+	}
+	card.Append(cardText("Game server "+game, "desc"))
 	if s.Hint != "" {
 		card.Append(gapBox(6))
 		card.Append(cardText(s.Hint, "desc"))

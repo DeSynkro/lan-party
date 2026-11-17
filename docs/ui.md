@@ -95,8 +95,8 @@ pairs.
   button, `Hosting as …`, public address (or an amber “no public address”
   warning), app port, and a truthful connected count.
 - Published: count, `Add service`, one card per service with the name, protocol,
-  `Friends open 127.0.0.1:<ports>`, `On your LAN <target>` and the hint. Tapping
-  a card opens details and Remove.
+  `Friends open 127.0.0.1:<ports>`, `Game server <address>` and the hint.
+  Tapping a card opens details and Remove.
 - People: count, `Invite`, a `You (host)` row and one row per member. A live dot
   and RTT come from the actual session; idle members are grey. Tapping a member
   opens the host-only details.
@@ -154,9 +154,10 @@ cannot be reached without a relay, which this version does not have.
 - Join: multi-line invite code and device name, then a waiting card while the
   host decides.
 - Invite: friend's name, then the full code with Copy.
-- Publish a service: preset picker, name, protocol, LAN target, friend ports,
-  hint. Inline validation; a target with a port and multiple published ports is
-  rejected.
+- Publish a service: preset picker, name, protocol, game server IP, game server
+  port(s), optional friend port, hint, and a live route preview. Inline
+  validation; a friend port is only valid with a single game port, and a game
+  port range needs the friend port left blank.
 - Device approval: friend, device, address, key fingerprint, Allow/Deny. It
   appears wherever the host is in the app and brings the window forward.
 - Confirmations for delete group, leave group, end session, disconnect, remove
