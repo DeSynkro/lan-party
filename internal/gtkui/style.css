@@ -316,3 +316,24 @@ separator {
   background-color: @hairline;
   min-height: 1px;
 }
+
+label.dot-off {
+  color: @muted;
+  font-size: 10px;
+}
+
+label.tag {
+  background-color: @raised;
+  border: 1px solid @hairline;
+  border-radius: 6px;
+  color: @secondary;
+  font-family: "IBM Plex Sans";
+  font-size: 11px;
+  padding: 1px 6px;
+}
+
+label.warning {
+  color: @warning;
+  font-family: "IBM Plex Sans";
+  font-size: 12px;
+}

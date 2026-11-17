@@ -15,6 +15,7 @@ import (
 
 	apppkg "github.com/desynkro/lan-party/internal/app"
 	"github.com/desynkro/lan-party/internal/config"
+	"github.com/desynkro/lan-party/internal/group"
 )
 
 type probeUI struct {
@@ -28,12 +29,14 @@ type probeUI struct {
 	held          bool
 	quitting      bool
 
-	stack    *gtk.Stack
-	logo     *gtk.Image
-	back     *gtk.Button
-	title    *gtk.Label
-	help     *gtk.Button
-	settings *gtk.Button
+	stack       *gtk.Stack
+	homeScroll  *gtk.ScrolledWindow
+	groupScroll *gtk.ScrolledWindow
+	logo        *gtk.Image
+	back        *gtk.Button
+	title       *gtk.Label
+	help        *gtk.Button
+	settings    *gtk.Button
 }
 
 // RunProbe opens the GTK probe window and blocks until it closes.
@@ -66,11 +69,15 @@ func RunProbe(argv []string) int {
 		loadCSS(root)
 		ui = newProbeUI(app, root, state)
 		ui.build()
-		if os.Getenv("LANPARTY_GTK_SCREEN") == "settings" {
+		screen := os.Getenv("LANPARTY_GTK_SCREEN")
+		switch {
+		case screen == "settings":
 			ui.showSettings()
-		} else if os.Getenv("LANPARTY_GTK_SCREEN") == "guide" {
+		case screen == "guide":
 			ui.showGuide()
-		} else {
+		case strings.HasPrefix(screen, "group:"):
+			ui.showGroup(strings.TrimPrefix(screen, "group:"))
+		default:
 			ui.showHome()
 		}
 		ui.start()
@@ -98,10 +105,16 @@ func (u *probeUI) build() {
 	theme.AddSearchPath(filepath.Join(u.root, "internal", "gtkui", "assets", "icons"))
 	u.win.SetIconName("lan-party")
 
+	u.homeScroll = u.buildHomePage()
 	u.stack = gtk.NewStack()
-	u.stack.AddNamed(u.buildHomePage(), "home")
+	u.stack.AddNamed(u.homeScroll, "home")
 	u.stack.AddNamed(u.buildSettingsPage(), "settings")
 	u.stack.AddNamed(u.buildGuidePage(), "guide")
+
+	u.groupScroll = gtk.NewScrolledWindow()
+	u.groupScroll.SetPolicy(gtk.PolicyNever, gtk.PolicyAutomatic)
+	u.groupScroll.SetVExpand(true)
+	u.stack.AddNamed(u.groupScroll, "group")
 
 	appBar := u.buildAppBar()
 
@@ -202,10 +215,28 @@ func (u *probeUI) buildAppBar() *gtk.Box {
 }
 
 func (u *probeUI) showHome() {
+	if u.homeScroll != nil {
+		u.homeScroll.SetChild(u.buildHomeContent())
+	}
 	u.stack.SetVisibleChildName("home")
 	u.title.SetText("LAN Party")
 	u.logo.SetVisible(true)
 	u.back.SetVisible(false)
+	u.help.SetVisible(true)
+	u.settings.SetVisible(true)
+}
+
+func (u *probeUI) showGroup(id string) {
+	g, ok := u.state.Group(id)
+	if !ok {
+		u.showHome()
+		return
+	}
+	u.groupScroll.SetChild(u.buildGroupContent(g))
+	u.stack.SetVisibleChildName("group")
+	u.title.SetText(truncateText(g.Name, 30))
+	u.logo.SetVisible(false)
+	u.back.SetVisible(true)
 	u.help.SetVisible(true)
 	u.settings.SetVisible(true)
 }
@@ -279,6 +310,14 @@ func (u *probeUI) quit() {
 }
 
 func (u *probeUI) buildHomePage() *gtk.ScrolledWindow {
+	scroll := gtk.NewScrolledWindow()
+	scroll.SetPolicy(gtk.PolicyNever, gtk.PolicyAutomatic)
+	scroll.SetChild(u.buildHomeContent())
+	scroll.SetVExpand(true)
+	return scroll
+}
+
+func (u *probeUI) buildHomeContent() *gtk.Box {
 	page := gtk.NewBox(gtk.OrientationVertical, 0)
 	page.AddCSSClass("page")
 	page.SetMarginTop(20)
@@ -332,52 +371,62 @@ func (u *probeUI) buildHomePage() *gtk.ScrolledWindow {
 	})
 	page.Append(guide)
 
-	section := textLabel("Your groups", "section")
-	section.SetMarginBottom(8)
-	page.Append(section)
-	page.Append(groupRow("Friday Night", "host · 1 member"))
+	groups := u.state.Groups()
+	hostGroups := make([]group.Group, 0, len(groups))
+	joinedGroups := make([]group.Group, 0, len(groups))
+	for _, g := range groups {
+		if g.IsHost() {
+			hostGroups = append(hostGroups, g)
+		} else {
+			joinedGroups = append(joinedGroups, g)
+		}
+	}
 
-	joined := textLabel("Groups you joined", "section")
-	joined.SetMarginTop(20)
-	joined.SetMarginBottom(8)
-	page.Append(joined)
-	page.Append(groupRow("Friday Night", "joined · hosted by Desynkro"))
+	if len(hostGroups) > 0 {
+		section := textLabel("Your groups", "section")
+		section.SetMarginBottom(8)
+		page.Append(section)
+		for i, g := range hostGroups {
+			if i > 0 {
+				page.Append(gapBox(8))
+			}
+			page.Append(u.homeGroupRow(g))
+		}
+	}
+	if len(joinedGroups) > 0 {
+		joined := textLabel("Groups you joined", "section")
+		joined.SetMarginTop(20)
+		joined.SetMarginBottom(8)
+		page.Append(joined)
+		for i, g := range joinedGroups {
+			if i > 0 {
+				page.Append(gapBox(8))
+			}
+			page.Append(u.homeGroupRow(g))
+		}
+	}
+	if len(groups) == 0 {
+		section := textLabel("Your groups", "section")
+		section.SetMarginTop(18)
+		section.SetMarginBottom(8)
+		page.Append(section)
+		empty := gtk.NewBox(gtk.OrientationVertical, 0)
+		empty.AddCSSClass("card")
+		empty.Append(measuredText("Nothing saved yet. Hosted and joined groups appear here.", "desc"))
+		page.Append(empty)
+	}
 
-	scroll := gtk.NewScrolledWindow()
-	scroll.SetPolicy(gtk.PolicyNever, gtk.PolicyAutomatic)
-	scroll.SetChild(page)
-	scroll.SetVExpand(true)
-	return scroll
+	return page
 }
 
-func groupRow(title, meta string) *gtk.Button {
-	row := gtk.NewButton()
-	row.AddCSSClass("row")
-	row.SetHExpand(true)
-
-	content := gtk.NewBox(gtk.OrientationHorizontal, 8)
-	content.AddCSSClass("row-content")
-
-	dot := gtk.NewLabel("●")
-	dot.AddCSSClass("dot")
-	content.Append(dot)
-
-	name := gtk.NewLabel(title)
-	name.AddCSSClass("row-title")
-	name.SetHExpand(true)
-	name.SetXAlign(0)
-	content.Append(name)
-
-	info := gtk.NewLabel(meta)
-	info.AddCSSClass("row-meta")
-	content.Append(info)
-
-	chevron := gtk.NewLabel("›")
-	chevron.AddCSSClass("chevron")
-	content.Append(chevron)
-
-	row.SetChild(content)
-	return row
+func (u *probeUI) homeGroupRow(g group.Group) *gtk.Button {
+	meta := "host · " + plural(len(g.Members), "member")
+	if !g.IsHost() {
+		meta = "joined · hosted by " + g.HostName
+	}
+	return navRow(g.Name, meta, u.state.LiveGroupID() == g.ID, func() {
+		u.showGroup(g.ID)
+	})
 }
 
 func textLabel(text, class string) *gtk.Label {
@@ -453,4 +502,15 @@ func repoRoot() (string, error) {
 		}
 		dir = parent
 	}
+}
+
+func truncateText(text string, max int) string {
+	runes := []rune(text)
+	if len(runes) <= max {
+		return text
+	}
+	if max < 2 {
+		return string(runes[:max])
+	}
+	return string(runes[:max-1]) + "…"
 }

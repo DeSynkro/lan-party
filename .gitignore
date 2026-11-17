@@ -22,3 +22,4 @@ lan-party-data/
 .idea/
 *.swp
 .DS_Store
+.directory
