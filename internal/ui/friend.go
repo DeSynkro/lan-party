@@ -54,18 +54,18 @@ func (u *UI) showFriend(g group.Group) {
 
 	content := container.NewVBox(
 		view.statusPanel(g),
-		gap(12),
+		gap(sectionGap),
 		sectionLabel("Ready to play"),
-		gap(4),
+		gap(smallGap),
 		view.services,
-		gap(12),
+		gap(sectionGap),
 		sectionLabel("People"),
-		gap(4),
+		gap(smallGap),
 		view.people(g),
-		gap(12),
+		gap(sectionGap),
 		divider(),
 		newButton("Leave group", buttonDanger, func() { u.confirmLeaveGroup(g) }),
-		gap(4),
+		gap(smallGap),
 		mutedLabel("This removes the saved group and its device key from this PC."),
 	)
 
@@ -86,9 +86,9 @@ func (v *friendView) statusPanel(g group.Group) fyne.CanvasObject {
 
 	return card(container.NewVBox(
 		top,
-		gap(4),
+		gap(smallGap),
 		metaText("Hosted by "+g.HostName),
-		gap(4),
+		gap(smallGap),
 		v.link,
 		v.note,
 	))
@@ -105,7 +105,7 @@ func (v *friendView) fillServices(g group.Group) {
 			order, grouped := groupBounds(bounds)
 			for i, id := range order {
 				if i > 0 {
-					objs = append(objs, gap(4))
+					objs = append(objs, gap(smallGap))
 				}
 				svc, ok := g.FindService(id)
 				if !ok {
@@ -121,7 +121,7 @@ func (v *friendView) fillServices(g group.Group) {
 		} else {
 			for i, svc := range g.Services {
 				if i > 0 {
-					objs = append(objs, gap(4))
+					objs = append(objs, gap(smallGap))
 				}
 				objs = append(objs, v.u.offlineServiceCard(svc))
 			}
@@ -134,7 +134,7 @@ func (v *friendView) fillServices(g group.Group) {
 
 func (u *UI) friendServiceCard(s group.Service, bounds []session.Bound) fyne.CanvasObject {
 	top := container.NewBorder(nil, nil, nil, container.NewCenter(tag(protoName(s.Proto))), nameText(s.Name))
-	body := container.NewVBox(top, gap(4))
+	body := container.NewVBox(top, gap(smallGap))
 
 	seen := map[string]bool{}
 	first := true
@@ -166,7 +166,7 @@ func (u *UI) friendServiceCard(s group.Service, bounds []session.Bound) fyne.Can
 	}
 
 	if s.Hint != "" {
-		body.Add(gap(4))
+		body.Add(gap(smallGap))
 		body.Add(mutedLabel(s.Hint))
 	}
 	return card(body)
@@ -176,7 +176,7 @@ func (u *UI) offlineServiceCard(s group.Service) fyne.CanvasObject {
 	top := container.NewBorder(nil, nil, nil, container.NewCenter(tag(protoName(s.Proto))), nameText(s.Name))
 	body := container.NewVBox(
 		top,
-		gap(4),
+		gap(smallGap),
 		metaText("Port "+group.FormatPorts(s.Ports)),
 		mutedLabel("Host offline. Reconnect when the host is back."),
 	)
@@ -202,7 +202,7 @@ func (v *friendView) people(g group.Group) fyne.CanvasObject {
 	you := card(container.NewBorder(nil, nil, statusDot(true), nil,
 		container.NewVBox(youName, metaText(v.u.app.DeviceName()))))
 
-	return container.NewVBox(host, gap(4), you)
+	return container.NewVBox(host, gap(smallGap), you)
 }
 
 func (v *friendView) updateStatus(g group.Group) {

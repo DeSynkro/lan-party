@@ -7,6 +7,8 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+var rowHeight float32 = 40
+
 // rowButton is a full-width navigation row with an optional status light.
 type rowButton struct {
 	widget.BaseWidget
@@ -56,7 +58,7 @@ func (r *rowButton) Cursor() desktop.Cursor {
 func (r *rowButton) CreateRenderer() fyne.WidgetRenderer {
 	return &rowRenderer{
 		row:   r,
-		bg:    surface(colourSurface, colourHairline, 10),
+		bg:    surface(colourSurface, colourHairline, rowRadius),
 		dot:   canvas.NewText("", colourMuted),
 		title: canvas.NewText(r.title, colourText),
 		meta:  canvas.NewText(r.trailing, colourMuted),
@@ -73,7 +75,7 @@ type rowRenderer struct {
 	chev  *canvas.Text
 }
 
-func (r *rowRenderer) MinSize() fyne.Size { return fyne.NewSize(200, 40) }
+func (r *rowRenderer) MinSize() fyne.Size { return fyne.NewSize(200, rowHeight) }
 
 func (r *rowRenderer) Layout(size fyne.Size) {
 	r.bg.Resize(size)

@@ -14,7 +14,7 @@ func (u *UI) showHome() {
 
 	hero := container.NewVBox(
 		titleText("One port, not the network."),
-		gap(6),
+		gap(rowGap),
 		bodyLabel("Host a game on your LAN. Friends open it at 127.0.0.1; nothing else is reachable."),
 	)
 
@@ -25,7 +25,7 @@ func (u *UI) showHome() {
 
 	content := container.NewVBox(
 		hero,
-		gap(12),
+		gap(sectionGap),
 		actions,
 		container.NewCenter(smallButton("First time? Read the setup guide", buttonQuiet, func() {
 			u.showGuide(u.showHome)
@@ -44,37 +44,37 @@ func (u *UI) showHome() {
 	}
 
 	if len(hostGroups) > 0 {
-		content.Add(gap(12))
+		content.Add(gap(sectionGap))
 		content.Add(sectionLabel("Your groups"))
-		content.Add(gap(6))
+		content.Add(gap(rowGap))
 		for i, g := range hostGroups {
 			if i > 0 {
-				content.Add(gap(6))
+				content.Add(gap(rowGap))
 			}
 			content.Add(u.homeGroupRow(g))
 		}
 	}
 
 	if len(joinedGroups) > 0 {
-		content.Add(gap(12))
+		content.Add(gap(sectionGap))
 		content.Add(sectionLabel("Groups you joined"))
-		content.Add(gap(6))
+		content.Add(gap(rowGap))
 		for i, g := range joinedGroups {
 			if i > 0 {
-				content.Add(gap(6))
+				content.Add(gap(rowGap))
 			}
 			content.Add(u.homeGroupRow(g))
 		}
 	}
 
 	if len(groups) == 0 {
-		content.Add(gap(12))
+		content.Add(gap(sectionGap))
 		content.Add(sectionLabel("Your groups"))
-		content.Add(gap(6))
+		content.Add(gap(rowGap))
 		content.Add(card(mutedLabel("Nothing saved yet. Hosted and joined groups appear here.")))
 	}
 
-	content.Add(gap(12))
+	content.Add(gap(sectionGap))
 	content.Add(u.howItWorks())
 
 	u.screen(u.appBar("", true), content, nil)
@@ -105,13 +105,13 @@ func (u *UI) howItWorks() fyne.CanvasObject {
 
 	return card(container.NewVBox(
 		sectionLabel("How it works"),
-		gap(6),
+		gap(rowGap),
 		left,
-		gap(2),
+		gap(tinyGap),
 		middle,
-		gap(2),
+		gap(tinyGap),
 		right,
-		gap(6),
+		gap(rowGap),
 		mutedLabel("Example addresses. Only published ports cross."),
 	))
 }

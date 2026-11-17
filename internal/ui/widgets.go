@@ -11,16 +11,16 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-// Type scale. The compact window carries five sizes and no more.
-const (
-	sizeTitle       = 22
-	sizeAppBar      = 15
-	sizeName        = 14
-	sizeBody        = 13
-	sizeMeta        = 12
-	sizeSection     = 12
-	sizeAddress     = 14
-	sizeAddressHero = 16
+// Type scale. The token file can override every value.
+var (
+	sizeTitle       float32 = 22
+	sizeAppBar      float32 = 15
+	sizeName        float32 = 14
+	sizeBody        float32 = 13
+	sizeMeta        float32 = 12
+	sizeSection     float32 = 12
+	sizeAddress     float32 = 14
+	sizeAddressHero float32 = 16
 )
 
 func nameText(text string) *canvas.Text {
@@ -75,8 +75,8 @@ func surface(fill, border color.Color, radius float32) *canvas.Rectangle {
 // card puts content on a surface with room to breathe.
 func card(content fyne.CanvasObject) fyne.CanvasObject {
 	return container.NewStack(
-		surface(colourSurface, colourHairline, 12),
-		pad(10, 10, content),
+		surface(colourSurface, colourHairline, cardRadius),
+		pad(cardPadding, cardPadding, content),
 	)
 }
 
@@ -217,7 +217,7 @@ func (b *button) CreateRenderer() fyne.WidgetRenderer {
 	text.TextSize = b.textSize()
 	text.Alignment = fyne.TextAlignCenter
 
-	bg := surface(b.fillColour(), b.borderColour(), 8)
+	bg := surface(b.fillColour(), b.borderColour(), buttonRadius)
 
 	return &buttonRenderer{button: b, bg: bg, text: text}
 }

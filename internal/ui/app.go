@@ -17,9 +17,13 @@ import (
 	"github.com/desynkro/lan-party/internal/config"
 )
 
-const (
-	windowWidth  = 400
-	windowHeight = 640
+var (
+	windowWidth  float32 = 400
+	windowHeight float32 = 640
+
+	appBarHeight float32 = 48
+	pagePaddingX float32 = 16
+	pagePaddingY float32 = 12
 )
 
 // UI owns the window and the screen currently on it.
@@ -135,9 +139,9 @@ func (u *UI) closeWindow() {
 func startupError(fyneApp fyne.App, err error) fyne.CanvasObject {
 	content := container.NewVBox(
 		titleText("LAN Party could not start"),
-		gap(8),
+		gap(rowGap),
 		bodyLabel(err.Error()),
-		gap(16),
+		gap(sectionGap),
 		newButton("Quit", buttonPrimary, fyneApp.Quit),
 	)
 	return pad(24, 20, content)
@@ -201,7 +205,7 @@ func (u *UI) showApprovalDialog(approval apppkg.Approval) {
 
 	content := container.NewVBox(
 		bodyLabel(headline),
-		gap(8),
+		gap(rowGap),
 		metaText("Device  "+approval.DeviceName),
 		metaText("Address  "+approval.Address),
 		metaText("Code  "+approval.Fingerprint),
@@ -221,7 +225,7 @@ func (u *UI) runWaiting(title, message string, work func(context.Context) error,
 	ctx, cancel := context.WithCancel(context.Background())
 	content := container.NewVBox(
 		bodyLabel(message),
-		gap(8),
+		gap(rowGap),
 		mutedLabel("This can take a moment."),
 	)
 	d := dialog.NewCustom(title, "Cancel", content, u.win)
@@ -280,7 +284,7 @@ func (u *UI) appBar(title string, home bool) fyne.CanvasObject {
 
 	row := container.NewBorder(nil, nil, container.NewCenter(left), container.NewCenter(right), layout.NewSpacer())
 	bar := canvas.NewRectangle(colourBackground)
-	bar.SetMinSize(fyne.NewSize(0, 48))
+	bar.SetMinSize(fyne.NewSize(0, appBarHeight))
 	stack := container.NewStack(bar, pad(0, 12, row))
 	return container.NewVBox(stack, hairline())
 }
@@ -292,7 +296,7 @@ func (u *UI) goBack() {
 }
 
 func (u *UI) screen(bar fyne.CanvasObject, content fyne.CanvasObject, refresh func()) {
-	body := container.NewVScroll(pad(12, 16, content))
+	body := container.NewVScroll(pad(pagePaddingY, pagePaddingX, content))
 	u.setScreen(container.NewBorder(bar, nil, nil, nil, body), refresh)
 }
 

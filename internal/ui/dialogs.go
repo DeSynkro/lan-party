@@ -24,7 +24,7 @@ func (u *UI) formDialog(title, confirm string, content fyne.CanvasObject, onConf
 	errLabel.Importance = widget.DangerImportance
 	width := canvas.NewRectangle(color.Transparent)
 	width.SetMinSize(fyne.NewSize(320, 0))
-	body := container.NewStack(width, container.NewVBox(content, gap(6), errLabel))
+	body := container.NewStack(width, container.NewVBox(content, gap(rowGap), errLabel))
 
 	d := dialog.NewCustomWithoutButtons(title, body, u.win)
 	d.SetButtons([]fyne.CanvasObject{
@@ -138,10 +138,10 @@ func (u *UI) showInviteCode(name, code string) {
 
 	content := container.NewVBox(
 		bodyLabel("Send this to "+name+". It works once and expires in 24 hours."),
-		gap(8),
+		gap(rowGap),
 		box,
 		mutedLabel("The button copies the full code."),
-		gap(8),
+		gap(rowGap),
 		container.NewCenter(copyButton),
 	)
 	dialog.NewCustom("Invite for "+name, "Done", content, u.win).Show()
@@ -222,12 +222,12 @@ func (u *UI) showServiceDetails(g group.Group, s group.Service) {
 	content := container.NewVBox(
 		nameText(s.Name),
 		metaText(protoName(s.Proto)),
-		gap(10),
+		gap(rowGap),
 		container.NewHBox(metaText("Friends open"), gapW(6), addressText("127.0.0.1:"+group.FormatPorts(s.Ports))),
 		container.NewHBox(metaText("On your LAN"), gapW(6), addressMuted(s.Target)),
 	)
 	if s.Hint != "" {
-		content.Add(gap(6))
+		content.Add(gap(rowGap))
 		content.Add(mutedLabel(s.Hint))
 	}
 	for _, warning := range group.ServiceWarnings(s) {
@@ -252,7 +252,7 @@ func (u *UI) showServiceDetails(g group.Group, s group.Service) {
 				u.showGroup(g.ID)
 			}, u.win).Show()
 	})
-	content.Add(gap(12))
+	content.Add(gap(sectionGap))
 	content.Add(remove)
 
 	d = dialog.NewCustom("Service", "Done", content, u.win)
@@ -270,7 +270,7 @@ func (u *UI) showMemberDetails(g group.Group, m group.Member) {
 	content := container.NewVBox(
 		nameText(m.Name),
 		metaText(status),
-		gap(10),
+		gap(rowGap),
 		metaText("Device  "+fallback(m.DeviceName, "not reported")),
 		metaText("Device code  "+fallback(m.Fingerprint, "not recorded")),
 		metaText("Last address  "+fallback(m.LastAddress, "not recorded")),
@@ -296,7 +296,7 @@ func (u *UI) showMemberDetails(g group.Group, m group.Member) {
 				u.showGroup(g.ID)
 			}, u.win).Show()
 	})
-	content.Add(gap(12))
+	content.Add(gap(sectionGap))
 	content.Add(remove)
 
 	d = dialog.NewCustom("Member", "Done", content, u.win)
@@ -317,12 +317,12 @@ func (u *UI) showInviteDetails(g group.Group, inv group.Invite, code string) {
 		copyButton = smallButton("Copy code", buttonSecondary, func() {
 			u.copyText(code, copyButton)
 		})
-		content.Add(gap(8))
+		content.Add(gap(rowGap))
 		content.Add(box)
 		content.Add(mutedLabel("The button copies the full code."))
 		content.Add(container.NewCenter(copyButton))
 	} else {
-		content.Add(gap(8))
+		content.Add(gap(rowGap))
 		content.Add(mutedLabel("The code was only shown when it was created. Create a new invite if you need to send it again."))
 	}
 
@@ -344,7 +344,7 @@ func (u *UI) showInviteDetails(g group.Group, inv group.Invite, code string) {
 				u.showGroup(g.ID)
 			}, u.win).Show()
 	})
-	content.Add(gap(12))
+	content.Add(gap(sectionGap))
 	content.Add(remove)
 
 	d = dialog.NewCustom("Invite", "Done", content, u.win)

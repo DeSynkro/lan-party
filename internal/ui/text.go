@@ -22,7 +22,7 @@ func titleText(text string) *canvas.Text {
 
 func settingTitle(text string) *canvas.Text {
 	t := canvas.NewText(text, colourText)
-	t.TextSize = 15
+	t.TextSize = settingTitleSize
 	t.TextStyle = fyne.TextStyle{Bold: true}
 	return t
 }
@@ -101,7 +101,7 @@ func tag(text string) fyne.CanvasObject {
 	label := canvas.NewText(text, colourSecondary)
 	label.TextSize = sizeMeta
 	return container.NewStack(
-		surface(color.Transparent, colourHairline, 6),
+		surface(color.Transparent, colourHairline, tagRadius),
 		container.New(layout.NewCustomPaddedLayout(2, 2, 8, 8), label),
 	)
 }
@@ -122,7 +122,7 @@ func hairline() fyne.CanvasObject {
 }
 
 func divider() fyne.CanvasObject {
-	return container.NewVBox(gap(8), hairline(), gap(8))
+	return container.NewVBox(gap(dividerGap), hairline(), gap(dividerGap))
 }
 
 func truncate(text string, max int) string {

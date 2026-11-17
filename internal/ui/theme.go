@@ -106,6 +106,60 @@ var palette = map[fyne.ThemeColorName]color.Color{
 	theme.ColorNameWarning:                   colourWarning,
 }
 
+func applyPalette(p PaletteTokens) {
+	colourBackground = hex(p.Background)
+	colourSurface = hex(p.Surface)
+	colourRaised = hex(p.Raised)
+	colourHairline = hex(p.Hairline)
+	colourText = hex(p.Text)
+	colourSecondary = hex(p.Secondary)
+	colourMuted = hex(p.Muted)
+	colourAccent = hex(p.Accent)
+	colourLive = hex(p.Live)
+	colourWarning = hex(p.Warning)
+	colourDanger = hex(p.Danger)
+	colourPrimaryFill = hex(p.PrimaryFill)
+	colourPrimaryInk = hex(p.PrimaryInk)
+
+	palette[ColourBackground] = colourBackground
+	palette[ColourSurface] = colourSurface
+	palette[ColourRaised] = colourRaised
+	palette[ColourHairline] = colourHairline
+	palette[ColourText] = colourText
+	palette[ColourSecondary] = colourSecondary
+	palette[ColourMuted] = colourMuted
+	palette[ColourAccent] = colourAccent
+	palette[ColourAccentFill] = colourPrimaryFill
+	palette[ColourSuccess] = colourLive
+	palette[ColourWarning] = colourWarning
+	palette[ColourDanger] = colourDanger
+
+	palette[theme.ColorNameBackground] = colourBackground
+	palette[theme.ColorNameForeground] = colourText
+	palette[theme.ColorNameButton] = colourRaised
+	palette[theme.ColorNameDisabledButton] = colourSurface
+	palette[theme.ColorNameError] = colourDanger
+	palette[theme.ColorNameFocus] = colourAccent
+	palette[theme.ColorNameForegroundOnError] = colourBackground
+	palette[theme.ColorNameForegroundOnPrimary] = colourPrimaryInk
+	palette[theme.ColorNameForegroundOnSuccess] = colourBackground
+	palette[theme.ColorNameForegroundOnWarning] = colourBackground
+	palette[theme.ColorNameHeaderBackground] = colourSurface
+	palette[theme.ColorNameHover] = colourRaised
+	palette[theme.ColorNameHyperlink] = colourAccent
+	palette[theme.ColorNameInnerWindowBorder] = colourHairline
+	palette[theme.ColorNameInnerWindowBorderInactive] = colourSurface
+	palette[theme.ColorNameInputBackground] = colourSurface
+	palette[theme.ColorNameInputBorder] = colourHairline
+	palette[theme.ColorNameMenuBackground] = colourSurface
+	palette[theme.ColorNamePlaceHolder] = colourMuted
+	palette[theme.ColorNamePrimary] = colourPrimaryFill
+	palette[theme.ColorNameSelection] = colourPrimaryFill
+	palette[theme.ColorNameSeparator] = colourHairline
+	palette[theme.ColorNameSuccess] = colourLive
+	palette[theme.ColorNameWarning] = colourWarning
+}
+
 type appTheme struct{}
 
 // NewTheme is the dark theme the whole app uses.

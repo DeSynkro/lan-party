@@ -126,12 +126,12 @@ func (u *UI) showSettings(returnTo func()) {
 	networkCard := card(container.NewVBox(
 		networkForm,
 		networkHelp,
-		gap(6),
+		gap(rowGap),
 		preview,
-		gap(6),
+		gap(rowGap),
 		networkError,
 		networkStatus,
-		gap(6),
+		gap(rowGap),
 		container.NewHBox(
 			saveNetwork,
 			smallButton("Setup guide", buttonQuiet, func() {
@@ -148,30 +148,30 @@ func (u *UI) showSettings(returnTo func()) {
 
 	content := container.NewVBox(
 		sectionLabel("Startup"),
-		gap(6),
+		gap(rowGap),
 		closeToTray,
-		gap(6),
+		gap(rowGap),
 		startOnLogin,
-		gap(6),
+		gap(rowGap),
 		startMinimised,
-		gap(14),
+		gap(sectionGap),
 		sectionLabel("Network"),
-		gap(6),
+		gap(rowGap),
 		networkCard,
-		gap(14),
+		gap(sectionGap),
 		sectionLabel("Security"),
-		gap(6),
+		gap(rowGap),
 		approve,
-		gap(14),
+		gap(sectionGap),
 		sectionLabel("About"),
-		gap(6),
+		gap(rowGap),
 		card(about),
 	)
 
 	u.screen(u.appBar("Settings", false), content, nil)
 }
 
-const settingCheckbox = 24
+var settingCheckbox float32 = 24
 
 func (u *UI) checkRow(title, description, help string, checked bool, onChanged func(bool) error) fyne.CanvasObject {
 	reverting := false
@@ -203,7 +203,7 @@ func (u *UI) checkRow(title, description, help string, checked bool, onChanged f
 
 	text := container.NewVBox(titleRow)
 	if description != "" {
-		text.Add(gap(1))
+		text.Add(gap(settingDescriptionGap))
 		desc := canvas.NewText(description, colourMuted)
 		desc.TextSize = sizeMeta
 		text.Add(desc)
