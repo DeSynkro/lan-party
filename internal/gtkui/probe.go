@@ -52,7 +52,11 @@ func RunProbe(argv []string) int {
 	}
 	defer state.Close()
 
-	app := gtk.NewApplication("com.desynkro.lanparty.gtkprobe", gio.ApplicationFlagsNone)
+	appID := os.Getenv("LANPARTY_GTK_APP_ID")
+	if appID == "" {
+		appID = "com.desynkro.lanparty.gtkprobe"
+	}
+	app := gtk.NewApplication(appID, gio.ApplicationFlagsNone)
 	var ui *probeUI
 	app.ConnectActivate(func() {
 		if ui != nil {

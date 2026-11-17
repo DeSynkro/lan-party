@@ -34,11 +34,11 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	startup.SetMarginBottom(8)
 	page.Append(startup)
 
-	closeNote := "Closing the window keeps the app and any live session running in the tray. Untick this to make closing the window quit."
-	minimiseNote := "Start hidden in the tray instead of opening the window."
+	closeNote := "Keep the app running in the tray when you close the window. Untick to quit on close."
+	minimiseNote := "Start hidden in the tray."
 	if !u.trayAvailable {
-		closeNote = "No system tray was found, so closing the window quits."
-		minimiseNote = "No tray was found, so the window still opens."
+		closeNote = "No tray was found, so closing the window quits."
+		minimiseNote = "No tray was found; the window still opens."
 	}
 
 	page.Append(u.settingCard(
@@ -53,7 +53,7 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 
 	page.Append(u.settingCard(
 		"Start on login",
-		"Launch LAN Party automatically when you sign in.",
+		"Launch LAN Party when you sign in.",
 		settings.StartOnLogin,
 		func(v bool) error {
 			return saveSetting(func(s *config.Settings) { s.StartOnLogin = v })
@@ -154,7 +154,7 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 
 	page.Append(u.settingCard(
 		"Approve new devices",
-		"Ask before a new friend's device joins. Off accepts any valid invite without asking. A changed device key still asks.",
+		"Ask before a new device joins. A changed device key always asks.",
 		settings.ApproveNewDevices,
 		func(v bool) error {
 			return saveSetting(func(s *config.Settings) { s.ApproveNewDevices = v })

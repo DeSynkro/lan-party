@@ -76,6 +76,9 @@ APPRUN
 chmod 755 "${work}/AppRun"
 
 target="${out}/lan-party-gtk_${version}_linux_amd64.AppImage"
-ARCH=x86_64 "${tool}" --appimage-extract-and-run "${work}" "${target}"
+tmp_target="${out}/.lan-party-gtk_${version}_linux_amd64.tmp.AppImage"
+rm -f "${tmp_target}"
+ARCH=x86_64 "${tool}" --appimage-extract-and-run "${work}" "${tmp_target}"
+mv -f "${tmp_target}" "${target}"
 
 printf 'built %s\n' "${target}"
