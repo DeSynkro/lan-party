@@ -12,7 +12,14 @@
 
 window {
   background-color: @ink;
+  background-image: linear-gradient(160deg, #1A0B3D 0%, #0C061C 42%, #08040F 100%);
   color: @pale;
+}
+
+scrolledwindow,
+viewport {
+  background-color: transparent;
+  background-image: none;
 }
 
 windowcontrols button {
@@ -27,6 +34,7 @@ windowcontrols button {
 
 .appbar {
   background-color: @ink;
+  background-image: linear-gradient(to right, #150B33 0%, #08040F 58%, #08040F 100%);
   border-bottom: 1px solid @hairline;
   min-height: 38px;
   padding: 0 12px;
@@ -49,6 +57,7 @@ button {
 
 button.primary {
   background-color: @violet;
+  background-image: linear-gradient(135deg, #FF3DBE 0%, #8B5CF6 55%, #0E7490 100%);
   border: none;
   color: @pale;
   font-weight: 600;
@@ -57,11 +66,11 @@ button.primary {
 }
 
 button.primary:hover {
-  background-color: #A78BFA;
+  background-image: linear-gradient(135deg, #FF6BCF 0%, #A78BFA 55%, #0891B2 100%);
 }
 
 button.primary:active {
-  background-color: #7C3AED;
+  background-image: linear-gradient(135deg, #E12BA5 0%, #7C3AED 55%, #155E75 100%);
 }
 
 button.primary label {
@@ -70,6 +79,7 @@ button.primary label {
 
 button.secondary {
   background-color: @raised;
+  background-image: linear-gradient(to bottom, #1E1240 0%, #150C30 100%);
   border: 1px solid @hairline;
   color: @pale;
   min-height: 36px;
@@ -102,7 +112,8 @@ button.quiet label {
 }
 
 box.page {
-  background-color: @ink;
+  background-color: transparent;
+  background-image: none;
 }
 
 label.title {
@@ -126,6 +137,7 @@ label.section {
 
 box.card {
   background-color: @deep;
+  background-image: linear-gradient(to bottom, #1A1038 0%, #120A2E 100%);
   border: 1px solid @hairline;
   border-radius: 12px;
   padding: 14px;

@@ -48,12 +48,12 @@ func buildProbeWindow(app *gtk.Application, root string) *gtk.ApplicationWindow 
 	theme.AddSearchPath(filepath.Join(root, "internal", "gtkui", "assets", "icons"))
 	win.SetIconName("lan-party")
 
-	win.SetTitlebar(buildAppBar(root, app))
+	win.SetTitlebar(buildAppBar(root, app, win))
 	win.SetChild(buildProbePage())
 	return win
 }
 
-func buildAppBar(root string, app *gtk.Application) *gtk.Box {
+func buildAppBar(root string, app *gtk.Application, win *gtk.ApplicationWindow) *gtk.Box {
 	bar := gtk.NewBox(gtk.OrientationHorizontal, 8)
 	bar.AddCSSClass("appbar")
 
@@ -76,6 +76,14 @@ func buildAppBar(root string, app *gtk.Application) *gtk.Box {
 	settings := gtk.NewButtonWithLabel("Settings")
 	settings.AddCSSClass("quiet")
 	bar.Append(settings)
+
+	minimizeButton := gtk.NewButtonWithLabel("−")
+	minimizeButton.AddCSSClass("quiet")
+	minimizeButton.SetTooltipText("Minimise")
+	minimizeButton.ConnectClicked(func() {
+		win.Minimize()
+	})
+	bar.Append(minimizeButton)
 
 	closeButton := gtk.NewButtonWithLabel("×")
 	closeButton.AddCSSClass("quiet")
