@@ -1,6 +1,8 @@
 package tunnel
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/binary"
 	"encoding/json"
@@ -14,12 +16,16 @@ import (
 	"github.com/quic-go/quic-go"
 )
 
+// maxControlMessage bounds one JSON object on the control stream. A hello is
+// tiny; a full service list is a few kilobytes.
+const maxControlMessage = 64 * 1024
+
 // Conn is one authenticated QUIC connection. The control stream is already
 // past its hello/welcome exchange when a Conn is returned.
 type Conn struct {
 	qc       *quic.Conn
 	control  *quic.Stream
-	dec      *json.Decoder
+	reader   *bufio.Reader
 	enc      *json.Encoder
 	writeMu  sync.Mutex
 	datagram sync.Mutex
@@ -36,12 +42,12 @@ type Conn struct {
 	Services []ServiceInfo
 }
 
-func newConn(qc *quic.Conn, control *quic.Stream, dec *json.Decoder, enc *json.Encoder, onClose func()) *Conn {
+func newConn(qc *quic.Conn, control *quic.Stream, reader *bufio.Reader, enc *json.Encoder, onClose func()) *Conn {
 	ctx, cancel := context.WithCancel(qc.Context())
 	c := &Conn{
 		qc:       qc,
 		control:  control,
-		dec:      dec,
+		reader:   reader,
 		enc:      enc,
 		messages: make(chan ControlMessage, 16),
 		ctx:      ctx,
@@ -56,14 +62,37 @@ func (c *Conn) readLoop() {
 	defer close(c.messages)
 	defer c.cleanupOnce()
 	for {
-		var msg ControlMessage
-		if err := c.dec.Decode(&msg); err != nil {
+		msg, err := readControl(c.reader)
+		if err != nil {
 			return
 		}
 		select {
 		case c.messages <- msg:
 		case <-c.ctx.Done():
 			return
+		}
+	}
+}
+
+func readControl(r *bufio.Reader) (ControlMessage, error) {
+	var buf bytes.Buffer
+	for {
+		chunk, err := r.ReadSlice('\n')
+		if buf.Len()+len(chunk) > maxControlMessage {
+			return ControlMessage{}, errors.New("control message is too large")
+		}
+		buf.Write(chunk)
+		switch {
+		case err == bufio.ErrBufferFull:
+			continue
+		case err != nil:
+			return ControlMessage{}, err
+		default:
+			var msg ControlMessage
+			if err := json.Unmarshal(buf.Bytes(), &msg); err != nil {
+				return ControlMessage{}, err
+			}
+			return msg, nil
 		}
 	}
 }

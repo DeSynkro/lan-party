@@ -168,6 +168,9 @@ The app writes no secrets to logs. It has no telemetry and no auto-update.
 - 64 UDP flows per service per peer, 60-second idle timeout
 - 5 failed enrollment attempts per address per minute
 - 2-minute approval wait
+- one control message is capped at 64 KiB
+- a friend accepts at most 16 services and 8 ports per service from the host,
+  so a compromised host cannot fill the friend's loopback port space
 
 ## Threat model
 

@@ -1,6 +1,7 @@
 package tunnel
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -46,7 +47,7 @@ func Dial(ctx context.Context, cfg ClientConfig) (*Conn, error) {
 		return nil, fmt.Errorf("control stream: %w", err)
 	}
 	enc := json.NewEncoder(stream)
-	dec := json.NewDecoder(stream)
+	reader := bufio.NewReader(stream)
 
 	hello := ControlMessage{
 		Type:       MsgHello,
@@ -62,7 +63,7 @@ func Dial(ctx context.Context, cfg ClientConfig) (*Conn, error) {
 		return nil, fmt.Errorf("send hello: %w", err)
 	}
 
-	reply, err := readReply(ctx, dec)
+	reply, err := readReply(ctx, reader)
 	if err != nil {
 		_ = qc.CloseWithError(1, "handshake failed")
 		return nil, err
@@ -71,7 +72,7 @@ func Dial(ctx context.Context, cfg ClientConfig) (*Conn, error) {
 	switch reply.Type {
 	case MsgDenied:
 		_ = qc.CloseWithError(0, "denied")
-		return nil, fmt.Errorf("%w: %s", ErrDenied, reply.Reason)
+		return nil, fmt.Errorf("%w: %s", ErrDenied, clipText(reply.Reason, 200))
 	case MsgWelcome:
 		if reply.MemberID == "" {
 			_ = qc.CloseWithError(1, "missing member id")
@@ -82,7 +83,7 @@ func Dial(ctx context.Context, cfg ClientConfig) (*Conn, error) {
 		return nil, errors.New("the host sent an unexpected reply")
 	}
 
-	c := newConn(qc, stream, dec, enc, nil)
+	c := newConn(qc, stream, reader, enc, nil)
 	c.MemberID = reply.MemberID
 	c.Services = reply.Services
 	return c, nil
@@ -93,11 +94,10 @@ type replyResult struct {
 	err error
 }
 
-func readReply(ctx context.Context, dec *json.Decoder) (ControlMessage, error) {
+func readReply(ctx context.Context, reader *bufio.Reader) (ControlMessage, error) {
 	ch := make(chan replyResult, 1)
 	go func() {
-		var msg ControlMessage
-		err := dec.Decode(&msg)
+		msg, err := readControl(reader)
 		ch <- replyResult{msg: msg, err: err}
 	}()
 

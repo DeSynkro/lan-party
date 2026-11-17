@@ -1,6 +1,7 @@
 package tunnel
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/ed25519"
@@ -298,6 +299,13 @@ func TestStreamLimit(t *testing.T) {
 	defer cancelBlocked()
 	if _, err := client.OpenData(blocked, DataHeader{ServiceID: "svc-1", Port: 25565}); err == nil {
 		t.Fatal("the stream limit was not enforced")
+	}
+}
+
+func TestControlMessageLimit(t *testing.T) {
+	long := strings.Repeat("x", maxControlMessage+1) + "\n"
+	if _, err := readControl(bufio.NewReader(strings.NewReader(long))); err == nil {
+		t.Fatal("an oversized control message was accepted")
 	}
 }
 

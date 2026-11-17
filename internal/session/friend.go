@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/desynkro/lan-party/internal/forward"
+	"github.com/desynkro/lan-party/internal/group"
 	"github.com/desynkro/lan-party/internal/invite"
 	"github.com/desynkro/lan-party/internal/secure"
 	"github.com/desynkro/lan-party/internal/tunnel"
@@ -140,6 +141,10 @@ func (f *Friend) Close() error {
 }
 
 func (f *Friend) bind(services []tunnel.ServiceInfo) {
+	if len(services) > group.MaxServices {
+		services = services[:group.MaxServices]
+	}
+
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -157,11 +162,18 @@ func (f *Friend) bind(services []tunnel.ServiceInfo) {
 	for _, svc := range services {
 		copied := svc
 		copied.Ports = append([]int(nil), svc.Ports...)
+		if len(copied.Ports) > group.MaxPorts {
+			copied.Ports = copied.Ports[:group.MaxPorts]
+		}
 		f.services = append(f.services, copied)
 	}
 
 	for _, svc := range services {
-		for _, port := range svc.Ports {
+		ports := svc.Ports
+		if len(ports) > group.MaxPorts {
+			ports = ports[:group.MaxPorts]
+		}
+		for _, port := range ports {
 			if svc.Proto == "tcp" || svc.Proto == "both" {
 				b := Bound{
 					ServiceID:     svc.ID,

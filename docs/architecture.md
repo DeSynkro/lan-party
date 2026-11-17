@@ -134,6 +134,8 @@ There is no database, no local server and no daemon.
 - 60-second UDP idle timeout
 - 5 failed enrollment attempts per address per minute
 - 2-minute approval wait
+- one control message of at most 64 KiB
+- the friend accepts at most 16 services and 8 ports per service from a host
 
 These are guards against a broken or malicious client, not billing limits.
 

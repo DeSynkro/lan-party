@@ -1,6 +1,7 @@
 package tunnel
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -147,15 +148,18 @@ func (s *Server) handshake(qc *quic.Conn) (*Conn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("control stream: %w", err)
 	}
-	dec := json.NewDecoder(stream)
+	reader := bufio.NewReader(stream)
 	enc := json.NewEncoder(stream)
 
-	var hello ControlMessage
-	if err := dec.Decode(&hello); err != nil {
+	hello, err := readControl(reader)
+	if err != nil {
 		return nil, fmt.Errorf("read hello: %w", err)
 	}
 	if hello.Type != MsgHello || hello.Version != ProtocolVersion {
 		return nil, errors.New("the peer speaks a different protocol")
+	}
+	if len(hello.GroupID) > 128 || len(hello.MemberID) > 128 || len(hello.DeviceName) > 512 || len(hello.PeerName) > 128 || len(hello.Token) > 512 {
+		return nil, errors.New("the hello is too large")
 	}
 
 	state := qc.ConnectionState()
@@ -169,10 +173,10 @@ func (s *Server) handshake(qc *quic.Conn) (*Conn, error) {
 
 	request := AuthRequest{
 		GroupID:     hello.GroupID,
-		MemberID:    hello.MemberID,
-		PeerName:    hello.PeerName,
-		DeviceName:  hello.DeviceName,
-		Token:       hello.Token,
+		MemberID:    clipText(hello.MemberID, 128),
+		PeerName:    clipText(hello.PeerName, 60),
+		DeviceName:  clipText(hello.DeviceName, 120),
+		Token:       clipText(hello.Token, 512),
 		RemoteAddr:  qc.RemoteAddr().String(),
 		PublicKey:   pub,
 		Fingerprint: secure.Fingerprint(pub),
@@ -211,7 +215,7 @@ func (s *Server) handshake(qc *quic.Conn) (*Conn, error) {
 	}
 
 	var c *Conn
-	c = newConn(qc, stream, dec, enc, func() { s.removeConn(c) })
+	c = newConn(qc, stream, reader, enc, func() { s.removeConn(c) })
 	c.MemberID = memberID
 	c.Services = decision.Services
 	return c, nil

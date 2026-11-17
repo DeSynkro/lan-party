@@ -81,3 +81,14 @@ type DataHeader struct {
 	ServiceID string
 	Port      int
 }
+
+func clipText(s string, limit int) string {
+	if limit <= 0 {
+		return ""
+	}
+	runes := []rune(s)
+	if len(runes) <= limit {
+		return s
+	}
+	return string(runes[:limit])
+}
