@@ -242,9 +242,32 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 	content.Append(nameEntry)
 	content.Append(gapBox(8))
 	content.Append(textLabel("Protocol", "form-label"))
-	protocol := gtk.NewDropDownFromStrings([]string{"TCP", "UDP", "TCP + UDP"})
-	protocol.AddCSSClass("field")
-	content.Append(protocol)
+	protocolRow := gtk.NewBox(gtk.OrientationHorizontal, 6)
+	protocolRow.SetHomogeneous(true)
+	protocolButtons := make([]*gtk.Button, 0, 3)
+	selectedProtocol := 0
+	setProtocol := func(selected int) {
+		selectedProtocol = selected
+		for i, button := range protocolButtons {
+			button.RemoveCSSClass("primary")
+			button.RemoveCSSClass("secondary")
+			if i == selected {
+				button.AddCSSClass("primary")
+			} else {
+				button.AddCSSClass("secondary")
+			}
+		}
+	}
+	for i, label := range []string{"TCP", "UDP", "TCP + UDP"} {
+		index := i
+		button := gtk.NewButtonWithLabel(label)
+		button.SetHExpand(true)
+		button.ConnectClicked(func() { setProtocol(index) })
+		protocolButtons = append(protocolButtons, button)
+		protocolRow.Append(button)
+	}
+	setProtocol(0)
+	content.Append(protocolRow)
 	content.Append(gapBox(8))
 	content.Append(textLabel("LAN target", "form-label"))
 	targetEntry := entry("192.168.0.10:25565")
@@ -279,7 +302,7 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 		s := group.Service{
 			ID:     group.NewID(),
 			Name:   strings.TrimSpace(nameEntry.Text()),
-			Proto:  protoValue(int(protocol.Selected())),
+			Proto:  protoValue(selectedProtocol),
 			Target: strings.TrimSpace(targetEntry.Text()),
 			Ports:  ports,
 			Hint:   strings.TrimSpace(hintEntry.Text()),

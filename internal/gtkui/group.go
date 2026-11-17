@@ -42,7 +42,7 @@ func (u *probeUI) buildGroupContent(g group.Group) *gtk.Box {
 		page.Append(gtk.NewSeparator(gtk.OrientationHorizontal))
 		page.Append(gapBox(10))
 		leave := gtk.NewButtonWithLabel("Delete group")
-		leave.AddCSSClass("danger")
+		leave.AddCSSClass("secondary")
 		leave.ConnectClicked(func() {
 			u.confirmDeleteGroup(g)
 		})
