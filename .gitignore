@@ -1,0 +1,24 @@
+# build output
+bin/
+dist/
+build/bin/
+
+# local toolchain and caches
+.tools/
+.cache/
+.tmp/
+
+# isolated worktrees
+.worktrees/
+
+# local data and secrets
+*.db
+*.key
+.env
+lan-party-data/
+
+# editors and os
+.vscode/
+.idea/
+*.swp
+.DS_Store

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LAN Party · first mockup</title>
+<style>
+  body {
+    background: #0f1013;
+    color: #d7dbe6;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    margin: 0;
+    padding: 40px 20px 60px;
+  }
+  .page { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 20px; letter-spacing: .02em; margin: 0 0 4px; }
+  .lede { color: #757c8c; font-size: 13px; margin: 0 0 28px; }
+
+  .lp-wrap { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; }
+  .lp-win {
+    flex: 1 1 380px; min-width: 340px;
+    background: #14151a; border: 1px solid #2b2d36; border-radius: 14px;
+    overflow: hidden; box-shadow: 0 18px 40px rgba(0,0,0,.45);
+  }
+  .lp-title {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; background: #1b1d24; border-bottom: 1px solid #2b2d36;
+  }
+  .lp-title b { letter-spacing: .18em; font-size: 13px; color: #e9edf5; }
+  .lp-title .role { font-size: 10px; text-transform: uppercase; letter-spacing: .14em; color: #6f7686; }
+  .lp-dots { display: flex; gap: 6px; margin-left: auto; }
+  .lp-dots i { width: 11px; height: 11px; border-radius: 3px; display: block; }
+  .lp-body { padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+
+  .lp-live {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 12px; border-radius: 10px;
+    background: linear-gradient(180deg, rgba(34,197,94,.13), rgba(34,197,94,.05));
+    border: 1px solid rgba(34,197,94,.35);
+  }
+  .lp-live .t { font-size: 12px; color: #8ef0b4; font-weight: 600; }
+  .lp-live .s { font-size: 11px; color: #6f8c7c; margin-top: 2px; }
+  .lp-btn {
+    font-size: 11px; font-weight: 600; padding: 7px 12px; border-radius: 8px;
+    border: 1px solid #3a3d49; background: #23252e; color: #d7dbe6;
+  }
+  .lp-btn.danger { border-color: rgba(239,68,68,.5); color: #ff9d9d; background: rgba(239,68,68,.1); }
+  .lp-btn.primary { border-color: rgba(34,211,238,.55); color: #a5f0ff; background: rgba(34,211,238,.1); }
+
+  .lp-label { font-size: 10px; text-transform: uppercase; letter-spacing: .16em; color: #666d7d; margin-bottom: 7px; }
+
+  .lp-svc {
+    display: flex; align-items: center; gap: 12px; padding: 11px 12px;
+    border: 1px solid #2b2d36; border-radius: 10px; background: #191b21;
+  }
+  .lp-svc.hot { border-color: rgba(34,211,238,.5); background: linear-gradient(180deg, rgba(34,211,238,.09), rgba(34,211,238,.02)); }
+  .lp-svc .ic {
+    width: 30px; height: 30px; border-radius: 8px; background: #23252e;
+    display: flex; align-items: center; justify-content: center; font-size: 14px;
+  }
+  .lp-svc .nm { font-size: 13px; color: #e9edf5; font-weight: 600; }
+  .lp-svc .meta { font-size: 11px; color: #757c8c; margin-top: 2px; }
+  .lp-svc .right { margin-left: auto; text-align: right; }
+
+  .lp-addr {
+    display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+    background: #0e0f13; border: 1px dashed #3a3d49; border-radius: 10px;
+  }
+  .lp-addr code { font-family: ui-monospace, monospace; font-size: 15px; color: #a5f0ff; }
+  .lp-addr .hint { font-size: 10px; color: #6f7686; margin-top: 3px; }
+
+  .lp-row { display: flex; align-items: center; gap: 10px; padding: 7px 4px; }
+  .lp-row .dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,.7); }
+  .lp-row .dot.off { background: #6b7280; box-shadow: none; }
+  .lp-row .name { font-size: 12.5px; color: #dfe4ee; }
+  .lp-row .tag { font-size: 10px; color: #9aa2b2; border: 1px solid #333642; border-radius: 999px; padding: 2px 7px; }
+  .lp-row .ping { margin-left: auto; font-size: 11px; color: #6f7686; }
+  .lp-row.you .name { color: #a5f0ff; }
+
+  .lp-invite { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 12px; border: 1px solid #2b2d36; border-radius: 10px; background: #191b21; }
+  .lp-invite code { font-family: ui-monospace, monospace; font-size: 12px; color: #cfd6e4; }
+  .lp-invite .sub { font-size: 10.5px; color: #6f7686; margin-top: 3px; }
+
+  .lp-flow { margin-top: 26px; padding: 16px; border: 1px solid #2b2d36; border-radius: 12px; background: #14151a; }
+  .lp-flow .strip { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .lp-node { font-size: 11px; padding: 8px 10px; border-radius: 8px; border: 1px solid #333642; background: #191b21; color: #cbd2e0; }
+  .lp-node.hl { border-color: rgba(34,211,238,.5); color: #a5f0ff; }
+  .lp-node.fake { border-style: dashed; color: #8d95a6; }
+  .lp-arrow { color: #4b5162; font-size: 13px; }
+  .lp-flow p { font-size: 11.5px; color: #7b8291; margin: 10px 0 0; line-height: 1.55; }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>LAN Party · first mockup</h1>
+  <p class="lede">Kept as a reference. The app has moved on since: cards, a status pill, and an invites list.</p>
+
+  <div class="lp-wrap">
+
+    <div class="lp-win">
+      <div class="lp-title">
+        <b>LAN PARTY</b>
+        <span class="role">host</span>
+        <div class="lp-dots"><i style="background:#22d3ee"></i><i style="background:#ef4444"></i></div>
+      </div>
+      <div class="lp-body">
+
+        <div class="lp-live">
+          <div>
+            <div class="t">Session live · 3 playing</div>
+            <div class="s">group “Friday Night” · up 42m</div>
+          </div>
+          <button class="lp-btn danger">End session</button>
+        </div>
+
+        <div>
+          <div class="lp-label">Published</div>
+
+          <div class="lp-svc hot">
+            <div class="ic">⛏</div>
+            <div>
+              <div class="nm">Minecraft Java</div>
+              <div class="meta">192.168.0.10:25565 · TCP</div>
+            </div>
+            <div class="right">
+              <span class="tag" style="border-color:rgba(34,211,238,.4); color:#a5f0ff">friends see 127.0.0.1:25565</span>
+              <div class="meta" style="margin-top:4px">3/3 can reach</div>
+            </div>
+          </div>
+
+          <div class="lp-svc" style="margin-top:8px">
+            <div class="ic">🎬</div>
+            <div>
+              <div class="nm">Jellyfin</div>
+              <div class="meta">192.168.0.10:8096 · TCP</div>
+            </div>
+            <div class="right">
+              <span class="tag" style="border-color:rgba(34,211,238,.4); color:#a5f0ff">friends see 127.0.0.1:8096</span>
+              <div class="meta" style="margin-top:4px">2/3 can reach</div>
+            </div>
+          </div>
+
+          <div class="lp-svc" style="margin-top:8px; opacity:.6">
+            <div class="ic">＋</div>
+            <div>
+              <div class="nm">Add service</div>
+              <div class="meta">preset or your own · saved for next time</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="lp-label">Group · 4 members</div>
+          <div class="lp-row you"><span class="dot"></span><span class="name">You (Desynkro)</span><span class="tag">host</span><span class="ping">—</span></div>
+          <div class="lp-row"><span class="dot"></span><span class="name">Ash</span><span class="tag">Minecraft</span><span class="ping">24 ms</span></div>
+          <div class="lp-row"><span class="dot"></span><span class="name">Pip</span><span class="tag">Minecraft · Jellyfin</span><span class="ping">31 ms</span></div>
+          <div class="lp-row"><span class="dot off"></span><span class="name">Jonah</span><span class="tag">Minecraft</span><span class="ping">idle</span></div>
+        </div>
+
+        <div class="lp-invite">
+          <div>
+            <code>LANP-4F2C-9KQ7</code>
+            <div class="sub">1 use left · expires in 6 days</div>
+          </div>
+          <div style="display:flex; gap:6px">
+            <button class="lp-btn">Copy</button>
+            <button class="lp-btn primary">New invite</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="lp-win">
+      <div class="lp-title">
+        <b>LAN PARTY</b>
+        <span class="role">friend</span>
+        <div class="lp-dots"><i style="background:#22d3ee"></i><i style="background:#ef4444"></i></div>
+      </div>
+      <div class="lp-body">
+
+        <div class="lp-live">
+          <div>
+            <div class="t">Host is live · 24 ms</div>
+            <div class="s">group “Friday Night” · 2 games open</div>
+          </div>
+          <button class="lp-btn">Leave group</button>
+        </div>
+
+        <div>
+          <div class="lp-label">Ready to play</div>
+
+          <div class="lp-svc hot">
+            <div class="ic">⛏</div>
+            <div>
+              <div class="nm">Minecraft Java</div>
+              <div class="meta">hosted by Desynkro</div>
+            </div>
+          </div>
+
+          <div class="lp-addr" style="margin-top:8px">
+            <div>
+              <code>127.0.0.1:25565</code>
+              <div class="hint">Direct Connect in Minecraft → paste this</div>
+            </div>
+            <button class="lp-btn primary" style="margin-left:auto">Copy</button>
+          </div>
+
+          <div style="display:flex; gap:8px; margin-top:8px">
+            <button class="lp-btn" style="flex:1">Add to Minecraft servers</button>
+            <button class="lp-btn" style="flex:1">Launch Minecraft</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="lp-label">Also available · not granted</div>
+          <div class="lp-svc" style="opacity:.55">
+            <div class="ic">🎬</div>
+            <div>
+              <div class="nm">Jellyfin</div>
+              <div class="meta">ask Desynkro for access</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="lp-label">Group · 4 members</div>
+          <div class="lp-row"><span class="dot"></span><span class="name">Desynkro</span><span class="tag">host</span><span class="ping">24 ms</span></div>
+          <div class="lp-row you"><span class="dot"></span><span class="name">You (Ash)</span><span class="tag">Minecraft</span><span class="ping">—</span></div>
+          <div class="lp-row"><span class="dot"></span><span class="name">Pip</span><span class="tag">Minecraft</span><span class="ping">31 ms</span></div>
+          <div class="lp-row"><span class="dot off"></span><span class="name">Jonah</span><span class="tag">Minecraft</span><span class="ping">idle</span></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="lp-flow">
+    <div class="lp-label" style="margin:0">What a packet actually does</div>
+    <div class="strip">
+      <span class="lp-node">Minecraft</span>
+      <span class="lp-arrow">→</span>
+      <span class="lp-node hl">127.0.0.1:25565 (friend's app)</span>
+      <span class="lp-arrow">→</span>
+      <span class="lp-node fake">box · 100.64.0.1:25565 (wireguard)</span>
+      <span class="lp-arrow">→</span>
+      <span class="lp-node">host's app</span>
+      <span class="lp-arrow">→</span>
+      <span class="lp-node">192.168.0.10:25565</span>
+    </div>
+    <p>
+      The friend's game never leaves their machine. It talks to a real local socket. Everything past that is the app:
+      encrypted to the box address, accepted only on a port you published, then dialled on your LAN.
+      Your real IP, router and other devices are never on the path.
+    </p>
+  </div>
+</div>
+</body>
+</html>
