@@ -360,3 +360,43 @@ dropdown.field button:hover {
   background-color: @raised;
   border-color: @violet;
 }
+
+dropdown.field button:hover,
+dropdown.field button:active,
+dropdown.field button:focus,
+dropdown.field button:checked {
+  background-color: @raised;
+  background-image: none;
+  border-color: @violet;
+  box-shadow: none;
+  outline: none;
+}
+
+dropdown.field button label {
+  color: @pale;
+}
+
+button.danger {
+  background-color: transparent;
+  background-image: none;
+  border: 1px solid #4A302D;
+  color: @danger;
+  min-height: 36px;
+  padding: 0 14px;
+}
+
+button.danger:hover {
+  background-color: #2B1F1E;
+  border-color: @danger;
+}
+
+button.danger label {
+  color: @danger;
+}
+
+dropdown.field,
+dropdown.field:hover {
+  background-color: @ink;
+  background-image: none;
+  outline: none;
+}

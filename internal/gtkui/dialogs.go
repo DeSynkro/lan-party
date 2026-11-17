@@ -300,6 +300,53 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 	win.Present()
 }
 
+func (u *probeUI) confirm(title, message, confirmLabel string, onConfirm func()) {
+	win, content := u.dialog(title)
+	content.Append(cardText(message, "desc"))
+	content.Append(gapBox(14))
+
+	buttons := gtk.NewBox(gtk.OrientationHorizontal, 8)
+	cancel := gtk.NewButtonWithLabel("Cancel")
+	cancel.AddCSSClass("quiet")
+	cancel.ConnectClicked(func() { win.Close() })
+	confirm := gtk.NewButtonWithLabel(confirmLabel)
+	confirm.AddCSSClass("danger")
+	confirm.ConnectClicked(func() {
+		win.Close()
+		onConfirm()
+	})
+	buttons.Append(cancel)
+	buttons.Append(confirm)
+	buttons.SetHAlign(gtk.AlignEnd)
+	content.Append(buttons)
+	win.Present()
+}
+
+func (u *probeUI) alert(title, message string) {
+	win, content := u.dialog(title)
+	content.Append(cardText(message, "desc"))
+	content.Append(gapBox(14))
+	done := gtk.NewButtonWithLabel("Close")
+	done.AddCSSClass("primary")
+	done.ConnectClicked(func() { win.Close() })
+	done.SetHAlign(gtk.AlignEnd)
+	content.Append(done)
+	win.Present()
+}
+
+func (u *probeUI) confirmDeleteGroup(g group.Group) {
+	u.confirm("Delete "+g.Name+"?",
+		"This ends any running session and revokes every member. Friends keep a saved entry until they remove it.",
+		"Delete group",
+		func() {
+			if err := u.state.DeleteGroup(g.ID); err != nil {
+				u.alert("Could not delete group", err.Error())
+				return
+			}
+			u.showHome()
+		})
+}
+
 func (u *probeUI) dialog(title string) (*gtk.Window, *gtk.Box) {
 	win := gtk.NewWindow()
 	win.SetTitle(title)

@@ -92,6 +92,11 @@ func RunProbe(argv []string) int {
 				ui.showGroup(g.ID)
 				ui.showAddServiceDialog(g)
 			}
+		case strings.HasPrefix(screen, "delete:"):
+			if g, ok := ui.state.Group(strings.TrimPrefix(screen, "delete:")); ok {
+				ui.showGroup(g.ID)
+				ui.confirmDeleteGroup(g)
+			}
 		case strings.HasPrefix(screen, "group:"):
 			ui.showGroup(strings.TrimPrefix(screen, "group:"))
 		default:
