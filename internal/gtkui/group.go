@@ -499,3 +499,14 @@ func protoValue(index int) string {
 		return "both"
 	}
 }
+
+func protoIndex(proto string) int {
+	switch proto {
+	case "udp":
+		return 1
+	case "both":
+		return 2
+	default:
+		return 0
+	}
+}

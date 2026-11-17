@@ -400,3 +400,41 @@ dropdown.field:hover {
   background-image: none;
   outline: none;
 }
+
+menubutton.preset-menu > button {
+  background-color: @ink;
+  background-image: none;
+  border: 1px solid @hairline;
+  border-radius: 8px;
+  color: @pale;
+  min-height: 32px;
+  padding: 0 9px;
+}
+
+menubutton.preset-menu > button:hover {
+  background-color: @raised;
+  border-color: @violet;
+}
+
+popover.background {
+  background-color: @surface;
+  border: 1px solid @hairline;
+  border-radius: 10px;
+}
+
+popover.background contents {
+  background-color: @surface;
+}
+
+popover button {
+  background: transparent;
+  background-image: none;
+  border: none;
+  border-radius: 6px;
+  color: @pale;
+  padding: 7px 10px;
+}
+
+popover button:hover {
+  background-color: @raised;
+}
