@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/diamondburned/gotk4/pkg/core/glib"
 	"github.com/diamondburned/gotk4/pkg/gdk/v4"
 	"github.com/diamondburned/gotk4/pkg/gio/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
@@ -33,6 +34,7 @@ type probeUI struct {
 	stack       *gtk.Stack
 	homeScroll  *gtk.ScrolledWindow
 	groupScroll *gtk.ScrolledWindow
+	groupState  *groupLive
 	logo        *gtk.Image
 	back        *gtk.Button
 	title       *gtk.Label
@@ -264,7 +266,16 @@ func (u *probeUI) showGroup(id string) {
 		u.showHome()
 		return
 	}
-	u.groupScroll.SetChild(u.buildGroupContent(g))
+	keepScroll := 0.0
+	if u.stack.VisibleChildName() == "group" && u.groupState != nil && u.groupState.groupID == id {
+		keepScroll = u.groupScroll.VAdjustment().Value()
+	}
+	page, live := u.buildGroupContent(g)
+	u.groupState = live
+	u.groupScroll.SetChild(page)
+	if keepScroll > 0 {
+		glib.IdleAdd(func() { u.groupScroll.VAdjustment().SetValue(keepScroll) })
+	}
 	u.stack.SetVisibleChildName("group")
 	u.title.SetText(truncateText(g.Name, 30))
 	u.logo.SetVisible(false)
@@ -293,6 +304,10 @@ func (u *probeUI) showGuide() {
 
 func (u *probeUI) start() {
 	u.trayOn = startTray(u)
+	glib.TimeoutAdd(1000, func() bool {
+		u.refreshGroup()
+		return true
+	})
 	go u.watchApprovals()
 	if u.trayOn {
 		u.app.Hold()

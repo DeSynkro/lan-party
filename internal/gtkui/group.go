@@ -13,7 +13,37 @@ import (
 	"github.com/desynkro/lan-party/internal/group"
 )
 
-func (u *probeUI) buildGroupContent(g group.Group) *gtk.Box {
+type livePerson struct {
+	dot    *gtk.Label
+	detail *gtk.Label
+}
+
+// groupLive keeps the widgets that change while a group screen stays open.
+type groupLive struct {
+	groupID   string
+	signature string
+
+	hostStatus    *gtk.Label
+	hostDot       *gtk.Label
+	hostConnected *gtk.Label
+	hostPeople    map[string]*livePerson
+
+	inviteExpiry map[string]*gtk.Label
+
+	friendStatus     *gtk.Label
+	friendDot        *gtk.Label
+	friendDetail     *gtk.Label
+	friendHostDot    *gtk.Label
+	friendHostDetail *gtk.Label
+}
+
+func (u *probeUI) buildGroupContent(g group.Group) (*gtk.Box, *groupLive) {
+	live := &groupLive{
+		groupID:      g.ID,
+		signature:    u.groupSignature(g),
+		hostPeople:   map[string]*livePerson{},
+		inviteExpiry: map[string]*gtk.Label{},
+	}
 	page := gtk.NewBox(gtk.OrientationVertical, 0)
 	page.AddCSSClass("page")
 	page.SetMarginTop(20)
@@ -31,13 +61,13 @@ func (u *probeUI) buildGroupContent(g group.Group) *gtk.Box {
 	}
 
 	if g.IsHost() {
-		page.Append(u.hostSessionCard(g, showError))
+		page.Append(u.hostSessionCard(g, showError, live))
 		page.Append(sectionTitleAction("Published", strconv.Itoa(len(g.Services)), "Add service", func() { u.showAddServiceDialog(g) }))
 		page.Append(u.hostServices(g))
 		page.Append(sectionTitleAction("People", plural(len(g.Members), "member"), "Invite", func() { u.showInviteDialog(g) }))
-		page.Append(u.hostPeople(g))
+		page.Append(u.hostPeople(g, live))
 		page.Append(sectionTitle("Invites", ""))
-		page.Append(u.hostInvites(g))
+		page.Append(u.hostInvites(g, live))
 		page.Append(gtk.NewSeparator(gtk.OrientationHorizontal))
 		page.Append(gapBox(10))
 		leave := gtk.NewButtonWithLabel("Delete group")
@@ -49,11 +79,11 @@ func (u *probeUI) buildGroupContent(g group.Group) *gtk.Box {
 		page.Append(gapBox(4))
 		page.Append(cardText("This ends any running session and revokes every member.", "desc"))
 	} else {
-		page.Append(u.friendSessionCard(g, showError))
+		page.Append(u.friendSessionCard(g, showError, live))
 		page.Append(sectionTitle("Ready to play", ""))
 		page.Append(u.friendServices(g))
 		page.Append(sectionTitle("People", ""))
-		page.Append(u.friendPeople(g))
+		page.Append(u.friendPeople(g, live))
 		page.Append(gtk.NewSeparator(gtk.OrientationHorizontal))
 		page.Append(gapBox(10))
 		leave := gtk.NewButtonWithLabel("Leave group")
@@ -66,21 +96,24 @@ func (u *probeUI) buildGroupContent(g group.Group) *gtk.Box {
 		page.Append(cardText("This removes the saved group and its device key from this PC.", "desc"))
 	}
 
-	return page
+	return page, live
 }
 
-func (u *probeUI) hostSessionCard(g group.Group, showError func(error)) *gtk.Box {
+func (u *probeUI) hostSessionCard(g group.Group, showError func(error), state *groupLive) *gtk.Box {
 	live := u.state.LiveGroupID() == g.ID
 	card := gtk.NewBox(gtk.OrientationVertical, 0)
 	card.AddCSSClass("card")
 	card.SetMarginBottom(10)
 
 	top := gtk.NewBox(gtk.OrientationHorizontal, 8)
-	top.Append(statusDot(live))
+	dot := statusDot(live)
+	state.hostDot = dot
+	top.Append(dot)
 	status := lineLabel("Session off", "card-title")
 	if live {
 		status.SetText("Session live")
 	}
+	state.hostStatus = status
 	top.Append(status)
 	spacer := gtk.NewBox(gtk.OrientationHorizontal, 0)
 	spacer.SetHExpand(true)
@@ -126,18 +159,19 @@ func (u *probeUI) hostSessionCard(g group.Group, showError func(error)) *gtk.Box
 	}
 	card.Append(cardText("UDP "+strconv.Itoa(u.state.Settings().AppPort)+" on this PC", "desc"))
 	card.Append(gapBox(6))
+	connected := cardText("not running", "desc")
 	if live {
 		presence := u.state.HostPresence()
-		connected := 0
+		count := 0
 		for _, p := range presence {
 			if p.Live {
-				connected++
+				count++
 			}
 		}
-		card.Append(cardText(fmt.Sprintf("%d connected", connected), "desc"))
-	} else {
-		card.Append(cardText("not running", "desc"))
+		connected.SetText(fmt.Sprintf("%d connected", count))
 	}
+	state.hostConnected = connected
+	card.Append(connected)
 	return card
 }
 
@@ -177,9 +211,10 @@ func (u *probeUI) hostServiceCard(s group.Service) *gtk.Box {
 	return card
 }
 
-func (u *probeUI) hostPeople(g group.Group) *gtk.Box {
+func (u *probeUI) hostPeople(g group.Group, state *groupLive) *gtk.Box {
 	box := gtk.NewBox(gtk.OrientationVertical, 0)
-	box.Append(personCard(g.HostName+" (you)", "this device", true, "host"))
+	hostCard, _, _ := personCardParts(g.HostName+" (you)", "this device", true, "host")
+	box.Append(hostCard)
 
 	presence := u.state.HostPresence()
 	for _, m := range g.Members {
@@ -193,7 +228,8 @@ func (u *probeUI) hostPeople(g group.Group) *gtk.Box {
 			}
 		}
 		box.Append(gapBox(8))
-		card := personCard(m.Name, detail, live, "")
+		card, dot, detailLabel := personCardParts(m.Name, detail, live, "")
+		state.hostPeople[m.ID] = &livePerson{dot: dot, detail: detailLabel}
 		addClick(card, func() { u.showMemberDialog(g, m) })
 		box.Append(card)
 	}
@@ -204,7 +240,7 @@ func (u *probeUI) hostPeople(g group.Group) *gtk.Box {
 	return box
 }
 
-func (u *probeUI) hostInvites(g group.Group) *gtk.Box {
+func (u *probeUI) hostInvites(g group.Group, state *groupLive) *gtk.Box {
 	box := gtk.NewBox(gtk.OrientationVertical, 0)
 	open := g.OpenInvites(time.Now())
 	if len(open) == 0 {
@@ -222,7 +258,9 @@ func (u *probeUI) hostInvites(g group.Group) *gtk.Box {
 		name := lineLabel(inv.Name, "row-title")
 		name.SetHExpand(true)
 		content.Append(name)
-		content.Append(lineLabel(expiresIn(inv.ExpiresAt), "row-meta"))
+		expiry := lineLabel(expiresIn(inv.ExpiresAt), "row-meta")
+		state.inviteExpiry[inv.ID] = expiry
+		content.Append(expiry)
 		if code := u.state.InviteCode(inv.ID); code != "" {
 			copy := gtk.NewButtonWithLabel("Copy")
 			copy.AddCSSClass("quiet")
@@ -242,7 +280,7 @@ func (u *probeUI) hostInvites(g group.Group) *gtk.Box {
 	return box
 }
 
-func (u *probeUI) friendSessionCard(g group.Group, showError func(error)) *gtk.Box {
+func (u *probeUI) friendSessionCard(g group.Group, showError func(error), state *groupLive) *gtk.Box {
 	presence := u.state.FriendPresence()
 	live := u.state.LiveGroupID() == g.ID && presence.Live
 	card := gtk.NewBox(gtk.OrientationVertical, 0)
@@ -250,11 +288,14 @@ func (u *probeUI) friendSessionCard(g group.Group, showError func(error)) *gtk.B
 	card.SetMarginBottom(10)
 
 	top := gtk.NewBox(gtk.OrientationHorizontal, 8)
-	top.Append(statusDot(live))
+	dot := statusDot(live)
+	state.friendDot = dot
+	top.Append(dot)
 	status := lineLabel("Host offline", "card-title")
 	if live {
 		status.SetText("Host live")
 	}
+	state.friendStatus = status
 	top.Append(status)
 	spacer := gtk.NewBox(gtk.OrientationHorizontal, 0)
 	spacer.SetHExpand(true)
@@ -280,13 +321,15 @@ func (u *probeUI) friendSessionCard(g group.Group, showError func(error)) *gtk.B
 	card.Append(top)
 	card.Append(gapBox(10))
 	card.Append(cardText("Hosted by "+g.HostName, "desc"))
+	detail := "Start the session on the host, then reconnect."
 	if live {
-		card.Append(cardText(presence.RTT.Round(time.Millisecond).String(), "desc"))
+		detail = presence.RTT.Round(time.Millisecond).String()
 	} else if note := u.state.FriendNote(); note != "" {
-		card.Append(cardText(note, "desc"))
-	} else {
-		card.Append(cardText("Start the session on the host, then reconnect.", "desc"))
+		detail = note
 	}
+	detailLabel := cardText(detail, "desc")
+	state.friendDetail = detailLabel
+	card.Append(detailLabel)
 	return card
 }
 
@@ -359,27 +402,33 @@ func (u *probeUI) offlineFriendServiceCard(s group.Service) *gtk.Box {
 	return card
 }
 
-func (u *probeUI) friendPeople(g group.Group) *gtk.Box {
+func (u *probeUI) friendPeople(g group.Group, state *groupLive) *gtk.Box {
 	box := gtk.NewBox(gtk.OrientationVertical, 0)
 	presence := u.state.FriendPresence()
+	live := u.state.LiveGroupID() == g.ID && presence.Live
 	detail := "host"
-	if presence.Live {
+	if live {
 		detail = "host · " + presence.RTT.Round(time.Millisecond).String()
 	}
-	box.Append(personCard(g.HostName, detail, presence.Live, "host"))
+	hostCard, dot, detailLabel := personCardParts(g.HostName, detail, live, "host")
+	state.friendHostDot = dot
+	state.friendHostDetail = detailLabel
+	box.Append(hostCard)
 	box.Append(gapBox(8))
 	self := g.SelfName
 	if strings.TrimSpace(self) == "" {
 		self = "you"
 	}
-	box.Append(personCard("You ("+self+")", u.state.DeviceName(), true, "you"))
+	selfCard, _, _ := personCardParts("You ("+self+")", u.state.DeviceName(), true, "you")
+	box.Append(selfCard)
 	return box
 }
 
-func personCard(name, detail string, live bool, role string) *gtk.Box {
+func personCardParts(name, detail string, live bool, role string) (*gtk.Box, *gtk.Label, *gtk.Label) {
 	card := gtk.NewBox(gtk.OrientationHorizontal, 8)
 	card.AddCSSClass("card")
-	card.Append(statusDot(live))
+	dot := statusDot(live)
+	card.Append(dot)
 	text := gtk.NewBox(gtk.OrientationVertical, 0)
 	title := gtk.NewBox(gtk.OrientationHorizontal, 6)
 	title.Append(lineLabel(name, "row-title"))
@@ -387,9 +436,10 @@ func personCard(name, detail string, live bool, role string) *gtk.Box {
 		title.Append(tagLabel(role))
 	}
 	text.Append(title)
-	text.Append(cardText(detail, "desc"))
+	detailLabel := cardText(detail, "desc")
+	text.Append(detailLabel)
 	card.Append(text)
-	return card
+	return card, dot, detailLabel
 }
 
 func navRow(title, meta string, live bool, onTap func()) *gtk.Button {
@@ -445,6 +495,158 @@ func sectionTitleAction(title, count, action string, onAction func()) *gtk.Box {
 		row.Append(button)
 	}
 	return row
+}
+
+func (u *probeUI) groupSignature(g group.Group) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "group|%s|%s|%s|%s|%s|%s|%s", g.ID, g.Name, g.Role, g.HostName, g.Endpoint, g.HostPin, g.SelfName)
+	if g.IsHost() {
+		live := u.state.LiveGroupID() == g.ID
+		fmt.Fprintf(&b, "|live=%t", live)
+		if endpoint, err := u.state.CurrentEndpoint(); err == nil {
+			fmt.Fprintf(&b, "|endpoint=%s", endpoint)
+		} else {
+			fmt.Fprintf(&b, "|endpoint-error=%s", err)
+		}
+		fmt.Fprintf(&b, "|app-port=%d", u.state.Settings().AppPort)
+		for _, s := range g.Services {
+			fmt.Fprintf(&b, "|service=%s,%s,%s,%s,%s,%s", s.ID, s.Name, s.Proto, s.Target, group.FormatPorts(s.Ports), s.Hint)
+		}
+		for _, m := range g.Members {
+			fmt.Fprintf(&b, "|member=%s,%s,%s", m.ID, m.Name, m.State)
+		}
+		for _, inv := range g.OpenInvites(time.Now()) {
+			fmt.Fprintf(&b, "|invite=%s,%s,%t", inv.ID, inv.Name, u.state.InviteCode(inv.ID) != "")
+		}
+		return b.String()
+	}
+
+	presence := u.state.FriendPresence()
+	live := u.state.LiveGroupID() == g.ID && presence.Live
+	fmt.Fprintf(&b, "|live=%t|note=%s", live, u.state.FriendNote())
+	if live {
+		for _, bound := range u.state.FriendBounds() {
+			fmt.Fprintf(&b, "|bound=%s,%s,%s,%d,%d,%s,%s,%s", bound.ServiceID, bound.Service, bound.Proto, bound.PublishedPort, bound.Port, bound.Address, bound.Error, bound.Hint)
+		}
+		return b.String()
+	}
+	for _, s := range g.Services {
+		fmt.Fprintf(&b, "|service=%s,%s,%s,%s,%s", s.ID, s.Name, s.Proto, group.FormatPorts(s.Ports), s.Hint)
+	}
+	return b.String()
+}
+
+// refreshGroup updates the visible group screen once a second. Presence and
+// invite countdowns change in place; structural changes rebuild the page.
+func (u *probeUI) refreshGroup() {
+	state := u.groupState
+	if state == nil || u.stack.VisibleChildName() != "group" {
+		return
+	}
+	g, ok := u.state.Group(state.groupID)
+	if !ok {
+		u.showHome()
+		return
+	}
+	if u.groupSignature(g) != state.signature {
+		u.showGroup(g.ID)
+		return
+	}
+	state.refresh(u, g)
+}
+
+func (state *groupLive) refresh(u *probeUI, g group.Group) {
+	now := time.Now()
+	if g.IsHost() {
+		live := u.state.LiveGroupID() == g.ID
+		setStatusDot(state.hostDot, live)
+		if state.hostStatus != nil {
+			if live {
+				state.hostStatus.SetText("Session live")
+			} else {
+				state.hostStatus.SetText("Session off")
+			}
+		}
+
+		presence := u.state.HostPresence()
+		connected := 0
+		for _, p := range presence {
+			if p.Live {
+				connected++
+			}
+		}
+		if state.hostConnected != nil {
+			if live {
+				state.hostConnected.SetText(fmt.Sprintf("%d connected", connected))
+			} else {
+				state.hostConnected.SetText("not running")
+			}
+		}
+
+		for _, m := range g.Members {
+			person := state.hostPeople[m.ID]
+			if person == nil {
+				continue
+			}
+			detail := "idle"
+			memberLive := false
+			if !m.IsApproved() {
+				detail = "waiting for approval"
+			} else if p, ok := presence[m.ID]; ok && p.Live {
+				memberLive = true
+				detail = "live · " + p.RTT.Round(time.Millisecond).String()
+			}
+			person.detail.SetText(detail)
+			setStatusDot(person.dot, memberLive)
+		}
+
+		for _, inv := range g.OpenInvites(now) {
+			if label := state.inviteExpiry[inv.ID]; label != nil {
+				label.SetText(expiresIn(inv.ExpiresAt))
+			}
+		}
+		return
+	}
+
+	presence := u.state.FriendPresence()
+	live := u.state.LiveGroupID() == g.ID && presence.Live
+	setStatusDot(state.friendDot, live)
+	if state.friendStatus != nil {
+		if live {
+			state.friendStatus.SetText("Host live")
+		} else {
+			state.friendStatus.SetText("Host offline")
+		}
+	}
+	if state.friendDetail != nil {
+		switch {
+		case live:
+			state.friendDetail.SetText(presence.RTT.Round(time.Millisecond).String())
+		case u.state.FriendNote() != "":
+			state.friendDetail.SetText(u.state.FriendNote())
+		default:
+			state.friendDetail.SetText("Start the session on the host, then reconnect.")
+		}
+	}
+	if state.friendHostDetail != nil {
+		detail := "host"
+		if live {
+			detail = "host · " + presence.RTT.Round(time.Millisecond).String()
+		}
+		state.friendHostDetail.SetText(detail)
+	}
+	setStatusDot(state.friendHostDot, live)
+}
+
+func setStatusDot(dot *gtk.Label, live bool) {
+	if dot == nil {
+		return
+	}
+	if live {
+		dot.SetCSSClasses([]string{"dot"})
+	} else {
+		dot.SetCSSClasses([]string{"dot-off"})
+	}
 }
 
 func expiresIn(at time.Time) string {
