@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="LAN Party">
+  <g transform="translate(12 12) scale(0.94) translate(-12 -12)">
+  <path d="M12 8.4 5.3 18M12 8.4 12 18M12 8.4 18.7 18" stroke="#FFFFFF" stroke-width="2.3" stroke-linecap="round" fill="none"/>
+  <circle cx="12" cy="8.4" r="3.9" fill="#FFFFFF"/>
+  <circle cx="5.3" cy="18" r="2.9" fill="#FFFFFF"/>
+  <circle cx="12" cy="18" r="2.9" fill="#FFFFFF"/>
+  <circle cx="18.7" cy="18" r="2.9" fill="#FFFFFF"/>
+  </g>
+</svg>

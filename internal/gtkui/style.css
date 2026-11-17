@@ -1,0 +1,256 @@
+@define-color ink #08040F;
+@define-color deep #120A2E;
+@define-color raised #1A1035;
+@define-color hairline #2C1A55;
+@define-color pale #FDF4FF;
+@define-color secondary #C9B8E8;
+@define-color muted #907FAF;
+@define-color magenta #FF3DBE;
+@define-color violet #8B5CF6;
+@define-color cyan #22D3EE;
+@define-color live #4ADE80;
+
+window {
+  background-color: @ink;
+  color: @pale;
+}
+
+windowcontrols button {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: @secondary;
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0 3px;
+}
+
+.appbar {
+  background-color: @ink;
+  border-bottom: 1px solid @hairline;
+  min-height: 38px;
+  padding: 0 12px;
+}
+
+.app-title {
+  color: @pale;
+  font-family: "Space Grotesk";
+  font-size: 14px;
+  font-weight: 600;
+}
+
+button {
+  box-shadow: none;
+  text-shadow: none;
+  border-radius: 9px;
+  font-family: "IBM Plex Sans";
+  font-size: 12px;
+}
+
+button.primary {
+  background-color: @violet;
+  border: none;
+  color: @pale;
+  font-weight: 600;
+  min-height: 36px;
+  padding: 0 14px;
+}
+
+button.primary:hover {
+  background-color: #A78BFA;
+}
+
+button.primary:active {
+  background-color: #7C3AED;
+}
+
+button.primary label {
+  color: @pale;
+}
+
+button.secondary {
+  background-color: @raised;
+  border: 1px solid @hairline;
+  color: @pale;
+  min-height: 36px;
+  padding: 0 14px;
+}
+
+button.secondary:hover {
+  background-color: #24164A;
+  border-color: @violet;
+}
+
+button.secondary label {
+  color: @pale;
+}
+
+button.quiet {
+  background: transparent;
+  border: none;
+  color: @secondary;
+  min-height: 28px;
+  padding: 0 6px;
+}
+
+button.quiet:hover {
+  background-color: @raised;
+}
+
+button.quiet label {
+  color: @secondary;
+}
+
+box.page {
+  background-color: @ink;
+}
+
+label.title {
+  color: @pale;
+  font-family: "IBM Plex Sans";
+  font-size: 24px;
+  font-weight: 600;
+}
+
+label.body {
+  color: @secondary;
+  font-family: "IBM Plex Sans";
+  font-size: 13px;
+}
+
+label.section {
+  color: @muted;
+  font-family: "IBM Plex Sans";
+  font-size: 12px;
+}
+
+box.card {
+  background-color: @deep;
+  border: 1px solid @hairline;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+label.card-title {
+  color: @pale;
+  font-family: "Space Grotesk";
+  font-size: 14px;
+  font-weight: 600;
+}
+
+button.row {
+  background-color: @deep;
+  border: 1px solid @hairline;
+  border-radius: 9px;
+  padding: 0;
+  min-height: 40px;
+}
+
+button.row:hover {
+  background-color: @raised;
+  border-color: @violet;
+}
+
+box.row-content {
+  padding: 0 14px;
+}
+
+label.row-title {
+  color: @pale;
+  font-family: "IBM Plex Sans";
+  font-size: 13px;
+  font-weight: 600;
+}
+
+label.row-meta {
+  color: @muted;
+  font-family: "IBM Plex Sans";
+  font-size: 12px;
+}
+
+label.chevron {
+  color: @muted;
+  font-family: "Space Grotesk";
+  font-size: 16px;
+}
+
+label.dot {
+  color: @live;
+  font-size: 10px;
+}
+
+label.desc {
+  color: @muted;
+  font-family: "IBM Plex Sans";
+  font-size: 12px;
+}
+
+checkbutton.setting-check {
+  color: @pale;
+  font-family: "IBM Plex Sans";
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 18px;
+  min-height: 18px;
+  padding: 0;
+}
+
+checkbutton.setting-check check {
+  background-color: @raised;
+  background-image: none;
+  border: 1px solid @hairline;
+  border-radius: 4px;
+  box-shadow: none;
+  min-width: 18px;
+  min-height: 18px;
+  padding: 0;
+}
+
+checkbutton.setting-check check:checked {
+  background-color: @violet;
+  background-image: none;
+  border-color: @violet;
+  color: @pale;
+}
+
+label.setting-title {
+  color: @pale;
+  font-family: "IBM Plex Sans";
+  font-size: 14px;
+  font-weight: 600;
+}
+
+entry.field {
+  background-color: @ink;
+  border: 1px solid @hairline;
+  border-radius: 8px;
+  color: @pale;
+  font-family: "IBM Plex Sans";
+  font-size: 12px;
+  min-height: 32px;
+  padding: 0 9px;
+}
+
+entry.field text {
+  color: @pale;
+}
+
+entry.field:focus {
+  border-color: @cyan;
+}
+
+scrollbar {
+  background: transparent;
+}
+
+scrollbar slider {
+  background-color: @hairline;
+  border-radius: 3px;
+  min-width: 6px;
+  min-height: 24px;
+}
+
+separator {
+  background-color: @hairline;
+  min-height: 1px;
+}

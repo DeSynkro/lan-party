@@ -17,7 +17,7 @@ export XDG_DATA_HOME := $(ROOT)/.tmp/data
 export XDG_CACHE_HOME := $(ROOT)/.tmp/cache
 export PATH := $(ROOT)/.tools/go/bin:$(PATH)
 
-.PHONY: help dirs env toolchain tidy fmt vet test test-race vuln build run appimage icon clean
+.PHONY: help dirs env toolchain tidy fmt vet test test-race vuln build run gtk-probe appimage icon clean
 
 help: ## List targets
 	@awk 'BEGIN {FS = ":.*## "; print "Targets:"} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -55,6 +55,9 @@ build: toolchain ## Build the binary into bin/
 
 run: toolchain ## Run the app with project-local config
 	@$(GO) run ./cmd/lan-party
+
+gtk-probe: toolchain ## Run the GTK4 interface probe
+	@$(GO) run ./cmd/gtk-probe
 
 appimage: toolchain ## Build the Linux AppImage into dist/
 	@VERSION=$(VERSION) build/appimage.sh
