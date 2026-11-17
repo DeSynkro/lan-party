@@ -154,8 +154,9 @@ the other direction can finish.
 
 For every published UDP port, the friend app binds `127.0.0.1:<port>` and keeps
 a flow table keyed by the game's source address. Each flow gets an id. Packets
-travel as QUIC datagrams with the flow id in front; the host keeps one UDP
-socket per flow towards the target and sends replies back with the same id.
+travel as QUIC datagrams with the published port and flow id in front. The
+host keys flows by that pair, keeps one UDP socket per flow towards the target
+and sends replies back with the same id.
 Flows expire after 60 seconds of silence.
 
 Datagrams are limited to the QUIC datagram size (about 1200 bytes). Larger
@@ -195,7 +196,7 @@ needs approval.
 
 ### Invites
 
-An invite is a random 128-bit token, written as `LP1-XXXX-XXXX-XXXX-XXXX-...`
+An invite is a random 160-bit token, written as `LP1-XXXX-XXXX-XXXX-XXXX-...`
 and normalized on paste. The host keeps only a SHA-256 hash, never the token
 itself.
 
@@ -294,7 +295,6 @@ Minecraft server is still an offline-mode Minecraft server.
 Group {
   id, name, role (host|friend), createdAt, hostName
   endpoint              // friend groups: public host:port
-  appPort               // host groups: local UDP port
   services[]
   members[]
   invites[]             // host groups only
@@ -424,6 +424,20 @@ nothing lands in the home directory. `make test`, `make run`, `make build`,
 Each step ends with tests and at least one commit. The first vertical slice that
 can be tried end to end is step 9 plus a minimal host/friend screen; the polish
 comes after.
+
+## Where it is now
+
+Working on Linux: groups, services and presets; one-time invites; host approval
+of new devices; QUIC/TLS sessions; TCP and UDP forwarding; presence, service
+updates and revocation; the 400×600 interface; the in-app setup guide; tray,
+start on login and start minimised; AppImage packaging; CI.
+
+The end-to-end tests start a host and a friend app on loopback, create an
+invite, approve the device, forward a TCP echo, and revoke the member.
+
+Not in this version: a relay for CGNAT hosts, per-friend service grants,
+Windows packaging, automatic public-address detection, MAC addresses in device
+details, and auto-update.
 
 ## Open items
 

@@ -3,18 +3,74 @@
 A small Linux desktop app that gives a friend one local port onto a game server
 on your LAN, and nothing else.
 
-You publish a service. Your friend joins with a one-time invite and opens
-`127.0.0.1:25565` in their game. Their traffic crosses one encrypted connection
-to your machine. Their game never touches your network directly, and your other
-devices are never on the path.
+You run the game server. You add it to a group as a service, choose the port
+friends should see, and start a session. A friend pastes a one-time invite; you
+approve their device once. Their game then connects to `127.0.0.1:25565` as
+though the server were on their own machine.
+
+The traffic crosses one encrypted QUIC connection to your PC, where the app
+dials the real LAN target. There is no virtual network, no route, and no
+peer-to-peer path. Your router, your NAS and the rest of your LAN are never
+reachable from the friend's machine.
 
 ## Status
 
-The app is being rebuilt from the ground up. The previous implementation and the
-two interface attempts are kept in the `legacy` and `ui-redesign` branches.
+Working on Linux:
 
-The new design is in [docs/design.md](docs/design.md). The interface mockup is in
-[docs/mockups/ui-v1.html](docs/mockups/ui-v1.html).
+- host and friend groups, saved locally
+- any TCP and/or UDP service the host chooses, with an optional port remap
+- one-time invites, hashed at rest, 24-hour expiry
+- host approval for new devices and for changed device keys
+- presence, live service updates and revocation
+- a fixed 400×600 interface, tray icon, start on login and start minimised
+- AppImage packaging and CI
+
+Not in this version: a relay for CGNAT hosts, per-friend service grants,
+Windows packaging, automatic public-address detection and auto-update.
+
+The design is in [docs/design.md](docs/design.md). If you just want to use it,
+read [docs/guide.md](docs/guide.md).
+
+## What it needs
+
+- Linux with X11 or Wayland and working OpenGL.
+- A Secret Service keyring (GNOME Keyring, KWallet, or another provider) for
+  the long-lived keys.
+- One UDP port forwarded on the host's router. Friends do not need a forward.
+- A public address that reaches the host: a hostname, a static IP, or a
+  dynamic DNS name.
+
+## Build and run
+
+```sh
+make run       # build and open the app with project-local config
+make test      # unit and end-to-end tests
+make build     # binary in bin/
+make appimage  # Linux AppImage in dist/
+```
+
+The first run downloads the pinned Go toolchain into `.tools`. Build caches,
+the module cache and development config stay in `.cache` and `.tmp`; nothing is
+installed system-wide. Release builds use the system Go and the pinned
+`appimagetool`.
+
+At runtime the app writes:
+
+- `~/.config/lan-party/settings.json`
+- `~/.local/share/lan-party/groups.json`
+- long-lived private keys in the OS keyring
+
+Both JSON files are owner-only (`0600`). Invites contain no private keys.
+
+## Docs
+
+- [docs/guide.md](docs/guide.md) — setup and troubleshooting
+- [docs/architecture.md](docs/architecture.md) — how a connection moves
+- [docs/security.md](docs/security.md) — identities, invites, threat model
+- [docs/ui.md](docs/ui.md) — the 400×600 rules and screens
+- [docs/development.md](docs/development.md) — layout, build, tests, release
+- [docs/design.md](docs/design.md) — the rewrite design
+- [docs/mockups/ui-v1.html](docs/mockups/ui-v1.html) — the reference mockup
 
 ## Licence
 
