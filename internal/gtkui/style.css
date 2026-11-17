@@ -119,7 +119,7 @@ box.page {
 label.title {
   color: @pale;
   font-family: "IBM Plex Sans";
-  font-size: 24px;
+  font-size: 23px;
   font-weight: 600;
 }
 
@@ -152,6 +152,7 @@ label.card-title {
 
 button.row {
   background-color: @deep;
+  background-image: none;
   border: 1px solid @hairline;
   border-radius: 9px;
   padding: 0;
@@ -232,6 +233,36 @@ label.setting-title {
   font-weight: 600;
 }
 
+label.form-label {
+  color: @secondary;
+  font-family: "IBM Plex Sans";
+  font-size: 12px;
+}
+
+label.help {
+  color: @muted;
+  font-family: "IBM Plex Sans";
+  font-size: 12px;
+}
+
+label.mono {
+  color: @cyan;
+  font-family: "JetBrains Mono";
+  font-size: 12px;
+}
+
+label.error {
+  color: #FF7AA8;
+  font-family: "IBM Plex Sans";
+  font-size: 12px;
+}
+
+label.status {
+  color: @live;
+  font-family: "IBM Plex Sans";
+  font-size: 12px;
+}
+
 entry.field {
   background-color: @ink;
   border: 1px solid @hairline;
@@ -245,6 +276,10 @@ entry.field {
 
 entry.field text {
   color: @pale;
+}
+
+entry.field placeholder {
+  color: @muted;
 }
 
 entry.field:focus {

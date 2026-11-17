@@ -12,9 +12,24 @@ import (
 	"github.com/diamondburned/gotk4/pkg/gdk/v4"
 	"github.com/diamondburned/gotk4/pkg/gio/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
+
+	apppkg "github.com/desynkro/lan-party/internal/app"
+	"github.com/desynkro/lan-party/internal/config"
 )
 
-var probeWindow *gtk.ApplicationWindow
+type probeUI struct {
+	app   *gtk.Application
+	win   *gtk.ApplicationWindow
+	root  string
+	state *apppkg.App
+
+	stack    *gtk.Stack
+	logo     *gtk.Image
+	back     *gtk.Button
+	title    *gtk.Label
+	help     *gtk.Button
+	settings *gtk.Button
+}
 
 // RunProbe opens the GTK probe window and blocks until it closes.
 func RunProbe(argv []string) int {
@@ -25,63 +40,98 @@ func RunProbe(argv []string) int {
 	}
 	setupFonts(root)
 
+	state, err := apppkg.New(config.Resolve())
+	if err != nil {
+		log.Printf("gtk probe: %v", err)
+		return 1
+	}
+	defer state.Close()
+
 	app := gtk.NewApplication("com.desynkro.lanparty.gtkprobe", gio.ApplicationFlagsNone)
+	var ui *probeUI
 	app.ConnectActivate(func() {
-		if probeWindow != nil {
-			probeWindow.Present()
+		if ui != nil {
+			ui.win.Present()
 			return
 		}
 		loadCSS(root)
-		probeWindow = buildProbeWindow(app, root)
-		probeWindow.Present()
+		ui = newProbeUI(app, root, state)
+		ui.build()
+		if os.Getenv("LANPARTY_GTK_SCREEN") == "settings" {
+			ui.showSettings()
+		} else {
+			ui.showHome()
+		}
+		ui.win.Present()
 	})
 	return app.Run(argv)
 }
 
-func buildProbeWindow(app *gtk.Application, root string) *gtk.ApplicationWindow {
-	win := gtk.NewApplicationWindow(app)
-	win.SetTitle("LAN Party · GTK probe")
-	win.SetDefaultSize(400, 640)
-	win.SetResizable(false)
-
-	theme := gtk.IconThemeGetForDisplay(gdk.DisplayGetDefault())
-	theme.AddSearchPath(filepath.Join(root, "internal", "gtkui", "assets", "icons"))
-	win.SetIconName("lan-party")
-
-	win.SetTitlebar(buildAppBar(root, app, win))
-	win.SetChild(buildProbePage())
-	return win
+func newProbeUI(app *gtk.Application, root string, state *apppkg.App) *probeUI {
+	return &probeUI{app: app, root: root, state: state}
 }
 
-func buildAppBar(root string, app *gtk.Application, win *gtk.ApplicationWindow) *gtk.Box {
+func (u *probeUI) build() {
+	u.win = gtk.NewApplicationWindow(u.app)
+	u.win.SetTitle("LAN Party")
+	u.win.SetDefaultSize(400, 640)
+	u.win.SetResizable(false)
+
+	theme := gtk.IconThemeGetForDisplay(gdk.DisplayGetDefault())
+	theme.AddSearchPath(filepath.Join(u.root, "internal", "gtkui", "assets", "icons"))
+	u.win.SetIconName("lan-party")
+
+	u.stack = gtk.NewStack()
+	u.stack.AddNamed(u.buildHomePage(), "home")
+	u.stack.AddNamed(u.buildSettingsPage(), "settings")
+
+	u.win.SetTitlebar(u.buildAppBar())
+	u.win.SetChild(u.stack)
+}
+
+func (u *probeUI) buildAppBar() *gtk.Box {
 	bar := gtk.NewBox(gtk.OrientationHorizontal, 8)
 	bar.AddCSSClass("appbar")
 
-	mark := gtk.NewImageFromFile(filepath.Join(root, "brand", "png", "mark-22.png"))
-	bar.Append(mark)
+	u.logo = gtk.NewImageFromFile(filepath.Join(u.root, "brand", "png", "mark-22.png"))
+	bar.Append(u.logo)
 
-	name := gtk.NewLabel("LAN Party")
-	name.AddCSSClass("app-title")
-	bar.Append(name)
+	u.back = gtk.NewButtonWithLabel("Back")
+	u.back.AddCSSClass("quiet")
+	u.back.SetVisible(false)
+	u.back.ConnectClicked(func() {
+		u.showHome()
+	})
+	bar.Append(u.back)
+
+	u.title = gtk.NewLabel("LAN Party")
+	u.title.AddCSSClass("app-title")
+	bar.Append(u.title)
 
 	spacer := gtk.NewBox(gtk.OrientationHorizontal, 0)
 	spacer.SetHExpand(true)
 	bar.Append(spacer)
 
-	help := gtk.NewButtonWithLabel("?")
-	help.AddCSSClass("quiet")
-	help.SetTooltipText("How to Use")
-	bar.Append(help)
+	u.help = gtk.NewButtonWithLabel("?")
+	u.help.AddCSSClass("quiet")
+	u.help.SetTooltipText("How to Use")
+	u.help.ConnectClicked(func() {
+		log.Println("gtk probe: guide requested")
+	})
+	bar.Append(u.help)
 
-	settings := gtk.NewButtonWithLabel("Settings")
-	settings.AddCSSClass("quiet")
-	bar.Append(settings)
+	u.settings = gtk.NewButtonWithLabel("Settings")
+	u.settings.AddCSSClass("quiet")
+	u.settings.ConnectClicked(func() {
+		u.showSettings()
+	})
+	bar.Append(u.settings)
 
 	minimizeButton := gtk.NewButtonWithLabel("−")
 	minimizeButton.AddCSSClass("quiet")
 	minimizeButton.SetTooltipText("Minimise")
 	minimizeButton.ConnectClicked(func() {
-		win.Minimize()
+		u.win.Minimize()
 	})
 	bar.Append(minimizeButton)
 
@@ -89,14 +139,32 @@ func buildAppBar(root string, app *gtk.Application, win *gtk.ApplicationWindow) 
 	closeButton.AddCSSClass("quiet")
 	closeButton.SetTooltipText("Close")
 	closeButton.ConnectClicked(func() {
-		app.Quit()
+		u.app.Quit()
 	})
 	bar.Append(closeButton)
 
 	return bar
 }
 
-func buildProbePage() *gtk.ScrolledWindow {
+func (u *probeUI) showHome() {
+	u.stack.SetVisibleChildName("home")
+	u.title.SetText("LAN Party")
+	u.logo.SetVisible(true)
+	u.back.SetVisible(false)
+	u.help.SetVisible(true)
+	u.settings.SetVisible(true)
+}
+
+func (u *probeUI) showSettings() {
+	u.stack.SetVisibleChildName("settings")
+	u.title.SetText("Settings")
+	u.logo.SetVisible(false)
+	u.back.SetVisible(true)
+	u.help.SetVisible(false)
+	u.settings.SetVisible(false)
+}
+
+func (u *probeUI) buildHomePage() *gtk.ScrolledWindow {
 	page := gtk.NewBox(gtk.OrientationVertical, 0)
 	page.AddCSSClass("page")
 	page.SetMarginTop(20)
@@ -138,6 +206,9 @@ func buildProbePage() *gtk.ScrolledWindow {
 	guide.AddCSSClass("quiet")
 	guide.SetHAlign(gtk.AlignCenter)
 	guide.SetMarginBottom(18)
+	guide.ConnectClicked(func() {
+		log.Println("gtk probe: setup guide clicked")
+	})
 	page.Append(guide)
 
 	section := textLabel("Your groups", "section")
@@ -150,8 +221,6 @@ func buildProbePage() *gtk.ScrolledWindow {
 	joined.SetMarginBottom(8)
 	page.Append(joined)
 	page.Append(groupRow("Friday Night", "joined · hosted by Desynkro"))
-
-	page.Append(buildProbeCard())
 
 	scroll := gtk.NewScrolledWindow()
 	scroll.SetPolicy(gtk.PolicyNever, gtk.PolicyAutomatic)
@@ -188,55 +257,6 @@ func groupRow(title, meta string) *gtk.Button {
 
 	row.SetChild(content)
 	return row
-}
-
-func buildProbeCard() *gtk.Box {
-	card := gtk.NewBox(gtk.OrientationVertical, 0)
-	card.AddCSSClass("card")
-	card.SetMarginTop(24)
-
-	heading := textLabel("Probe controls", "card-title")
-	card.Append(heading)
-
-	check := gtk.NewCheckButton()
-	check.AddCSSClass("setting-check")
-	check.SetActive(true)
-
-	checkTitle := textLabel("Close to tray", "setting-title")
-	checkTitle.SetVAlign(gtk.AlignCenter)
-
-	checkRow := gtk.NewBox(gtk.OrientationHorizontal, 8)
-	checkRow.SetMarginTop(10)
-	checkRow.Append(check)
-	checkRow.Append(checkTitle)
-	card.Append(checkRow)
-
-	description := textLabel("Closing the window keeps the app and any live session running in the tray. Untick this to make closing the window quit.", "desc")
-	description.SetWrap(true)
-	description.SetMarginStart(26)
-	description.SetMarginTop(2)
-	card.Append(description)
-
-	entry := gtk.NewEntry()
-	entry.SetPlaceholderText("Invite code")
-	entry.AddCSSClass("field")
-	entry.SetMarginTop(12)
-	card.Append(entry)
-
-	save := gtk.NewButtonWithLabel("Save network settings")
-	save.AddCSSClass("primary")
-	save.SetHAlign(gtk.AlignStart)
-	save.SetMarginTop(12)
-	card.Append(save)
-
-	check.ConnectToggled(func() {
-		description.SetText(fmt.Sprintf("Close to tray is %t", check.Active()))
-	})
-	save.ConnectClicked(func() {
-		entry.SetText("Invite code received")
-	})
-
-	return card
 }
 
 func textLabel(text, class string) *gtk.Label {
