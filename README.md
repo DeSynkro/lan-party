@@ -75,6 +75,7 @@ and create them again; the app will not silently replace a missing identity.
 ## Docs
 
 - [docs/guide.md](docs/guide.md) — setup and troubleshooting
+- [docs/for-friends.md](docs/for-friends.md) — a plain-language explanation to send to friends
 - [docs/architecture.md](docs/architecture.md) — how a connection moves
 - [docs/security.md](docs/security.md) — identities, invites, threat model
 - [docs/ui.md](docs/ui.md) — the 400×640 rules and screens

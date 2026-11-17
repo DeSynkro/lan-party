@@ -194,14 +194,7 @@ func (u *probeUI) settingCard(title, description string, active bool, changed fu
 	checkRow.Append(check)
 	checkRow.Append(checkTitle)
 
-	descriptionLabel := textLabel(description, "desc")
-	descriptionLabel.SetHExpand(true)
-	descriptionLabel.SetSizeRequest(280, -1)
-
-	descriptionRow := gtk.NewBox(gtk.OrientationHorizontal, 0)
-	descriptionRow.Append(gapWidth(26))
-	descriptionRow.Append(descriptionLabel)
-	descriptionRow.Append(gapWidth(24))
+	descriptionRow := settingDescriptionRow(description)
 	descriptionRow.SetMarginTop(2)
 
 	card := gtk.NewBox(gtk.OrientationVertical, 0)
@@ -249,6 +242,21 @@ func gapWidth(width int) *gtk.Box {
 	box := gtk.NewBox(gtk.OrientationHorizontal, 0)
 	box.SetSizeRequest(width, -1)
 	return box
+}
+
+// settingDescriptionRow is the fixed text column used under a checkbox title.
+// Keeping the width constant stops short descriptions stopping early and long
+// ones running into the card edge.
+func settingDescriptionRow(text string) *gtk.Box {
+	label := textLabel(text, "desc")
+	label.SetHExpand(true)
+	label.SetSizeRequest(280, -1)
+
+	row := gtk.NewBox(gtk.OrientationHorizontal, 0)
+	row.Append(gapWidth(26))
+	row.Append(label)
+	row.Append(gapWidth(24))
+	return row
 }
 
 type feedback struct {
