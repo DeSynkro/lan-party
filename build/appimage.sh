@@ -13,7 +13,7 @@ fi
 
 version="${VERSION:-}"
 if [ -z "${version}" ]; then
-    version="$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')" || true
+    version="$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null | sed 's/^v//')" || true
     version="${version:-dev}"
 fi
 out="${root}/dist"
