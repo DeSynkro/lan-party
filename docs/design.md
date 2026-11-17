@@ -358,7 +358,8 @@ Screens:
   you. Leave asks for confirmation.
 - **Settings.** Startup (close to tray on by default; unticking makes closing
   the window quit, start on login, start minimised),
-  Network (public address, app port), Security (approve new devices), About
+  Network (public hostname or IP, optional outside port in the address, app
+  port, live endpoint preview), Security (approve new devices), About
   (version, data location, keyring state).
 - **How to Use.** Offline guide with Hosting, Joining, Problems and Security
   sections. It reads the real app port and the host's local address, so the

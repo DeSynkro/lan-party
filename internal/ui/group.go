@@ -105,7 +105,7 @@ func (v *hostView) sessionPanel(g group.Group) fyne.CanvasObject {
 func (v *hostView) addressRow(g group.Group) fyne.CanvasObject {
 	settings := v.u.app.Settings()
 	public := strings.TrimSpace(settings.PublicAddress)
-	port := "UDP " + strconv.Itoa(settings.AppPort)
+	port := strconv.Itoa(settings.AppPort)
 	change := smallButton("Change", buttonQuiet, func() {
 		v.u.showSettings(func() { v.u.showGroup(g.ID) })
 	})
@@ -114,14 +114,18 @@ func (v *hostView) addressRow(g group.Group) fyne.CanvasObject {
 		change.setLabel("Set address")
 		text := container.NewVBox(
 			warningLabel("No public address — friends can't join"),
-			metaText(port),
+			metaText("UDP "+port),
 		)
 		return container.NewBorder(nil, nil, nil, container.NewCenter(change), text)
 	}
 
+	endpoint, err := v.u.app.CurrentEndpoint()
+	if err != nil {
+		endpoint = public
+	}
 	text := container.NewVBox(
-		addressText(public),
-		metaText(port),
+		addressText(endpoint),
+		metaText("UDP "+port+" on this PC"),
 	)
 	return container.NewBorder(nil, nil, nil, container.NewCenter(change), text)
 }

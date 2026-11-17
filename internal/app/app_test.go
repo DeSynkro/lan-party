@@ -507,7 +507,7 @@ func TestPublicEndpoint(t *testing.T) {
 		{"[::1]:40000", "[::1]:40000"},
 	}
 	for _, tc := range cases {
-		got, err := publicEndpoint(tc.public, 51820)
+		got, err := Endpoint(tc.public, 51820)
 		if err != nil {
 			t.Errorf("%q: %v", tc.public, err)
 			continue
@@ -517,7 +517,7 @@ func TestPublicEndpoint(t *testing.T) {
 		}
 	}
 	for _, public := range []string{"", "http://home", "home example"} {
-		if _, err := publicEndpoint(public, 51820); err == nil {
+		if _, err := Endpoint(public, 51820); err == nil {
 			t.Errorf("%q was accepted", public)
 		}
 	}

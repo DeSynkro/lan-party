@@ -299,6 +299,21 @@ func (a *App) RemoveService(groupID, serviceID string) error {
 	return nil
 }
 
+// Endpoint combines the public address with the app port. A port written in
+// the public address is the outside port; without one, the app port is used.
+func Endpoint(public string, appPort int) (string, error) {
+	return publicEndpoint(public, appPort)
+}
+
+// CurrentEndpoint is Endpoint using the saved settings.
+func (a *App) CurrentEndpoint() (string, error) {
+	a.mu.Lock()
+	public := a.settings.PublicAddress
+	appPort := a.settings.AppPort
+	a.mu.Unlock()
+	return publicEndpoint(public, appPort)
+}
+
 // CreateInvite issues a one-time code for a named friend.
 func (a *App) CreateInvite(groupID, peerName string) (string, error) {
 	peerName = strings.TrimSpace(peerName)

@@ -64,15 +64,21 @@ one, put the external port in the **Public address** setting, for example
 
 ### 3. Set the public address
 
-In **Settings → Network**, enter the address friends should connect to:
+In **Settings → Network**, enter the address friends should connect to. Usually
+that is just a hostname or an IP:
 
-- a hostname, for example `desynkro.example.net`
-- a hostname and port, for example `desynkro.example.net:40000`
-- an IP address, though a home IP usually changes
+- `desynkro.example.net`
+- `203.0.113.10`, though a home IP usually changes
+
+The app adds the app port automatically, so you do not repeat it here. Add a
+port only when your router forwards a different outside port:
+
+- `desynkro.example.net:40000` when outside 40000 is forwarded to the app port
 
 The app does not call a “what is my IP” service. Use the address shown by your
 router's WAN/status page, or a dynamic DNS name you control. A hostname is the
-better choice because it survives an address change.
+better choice because it survives an address change. The settings screen shows
+the exact endpoint that will go into invites under the fields.
 
 If the router's WAN address is different from the public address your ISP gives
 you, you may be behind carrier-grade NAT. In that case a direct connection will

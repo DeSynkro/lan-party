@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 
+	apppkg "github.com/desynkro/lan-party/internal/app"
 	"github.com/desynkro/lan-party/internal/buildinfo"
 )
 
@@ -63,11 +64,37 @@ func (u *UI) showSettings(returnTo func()) {
 
 	publicEntry := widget.NewEntry()
 	publicEntry.SetText(settings.PublicAddress)
-	publicEntry.SetPlaceHolder("home.example.net or home.example.net:40000")
+	publicEntry.SetPlaceHolder("home.example.net")
 
 	portEntry := widget.NewEntry()
 	portEntry.SetText(strconv.Itoa(settings.AppPort))
 	portEntry.SetPlaceHolder("51820")
+
+	preview := widget.NewLabel("")
+	preview.Importance = widget.MediumImportance
+	preview.TextStyle = fyne.TextStyle{Monospace: true}
+	preview.Wrapping = fyne.TextWrapWord
+	updatePreview := func(string) {
+		public := strings.TrimSpace(publicEntry.Text)
+		port, err := strconv.Atoi(strings.TrimSpace(portEntry.Text))
+		if public == "" {
+			preview.SetText("Friends connect to: not set")
+			return
+		}
+		if err != nil {
+			preview.SetText("Friends connect to: check the app port")
+			return
+		}
+		endpoint, err := apppkg.Endpoint(public, port)
+		if err != nil {
+			preview.SetText("Friends connect to: check the address")
+			return
+		}
+		preview.SetText("Friends connect to: " + endpoint)
+	}
+	publicEntry.OnChanged = updatePreview
+	portEntry.OnChanged = updatePreview
+	updatePreview("")
 
 	networkError := widget.NewLabel("")
 	networkError.Importance = widget.DangerImportance
@@ -94,12 +121,14 @@ func (u *UI) showSettings(returnTo func()) {
 
 	networkForm := widget.NewForm(
 		widget.NewFormItem("Public address", publicEntry),
-		widget.NewFormItem("App port", portEntry),
+		widget.NewFormItem("App port (UDP)", portEntry),
 	)
-	networkHelp := mutedLabel("Friends connect to the public address. If your router forwards an outside port, include it here, for example home.example.net:40000. The app port is the UDP port on this PC.")
+	networkHelp := mutedLabel("Use a hostname or IP. Leave the port off unless your router forwards a different outside port, for example home.example.net:40000. The app port is the UDP port on this PC.")
 	networkCard := card(container.NewVBox(
 		networkForm,
 		networkHelp,
+		gap(6),
+		preview,
 		gap(6),
 		networkError,
 		networkStatus,

@@ -127,8 +127,11 @@ pairs.
 
 - Startup: Close to tray (on by default; unticking makes closing the window
   quit the app), Start on login, Start minimised.
-- Network: public address and app port, with a Save button and inline errors.
-  The app port cannot change while a host session is live.
+- Network: public address and app port, with a live preview of the endpoint
+  that will go into invites, a Save button and inline errors. The public
+  address is usually just a hostname or IP; a `:port` suffix is only for an
+  outside port that differs from the app port. The app port cannot change
+  while a host session is live.
 - Security: Approve new devices.
 - About: version, data directory, keyring note.
 - Links to the setup guide.
