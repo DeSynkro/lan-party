@@ -26,8 +26,7 @@ func (u *UI) showSettings(returnTo func()) {
 		minimiseNote = "Your desktop did not report a system tray, so the window will still open."
 	}
 
-	closeToTray := u.checkRow("Close to tray",
-		closeNote,
+	closeToTray := u.checkRow("Close to tray", "", closeNote,
 		settings.CloseToTray,
 		func(value bool) error {
 			s := u.app.Settings()
@@ -35,8 +34,7 @@ func (u *UI) showSettings(returnTo func()) {
 			return u.app.SaveSettings(s)
 		})
 
-	startOnLogin := u.checkRow("Start on login",
-		"Open LAN Party when you sign in to this desktop.",
+	startOnLogin := u.checkRow("Start on login", "", "",
 		settings.StartOnLogin,
 		func(value bool) error {
 			s := u.app.Settings()
@@ -44,8 +42,7 @@ func (u *UI) showSettings(returnTo func()) {
 			return u.app.SaveSettings(s)
 		})
 
-	startMinimised := u.checkRow("Start minimised",
-		minimiseNote,
+	startMinimised := u.checkRow("Start minimised", minimiseNote, "",
 		settings.StartMinimised,
 		func(value bool) error {
 			s := u.app.Settings()
@@ -55,7 +52,7 @@ func (u *UI) showSettings(returnTo func()) {
 
 	approve := u.checkRow("Approve new devices",
 		"A valid invite still asks you before a device joins. A changed device key always asks.",
-		settings.ApproveNewDevices,
+		"", settings.ApproveNewDevices,
 		func(value bool) error {
 			s := u.app.Settings()
 			s.ApproveNewDevices = value
@@ -172,7 +169,7 @@ func (u *UI) showSettings(returnTo func()) {
 	u.screen(u.appBar("Settings", false), content, nil)
 }
 
-func (u *UI) checkRow(title, description string, checked bool, onChanged func(bool) error) fyne.CanvasObject {
+func (u *UI) checkRow(title, description, help string, checked bool, onChanged func(bool) error) fyne.CanvasObject {
 	reverting := false
 	check := widget.NewCheck("", nil)
 	check.SetChecked(checked)
@@ -188,18 +185,23 @@ func (u *UI) checkRow(title, description string, checked bool, onChanged func(bo
 		}
 	}
 
-	text := container.NewVBox(
-		nameText(title),
-		gap(2),
-		mutedLabel(description),
+	checkWidth := check.MinSize().Width
+	top := container.NewHBox(
+		container.NewCenter(check),
+		gapW(8),
+		container.NewCenter(settingTitle(title)),
 	)
-	toggle := newTapArea(func() {
-		value := !check.Checked
-		check.SetChecked(value)
-		if check.OnChanged != nil {
-			check.OnChanged(value)
-		}
-	})
-	text = container.NewStack(text, toggle)
-	return card(container.NewBorder(nil, nil, container.NewCenter(check), nil, text))
+	if help != "" {
+		top.Add(gapW(2))
+		top.Add(container.NewCenter(smallButton("?", buttonQuiet, func() {
+			u.showInfo(title, help)
+		})))
+	}
+
+	body := container.NewVBox(top)
+	if description != "" {
+		body.Add(gap(2))
+		body.Add(container.NewBorder(nil, nil, gapW(checkWidth+8), nil, mutedLabel(description)))
+	}
+	return card(body)
 }

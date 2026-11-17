@@ -20,6 +20,13 @@ func titleText(text string) *canvas.Text {
 	return t
 }
 
+func settingTitle(text string) *canvas.Text {
+	t := canvas.NewText(text, colourText)
+	t.TextSize = 15
+	t.TextStyle = fyne.TextStyle{Bold: true}
+	return t
+}
+
 func appBarTitle(text string) *canvas.Text {
 	t := canvas.NewText(truncate(text, 30), colourText)
 	t.TextSize = sizeAppBar
