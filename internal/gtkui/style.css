@@ -260,6 +260,12 @@ label.mono {
   font-size: 12px;
 }
 
+label.meta {
+  color: @muted;
+  font-family: "IBM Plex Sans";
+  font-size: 12px;
+}
+
 label.error {
   color: #FF7AA8;
   font-family: "IBM Plex Sans";

@@ -68,6 +68,8 @@ func RunProbe(argv []string) int {
 		ui.build()
 		if os.Getenv("LANPARTY_GTK_SCREEN") == "settings" {
 			ui.showSettings()
+		} else if os.Getenv("LANPARTY_GTK_SCREEN") == "guide" {
+			ui.showGuide()
 		} else {
 			ui.showHome()
 		}
@@ -99,6 +101,7 @@ func (u *probeUI) build() {
 	u.stack = gtk.NewStack()
 	u.stack.AddNamed(u.buildHomePage(), "home")
 	u.stack.AddNamed(u.buildSettingsPage(), "settings")
+	u.stack.AddNamed(u.buildGuidePage(), "guide")
 
 	appBar := u.buildAppBar()
 
@@ -168,7 +171,7 @@ func (u *probeUI) buildAppBar() *gtk.Box {
 	u.help.AddCSSClass("quiet")
 	u.help.SetTooltipText("How to Use")
 	u.help.ConnectClicked(func() {
-		log.Println("gtk probe: guide requested")
+		u.showGuide()
 	})
 	bar.Append(u.help)
 
@@ -214,6 +217,15 @@ func (u *probeUI) showSettings() {
 	u.back.SetVisible(true)
 	u.help.SetVisible(false)
 	u.settings.SetVisible(false)
+}
+
+func (u *probeUI) showGuide() {
+	u.stack.SetVisibleChildName("guide")
+	u.title.SetText("How to Use")
+	u.logo.SetVisible(false)
+	u.back.SetVisible(true)
+	u.help.SetVisible(false)
+	u.settings.SetVisible(true)
 }
 
 func (u *probeUI) start() {
@@ -316,7 +328,7 @@ func (u *probeUI) buildHomePage() *gtk.ScrolledWindow {
 	guide.SetHAlign(gtk.AlignCenter)
 	guide.SetMarginBottom(18)
 	guide.ConnectClicked(func() {
-		log.Println("gtk probe: setup guide clicked")
+		u.showGuide()
 	})
 	page.Append(guide)
 

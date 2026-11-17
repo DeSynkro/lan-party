@@ -12,6 +12,8 @@ import (
 	"github.com/desynkro/lan-party/internal/config"
 )
 
+const descriptionWidth = 280
+
 func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	settings := u.state.Settings()
 	feedback := newFeedback()
@@ -120,7 +122,9 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	networkCard.Append(gapBox(8))
 	networkCard.Append(formRow("App port (UDP)", portEntry))
 	networkCard.Append(gapBox(10))
-	networkCard.Append(textLabel("Use a hostname or IP. Leave the port off unless your router forwards a different outside port, for example home.example.net:40000. The app port is the UDP port on this PC.", "help"))
+	networkHelp := textLabel("Use a hostname or IP. Leave the port off unless your router forwards a different outside port, for example home.example.net:40000. The app port is the UDP port on this PC.", "help")
+	networkHelp.SetSizeRequest(descriptionWidth, -1)
+	networkCard.Append(networkHelp)
 	networkCard.Append(gapBox(10))
 	networkCard.Append(preview)
 
@@ -194,7 +198,14 @@ func (u *probeUI) settingCard(title, description string, active bool, changed fu
 	checkRow.Append(check)
 	checkRow.Append(checkTitle)
 
-	descriptionRow := settingDescriptionRow(description)
+	descriptionLabel := textLabel(description, "desc")
+	descriptionLabel.SetHExpand(true)
+	descriptionLabel.SetSizeRequest(descriptionWidth, -1)
+
+	descriptionRow := gtk.NewBox(gtk.OrientationHorizontal, 0)
+	descriptionRow.Append(gapWidth(26))
+	descriptionRow.Append(descriptionLabel)
+	descriptionRow.Append(gapWidth(24))
 	descriptionRow.SetMarginTop(2)
 
 	card := gtk.NewBox(gtk.OrientationVertical, 0)
@@ -242,21 +253,6 @@ func gapWidth(width int) *gtk.Box {
 	box := gtk.NewBox(gtk.OrientationHorizontal, 0)
 	box.SetSizeRequest(width, -1)
 	return box
-}
-
-// settingDescriptionRow is the fixed text column used under a checkbox title.
-// Keeping the width constant stops short descriptions stopping early and long
-// ones running into the card edge.
-func settingDescriptionRow(text string) *gtk.Box {
-	label := textLabel(text, "desc")
-	label.SetHExpand(true)
-	label.SetSizeRequest(280, -1)
-
-	row := gtk.NewBox(gtk.OrientationHorizontal, 0)
-	row.Append(gapWidth(26))
-	row.Append(label)
-	row.Append(gapWidth(24))
-	return row
 }
 
 type feedback struct {
