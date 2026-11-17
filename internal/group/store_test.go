@@ -3,6 +3,7 @@ package group
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -93,6 +94,20 @@ func TestStoreRejectsUnknownVersion(t *testing.T) {
 	}
 	if _, err := store.Load(); err == nil {
 		t.Fatal("an unknown store version was accepted")
+	}
+}
+
+func TestStoreRejectsOldArrayFormat(t *testing.T) {
+	store := testStore(t)
+	if err := os.MkdirAll(filepath.Dir(store.Path()), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(store.Path(), []byte("[]"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := store.Load()
+	if err == nil || !strings.Contains(err.Error(), "previous version") {
+		t.Fatalf("error = %v", err)
 	}
 }
 

@@ -1,6 +1,7 @@
 package group
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -38,6 +39,11 @@ func (s *Store) Load() ([]Group, error) {
 	}
 	if err != nil {
 		return nil, fmt.Errorf("read groups: %w", err)
+	}
+
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) > 0 && trimmed[0] == '[' {
+		return nil, errors.New("this group file is from the previous version and was not migrated; move it aside to start fresh")
 	}
 
 	var file diskFile

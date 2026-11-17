@@ -95,6 +95,15 @@ Production:
 Development sets `XDG_CONFIG_HOME`, `XDG_DATA_HOME` and `XDG_CACHE_HOME` to
 `.tmp`, so running `make run` does not touch your real config.
 
+### Migrating from the first version
+
+The new app uses a versioned group file. The old app wrote a plain JSON array
+of WireGuard groups in the same `~/.local/share/lan-party` directory. There is
+no migration: the identities and invite format changed. If the old file is
+still there, the new app shows a clear error and does not overwrite it. Move
+the old folder aside (`mv ~/.local/share/lan-party ~/.local/share/lan-party-old`)
+and start fresh. The old code and design are kept in the `legacy` branch.
+
 ## Packaging
 
 `build/appimage.sh` assembles an AppDir with the binary, desktop file and icon,

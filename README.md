@@ -62,6 +62,11 @@ At runtime the app writes:
 
 Both JSON files are owner-only (`0600`). Invites contain no private keys.
 
+The new group file is not compatible with the old WireGuard version. If an old
+`groups.json` is still in the data folder, the app says so and refuses to
+overwrite it. Move the old `~/.local/share/lan-party` folder aside and start
+fresh.
+
 ## Docs
 
 - [docs/guide.md](docs/guide.md) — setup and troubleshooting
