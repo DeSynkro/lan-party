@@ -28,6 +28,7 @@ type probeUI struct {
 	trayOn        bool
 	held          bool
 	quitting      bool
+	approvalShown string
 
 	stack       *gtk.Stack
 	homeScroll  *gtk.ScrolledWindow
@@ -75,6 +76,12 @@ func RunProbe(argv []string) int {
 			ui.showSettings()
 		case screen == "guide":
 			ui.showGuide()
+		case screen == "create":
+			ui.showHome()
+			ui.showCreateGroupDialog()
+		case screen == "join":
+			ui.showHome()
+			ui.showJoinDialog()
 		case strings.HasPrefix(screen, "group:"):
 			ui.showGroup(strings.TrimPrefix(screen, "group:"))
 		default:
@@ -261,6 +268,7 @@ func (u *probeUI) showGuide() {
 
 func (u *probeUI) start() {
 	u.trayOn = startTray(u)
+	go u.watchApprovals()
 	if u.trayOn {
 		u.app.Hold()
 		u.held = true
@@ -356,10 +364,10 @@ func (u *probeUI) buildHomeContent() *gtk.Box {
 	page.Append(actions)
 
 	host.ConnectClicked(func() {
-		log.Println("gtk probe: Host a group clicked")
+		u.showCreateGroupDialog()
 	})
 	join.ConnectClicked(func() {
-		log.Println("gtk probe: Join with an invite clicked")
+		u.showJoinDialog()
 	})
 
 	guide := gtk.NewButtonWithLabel("First time? Read the setup guide")
