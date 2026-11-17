@@ -376,9 +376,10 @@ Truthfulness rules:
 
 ## Repository and history
 
-The rewrite starts on an orphan branch called `rebuild`. Its first commit is
-**Project Reset**. The old `main` and `ui-redesign` branches remain as
-`legacy` history; nothing is force-pushed to GitHub.
+The rewrite started on an orphan branch and its history now sits on the local
+`main` branch. Its first commit is **Project Reset**. The old `main` and
+`ui-redesign` branches remain as `legacy` and `ui-redesign`; nothing is
+force-pushed to GitHub.
 
 Layout:
 
