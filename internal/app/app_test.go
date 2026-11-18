@@ -562,3 +562,39 @@ func TestPublicEndpoint(t *testing.T) {
 		}
 	}
 }
+
+func TestCreateInvitesAreUniqueForSameName(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := a.Settings()
+	s.PublicAddress = "home.example.net"
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+
+	first, err := a.CreateInvite(g.ID, "desynkro-work")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := a.CreateInvite(g.ID, "desynkro-work")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first == second {
+		t.Fatal("two invites for the same name produced the same code")
+	}
+	firstInvite, err := invite.Decode(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondInvite, err := invite.Decode(second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if firstInvite.Token == secondInvite.Token {
+		t.Fatal("two invites for the same name produced the same token")
+	}
+}
