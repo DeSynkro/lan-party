@@ -141,8 +141,9 @@ styles, desktop file and icon, downloads a pinned `appimagetool` into `.tools`,
 verifies its checksum and writes
 `dist/lan-party_<version>_linux_amd64.AppImage`.
 
-The AppImage currently uses the system GTK4 runtime. Release builds use the
-Ubuntu 26.04 runner, which has the GLib 2.84+ headers required by gotk4.
+The AppImage currently uses the system GTK4 runtime. It builds on every push
+to main and on tags; the artifact is retained for 14 days. Release builds use
+the Ubuntu 26.04 runner, which has the GLib 2.84+ headers required by gotk4.
 Bundling GTK and lowering the runtime GLib floor remain separate packaging
 decisions.
 

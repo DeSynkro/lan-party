@@ -74,7 +74,9 @@ jobs:
 
   linux:
     name: Linux AppImage
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    # Build for every main/tag push and manual run; PRs only run the checks.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [test, vuln]
     # Ubuntu 26.04 provides the GLib 2.84+ headers required by gotk4.
     # Pin the image explicitly so a rolling ubuntu-latest migration cannot
     # move the build onto an older GLib.
@@ -110,6 +112,7 @@ jobs:
           name: linux-appimage
           path: dist/*.AppImage
           if-no-files-found: error
+          retention-days: 14
 
   release:
     name: Release
