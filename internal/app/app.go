@@ -469,7 +469,7 @@ func (a *App) CreateInvite(groupID, peerName string) (string, error) {
 		Name:      peerName,
 		TokenHash: hash,
 		CreatedAt: now,
-		ExpiresAt: now.Add(24 * time.Hour),
+		ExpiresAt: now.Add(group.InviteTTL),
 	}
 	code, err := invite.Encode(invite.Invite{
 		Version:   invite.CurrentVersion,

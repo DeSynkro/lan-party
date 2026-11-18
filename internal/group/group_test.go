@@ -159,3 +159,21 @@ func TestInviteNeedsFields(t *testing.T) {
 		t.Fatal("invite without a hash was accepted")
 	}
 }
+
+func TestAddInviteUsesOneHourDefault(t *testing.T) {
+	g := CreateHostGroup("Friday Night", "Desynkro")
+	created := time.Now().UTC()
+	if err := g.AddInvite(Invite{Name: "Ash", TokenHash: "hash", CreatedAt: created}); err != nil {
+		t.Fatal(err)
+	}
+	inv := g.Invites[0]
+	if got := inv.ExpiresAt.Sub(created); got != InviteTTL {
+		t.Fatalf("expiry = %v, want %v", got, InviteTTL)
+	}
+	if !inv.Open(created.Add(59 * time.Minute)) {
+		t.Fatal("a 59-minute-old invite was closed")
+	}
+	if inv.Open(created.Add(61 * time.Minute)) {
+		t.Fatal("a 61-minute-old invite was open")
+	}
+}

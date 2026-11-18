@@ -15,6 +15,9 @@ import (
 const (
 	MaxServices = 16
 	MaxMembers  = 32
+
+	// InviteTTL is how long a new invite stays valid.
+	InviteTTL = time.Hour
 )
 
 // Role says which side of the connection this group belongs to.
@@ -253,7 +256,7 @@ func (g *Group) AddInvite(inv Invite) error {
 		inv.CreatedAt = time.Now().UTC()
 	}
 	if inv.ExpiresAt.IsZero() {
-		inv.ExpiresAt = inv.CreatedAt.Add(24 * time.Hour)
+		inv.ExpiresAt = inv.CreatedAt.Add(InviteTTL)
 	}
 	g.Invites = append(g.Invites, inv)
 	return nil

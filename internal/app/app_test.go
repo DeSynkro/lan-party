@@ -915,3 +915,27 @@ func TestSaveSettingsPortRules(t *testing.T) {
 		t.Fatalf("the global port change was blocked by a group override: %v", err)
 	}
 }
+
+func TestCreateInviteExpiryIsOneHour(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := a.Settings()
+	s.PublicAddress = "home.example.net"
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.CreateInvite(g.ID, "Ash"); err != nil {
+		t.Fatal(err)
+	}
+	saved, ok := a.Group(g.ID)
+	if !ok || len(saved.Invites) != 1 {
+		t.Fatalf("saved group = %+v", saved)
+	}
+	inv := saved.Invites[0]
+	if got := inv.ExpiresAt.Sub(inv.CreatedAt); got < 59*time.Minute || got > 61*time.Minute {
+		t.Fatalf("invite lifetime = %v", got)
+	}
+}

@@ -26,7 +26,7 @@ func testInvite(now time.Time) Invite {
 		HostPin:   testPin(),
 		Token:     token,
 		PeerName:  "Ash",
-		Expires:   now.Add(24 * time.Hour),
+		Expires:   now.Add(time.Hour),
 	}
 }
 
