@@ -417,7 +417,7 @@ func (u *probeUI) showInviteCodeDialog(g group.Group, name, code string) {
 		content.Append(textLabel("Code endpoint: "+inv.Endpoint, "desc"))
 	}
 	content.Append(gapBox(10))
-	content.Append(textLabel("Send this code privately. It works once and expires after 24 hours.", "desc"))
+	content.Append(textLabel("Send this code privately. It works once and expires after 1 hour.", "desc"))
 	content.Append(gapBox(12))
 
 	buttons := gtk.NewBox(gtk.OrientationHorizontal, 8)

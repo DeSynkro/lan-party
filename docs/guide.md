@@ -94,7 +94,7 @@ Try a different connection or a public host.
 Click **Start session**. Then click **Invite**, enter the friend's name, and
 copy the code.
 
-The code is a single-use invite. It expires after 24 hours. Send it privately.
+The code is a single-use invite. It expires after 1 hour. Send it privately.
 Anyone who has it can try to redeem it, and the approval card is your chance to
 deny a stranger.
 
@@ -141,7 +141,7 @@ is what closing does anyway; the setting says so.
 ## Invites
 
 - Single use. The token is burned after a successful join.
-- Expire after 24 hours.
+- Expire after 1 hour.
 - The host must be online when the friend redeems the code.
 - The host stores only a hash, so a code cannot be shown again after the app
   restarts. Create a new invite for the same friend if you need to send it
@@ -188,7 +188,7 @@ service card shows the error.
 
 ### An invite expired or was already used
 
-Create a new invite. Codes work once and expire after 24 hours.
+Create a new invite. Codes work once and expire after 1 hour.
 
 ### Where are my keys stored?
 

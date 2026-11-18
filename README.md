@@ -109,7 +109,7 @@ make appimage  # Linux AppImage in dist/
 
 - **One port, one friend:** each service publishes a loopback address such as `127.0.0.1:25565`.
 - **TCP and UDP:** forward either or both, with an optional port remap.
-- **One-time invites:** hashed at rest, 24-hour expiry, and host approval for every new device or changed device key.
+- **One-time invites:** hashed at rest, 1-hour expiry, and host approval for every new device or changed device key.
 - **Live presence:** see who is connected, their RTT, and revoke a device immediately.
 - **Live service updates:** add, remove or change a service while friends are connected.
 - **Saved groups:** keep your regular groups and friends, and reconnect after a host restart.
@@ -187,7 +187,7 @@ Make sure you've clicked "Start Session".
 
 ### The invite says it is expired
 
-Invites work once and expire after 24 hours. Create a new one.
+Invites work once and expire after 1 hour. Create a new one.
 
 ### The friend sees only the host
 

@@ -105,7 +105,7 @@ func (u *probeUI) buildGuidePage() *gtk.ScrolledWindow {
 	problems.Append(cardText("The friend app tries the next local port and shows the address it actually got. The host's published port does not change.", "desc"))
 	problems.Append(gapBox(10))
 	problems.Append(cardText("An invite expired or was already used", "setting-title"))
-	problems.Append(cardText("Create a new invite. Codes work once and expire after 24 hours.", "desc"))
+	problems.Append(cardText("Create a new invite. Codes work once and expire after 1 hour.", "desc"))
 	page.Append(problems)
 
 	security := gtk.NewBox(gtk.OrientationVertical, 0)
@@ -113,7 +113,7 @@ func (u *probeUI) buildGuidePage() *gtk.ScrolledWindow {
 	security.SetMarginBottom(10)
 	security.Append(textLabel("Security", "card-title"))
 	security.Append(gapBox(10))
-	security.Append(cardText("Invites are single use, expire after 24 hours, and need the host to be online when they are redeemed.", "desc"))
+	security.Append(cardText("Invites are single use, expire after 1 hour, and need the host to be online when they are redeemed.", "desc"))
 	security.Append(gapBox(10))
 	security.Append(cardText("The host approves each device. A different device key asks again.", "desc"))
 	security.Append(gapBox(10))

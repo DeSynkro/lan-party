@@ -201,7 +201,7 @@ and normalized on paste. The host keeps only a SHA-256 hash, never the token
 itself.
 
 - Single use.
-- Expires 24 hours after it is created.
+- Expires 1 hour after it is created.
 - Only redeemable while the host is running the session.
 - The host validates the token in constant time and rate-limits failed attempts.
 - On success the token is marked redeemed and deleted. On failure or denial it
@@ -279,7 +279,7 @@ as an SSH private key.
 | Adversary | Mitigation |
 | --- | --- |
 | Internet scanner | QUIC/TLS hides everything before authentication. Unknown peers get no service list and no data. |
-| Leaked invite | Single use, 24-hour expiry, host approval, rate limiting, revocable member. |
+| Leaked invite | Single use, 1-hour expiry, host approval, rate limiting, revocable member. |
 | Curious friend | Only published services exist. No routing, no peer-to-peer, no access to the host's other devices. |
 | Malicious friend | Cannot reach anything else. Stream, flow and connection limits cap resource use. |
 | Stolen device key | Can impersonate that member until revoked. A changed source address is visible; the host can revoke and issue a new invite. |

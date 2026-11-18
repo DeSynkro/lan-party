@@ -68,7 +68,7 @@ The host:
 Rules:
 
 - single use
-- 24-hour expiry
+- 1-hour expiry
 - only redeemable while the host's session is running
 - failed attempts are rate limited: 5 per source address per minute
 - a denial or timeout leaves the invite open until it expires
@@ -186,7 +186,7 @@ The app writes no secrets to logs. It has no telemetry and no auto-update.
 | Adversary | What happens |
 | --- | --- |
 | Internet scanner | Sees one UDP port running QUIC. It gets no service list, no member list and no data without a valid device key. |
-| Leaked invite | Single use, 24-hour expiry, host approval, rate limiting and revocation. A stranger's device details appear on the approval card. |
+| Leaked invite | Single use, 1-hour expiry, host approval, rate limiting and revocation. A stranger's device details appear on the approval card. |
 | Curious friend | Only published services exist. No route, no peer-to-peer path, no access to the host's router or other devices. |
 | Malicious friend | Cannot reach anything else. Stream, flow, member and rate limits cap resource use. |
 | Stolen device key | Can impersonate that member until the host revokes it. A changed source address may be visible, but the key is the credential. Revoke and issue a new invite. |
