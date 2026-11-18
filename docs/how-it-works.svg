@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1500" height="700" viewBox="0 0 1500 700">
+  <defs>
+    <radialGradient id="radial-gradient-1" cx="0" cy="0" r="1500" gradientTransform="matrix(1 0 0 0.467 750 -105)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2c1166"/>
+      <stop offset="0.55" stop-color="#120a2e"/>
+      <stop offset="1" stop-color="#08040f"/>
+    </radialGradient>
+    <clipPath id="clip-path-1">
+      <path d="M0 0 L34 0 L34 34 L0 34 Z"/>
+    </clipPath>
+    <pattern id="pattern-1" patternUnits="userSpaceOnUse" width="34" height="34" patternTransform="matrix(1 0 0 1 0 0)">
+      <g clip-path="url(#clip-path-1)">
+        <circle cx="1" cy="1" r="1" fill="#ffffff" opacity="0.04"/>
+      </g>
+    </pattern>
+    <linearGradient id="linear-gradient-1" x1="270.5" y1="302" x2="1180" y2="302" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="0.5" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#ff3dbe"/>
+    </linearGradient>
+    <linearGradient id="linear-gradient-2" x1="70" y1="452" x2="74" y2="452" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="0.5" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#ff3dbe"/>
+    </linearGradient>
+  </defs>
+  <title>how-it-works.svg</title>
+  <g id="Layer_1" data-name="Layer 1">
+    <rect x="0" y="0" width="1500" height="700" fill="url(#radial-gradient-1)"/>
+    <rect x="0" y="0" width="1500" height="700" fill="url(#pattern-1)"/>
+    <circle cx="750" cy="360" r="380" fill="#8b5cf6" opacity="0.06"/>
+    <text transform="matrix(1 0 0 1 70 82)" x="0" y="0" xml:space="preserve" font-family="&apos;Space Grotesk&apos;, sans-serif" font-size="46" font-weight="500" fill="#fdf4ff"><tspan x="0" y="0">How it works</tspan></text>
+    <text transform="matrix(1 0 0 1 70 120)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="19" fill="#b9a8d9"><tspan x="0" y="0">One port out of your LAN. One loopback port on your friend&apos;s PC.</tspan></text>
+    <text transform="matrix(1 0 0 1 70 186)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans SmBld&apos;, sans-serif" font-size="12" font-weight="600" fill="#22d3ee" letter-spacing="3"><tspan x="0" y="0">YOUR LAN</tspan></text>
+    <text transform="matrix(1 0 0 1 1427 186)" x="3" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans SmBld&apos;, sans-serif" font-size="12" font-weight="600" fill="#ff3dbe" letter-spacing="3" text-anchor="end"><tspan x="3" y="0">FRIEND&apos;S PC</tspan></text>
+    <line x1="70" y1="196" x2="380" y2="196" fill="#000000" stroke="#22d3ee" stroke-opacity="0.25"/>
+    <line x1="1120" y1="196" x2="1430" y2="196" fill="#000000" stroke="#ff3dbe" stroke-opacity="0.25"/>
+    <line x1="270.5" y1="302" x2="1180" y2="302" fill="#000000" stroke="url(#linear-gradient-1)" stroke-opacity="0.1" stroke-width="12"/>
+    <line x1="270.5" y1="302" x2="1180" y2="302" fill="#000000" stroke="url(#linear-gradient-1)" stroke-opacity="0.8" stroke-width="4"/>
+    <path d="M88 220 L252 220 C261.941 220 270 228.059 270 238 L270 366 C270 375.941 261.941 384 252 384 L88 384 C78.059 384 70 375.941 70 366 L70 238 C70 228.059 78.059 220 88 220 Z" fill="#120a2e" fill-opacity="0.92" stroke="#ffffff" stroke-opacity="0.1"/>
+    <path d="M71.5 220 L268.5 220 C269.328 220 270 220.672 270 221.5 L270 221.5 C270 222.328 269.328 223 268.5 223 L71.5 223 C70.672 223 70 222.328 70 221.5 L70 221.5 C70 220.672 70.672 220 71.5 220 Z" fill="#22d3ee" opacity="0.75"/>
+    <g>
+      <path d="M157 248 L181 248 C182.657 248 184 249.343 184 251 L184 254 C184 255.657 182.657 257 181 257 L157 257 C155.343 257 154 255.657 154 254 L154 251 C154 249.343 155.343 248 157 248 Z" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M157 259 L181 259 C182.657 259 184 260.343 184 262 L184 265 C184 266.657 182.657 268 181 268 L157 268 C155.343 268 154 266.657 154 265 L154 262 C154 260.343 155.343 259 157 259 Z" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="160" cy="252.5" r="1.3" fill="#22d3ee" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="160" cy="263.5" r="1.3" fill="#22d3ee" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M176 252.5 L179 252.5 M176 263.5 L179 263.5" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text transform="matrix(1 0 0 1 170 316)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans SmBld&apos;, sans-serif" font-size="20" font-weight="600" fill="#fdf4ff" text-anchor="middle"><tspan x="0" y="0">Game server</tspan></text>
+    <text transform="matrix(1 0 0 1 170 344)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="14" fill="#b9a8d9" text-anchor="middle"><tspan x="0" y="0">192.168.1.50:25565</tspan></text>
+    <path d="M318 220 L482 220 C491.941 220 500 228.059 500 238 L500 366 C500 375.941 491.941 384 482 384 L318 384 C308.059 384 300 375.941 300 366 L300 238 C300 228.059 308.059 220 318 220 Z" fill="#120a2e" fill-opacity="0.92" stroke="#ffffff" stroke-opacity="0.1"/>
+    <path d="M301.5 220 L498.5 220 C499.328 220 500 220.672 500 221.5 L500 221.5 C500 222.328 499.328 223 498.5 223 L301.5 223 C300.672 223 300 222.328 300 221.5 L300 221.5 C300 220.672 300.672 220 301.5 220 Z" fill="#22d3ee" opacity="0.75"/>
+    <g>
+      <path d="M387 248 L413 248 C414.657 248 416 249.343 416 251 L416 267 C416 268.657 414.657 270 413 270 L387 270 C385.343 270 384 268.657 384 267 L384 251 C384 249.343 385.343 248 387 248 Z" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M397 270 L397 275 L403 275 L403 270 M394 278 L406 278" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="400" cy="259" r="5" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="400" y1="264" x2="400" y2="267" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text transform="matrix(1 0 0 1 400 316)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans SmBld&apos;, sans-serif" font-size="20" font-weight="600" fill="#fdf4ff" text-anchor="middle"><tspan x="0" y="0">LAN Party</tspan></text>
+    <text transform="matrix(1 0 0 1 400 344)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="14" fill="#b9a8d9" text-anchor="middle"><tspan x="0" y="0">host · UDP 51820</tspan></text>
+    <path d="M548 220 L672 220 C681.941 220 690 228.059 690 238 L690 366 C690 375.941 681.941 384 672 384 L548 384 C538.059 384 530 375.941 530 366 L530 238 C530 228.059 538.059 220 548 220 Z" fill="#120a2e" fill-opacity="0.92" stroke="#ffffff" stroke-opacity="0.1"/>
+    <path d="M531.5 220 L688.5 220 C689.328 220 690 220.672 690 221.5 L690 221.5 C690 222.328 689.328 223 688.5 223 L531.5 223 C530.672 223 530 222.328 530 221.5 L530 221.5 C530 220.672 530.672 220 531.5 220 Z" fill="#8b5cf6" opacity="0.75"/>
+    <g>
+      <path d="M599 256 L623 256 C625.761 256 628 258.239 628 261 L628 269 C628 271.761 625.761 274 623 274 L599 274 C596.239 274 594 271.761 594 269 L594 261 C594 258.239 596.239 256 599 256 Z" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M603 256 L603 250 M619 256 L619 250" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="604" cy="265" r="1.4" fill="#8b5cf6" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="611" cy="265" r="1.4" fill="#8b5cf6" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="618" cy="265" r="1.4" fill="#8b5cf6" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text transform="matrix(1 0 0 1 610 316)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans SmBld&apos;, sans-serif" font-size="20" font-weight="600" fill="#fdf4ff" text-anchor="middle"><tspan x="0" y="0">Router</tspan></text>
+    <text transform="matrix(1 0 0 1 610 344)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="14" fill="#b9a8d9" text-anchor="middle"><tspan x="0" y="0">one port forward</tspan></text>
+    <path d="M738 220 L902 220 C911.941 220 920 228.059 920 238 L920 366 C920 375.941 911.941 384 902 384 L738 384 C728.059 384 720 375.941 720 366 L720 238 C720 228.059 728.059 220 738 220 Z" fill="#120a2e" fill-opacity="0.92" stroke="#ffffff" stroke-opacity="0.1"/>
+    <path d="M721.5 220 L918.5 220 C919.328 220 920 220.672 920 221.5 L920 221.5 C920 222.328 919.328 223 918.5 223 L721.5 223 C720.672 223 720 222.328 720 221.5 L720 221.5 C720 220.672 720.672 220 721.5 220 Z" fill="#8b5cf6" opacity="0.75"/>
+    <g>
+      <path d="M810 272 L834 272 C838.418 272.276 842.224 268.918 842.5 264.5 C842.776 260.082 839.418 256.276 835 256 C834.376 251.087 830.546 247.197 825.643 246.497 C820.741 245.796 815.975 248.458 814 253 C808.753 251.895 803.605 255.253 802.5 260.5 C801.395 265.747 804.753 270.895 810 272 Z" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M820 265 L826 265 C827.105 265 828 265.895 828 267 L828 272 C828 273.105 827.105 274 826 274 L820 274 C818.895 274 818 273.105 818 272 L818 267 C818 265.895 818.895 265 820 265 Z" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M820 265 L820 263 C820 261.343 821.343 260 823 260 C824.657 260 826 261.343 826 263 L826 265" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text transform="matrix(1 0 0 1 820 316)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans SmBld&apos;, sans-serif" font-size="20" font-weight="600" fill="#fdf4ff" text-anchor="middle"><tspan x="0" y="0">Internet</tspan></text>
+    <text transform="matrix(1 0 0 1 820 344)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="14" fill="#b9a8d9" text-anchor="middle"><tspan x="0" y="0">QUIC · TLS 1.3</tspan></text>
+    <path d="M968 220 L1132 220 C1141.941 220 1150 228.059 1150 238 L1150 366 C1150 375.941 1141.941 384 1132 384 L968 384 C958.059 384 950 375.941 950 366 L950 238 C950 228.059 958.059 220 968 220 Z" fill="#120a2e" fill-opacity="0.92" stroke="#ffffff" stroke-opacity="0.1"/>
+    <path d="M951.5 220 L1148.5 220 C1149.328 220 1150 220.672 1150 221.5 L1150 221.5 C1150 222.328 1149.328 223 1148.5 223 L951.5 223 C950.672 223 950 222.328 950 221.5 L950 221.5 C950 220.672 950.672 220 951.5 220 Z" fill="#ff3dbe" opacity="0.75"/>
+    <g>
+      <path d="M1037 248 L1065 248 C1066.657 248 1068 249.343 1068 251 L1068 267 C1068 268.657 1066.657 270 1065 270 L1037 270 C1035.343 270 1034 268.657 1034 267 L1034 251 C1034 249.343 1035.343 248 1037 248 Z" fill="none" stroke="#ff3dbe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M1048 270 L1048 275 L1054 275 L1054 270 M1045 278 L1057 278" fill="none" stroke="#ff3dbe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="1051" cy="258" r="4" fill="none" stroke="#ff3dbe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M1044 267 C1045 263 1048 262 1051 262 C1054 262 1057 263 1058 267" fill="none" stroke="#ff3dbe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text transform="matrix(1 0 0 1 1050 316)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans SmBld&apos;, sans-serif" font-size="20" font-weight="600" fill="#fdf4ff" text-anchor="middle"><tspan x="0" y="0">LAN Party</tspan></text>
+    <text transform="matrix(1 0 0 1 1050 344)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="14" fill="#b9a8d9" text-anchor="middle"><tspan x="0" y="0">friend · approved</tspan></text>
+    <path d="M1198 220 L1412 220 C1421.941 220 1430 228.059 1430 238 L1430 366 C1430 375.941 1421.941 384 1412 384 L1198 384 C1188.059 384 1180 375.941 1180 366 L1180 238 C1180 228.059 1188.059 220 1198 220 Z" fill="#120a2e" fill-opacity="0.92" stroke="#ffffff" stroke-opacity="0.1"/>
+    <path d="M1181.5 220 L1428.5 220 C1429.328 220 1430 220.672 1430 221.5 L1430 221.5 C1430 222.328 1429.328 223 1428.5 223 L1181.5 223 C1180.672 223 1180 222.328 1180 221.5 L1180 221.5 C1180 220.672 1180.672 220 1181.5 220 Z" fill="#ff3dbe" opacity="0.75"/>
+    <g>
+      <path d="M1293 271 C1290 265 1291 258 1296 257 L1316 257 C1321 258 1322 265 1319 271 C1317 275 1314 276 1311 273 L1309 270 L1303 270 L1301 273 C1298 276 1295 275 1293 271 Z" fill="none" stroke="#ff3dbe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M1299 261 L1299 267 M1296 264 L1302 264" fill="none" stroke="#ff3dbe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="1312" cy="262" r="1.4" fill="#ff3dbe" stroke="#ff3dbe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="1316" cy="266" r="1.4" fill="#ff3dbe" stroke="#ff3dbe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text transform="matrix(1 0 0 1 1305 316)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans SmBld&apos;, sans-serif" font-size="20" font-weight="600" fill="#fdf4ff" text-anchor="middle"><tspan x="0" y="0">Game client</tspan></text>
+    <text transform="matrix(1 0 0 1 1305 344)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="14" fill="#b9a8d9" text-anchor="middle"><tspan x="0" y="0">127.0.0.1:25565</tspan></text>
+    <text transform="matrix(1 0 0 1 285 207)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="13" fill="#22d3ee" text-anchor="middle"><tspan x="0" y="0">dials the LAN target</tspan></text>
+    <text transform="matrix(1 0 0 1 705 207)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="13" fill="#8b5cf6" text-anchor="middle"><tspan x="0" y="0">UDP 51820</tspan></text>
+    <text transform="matrix(1 0 0 1 820 207)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="13" fill="#8b5cf6" text-anchor="middle"><tspan x="0" y="0">encrypted</tspan></text>
+    <text transform="matrix(1 0 0 1 1165 207)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="13" fill="#ff3dbe" text-anchor="middle"><tspan x="0" y="0">loopback</tspan></text>
+    <path d="M88 452 L1412 452 C1421.941 452 1430 460.059 1430 470 L1430 526 C1430 535.941 1421.941 544 1412 544 L88 544 C78.059 544 70 535.941 70 526 L70 470 C70 460.059 78.059 452 88 452 Z" fill="#120a2e" fill-opacity="0.72" stroke="#ffffff" stroke-opacity="0.08"/>
+    <path d="M72 452 L72 452 C73.105 452 74 452.895 74 454 L74 542 C74 543.105 73.105 544 72 544 L72 544 C70.895 544 70 543.105 70 542 L70 454 C70 452.895 70.895 452 72 452 Z" fill="url(#linear-gradient-2)"/>
+    <text transform="matrix(1 0 0 1 100 486)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans SmBld&apos;, sans-serif" font-size="21" font-weight="600" fill="#fdf4ff"><tspan x="0" y="0">Only the published service crosses the tunnel.</tspan></text>
+    <text transform="matrix(1 0 0 1 100 516)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="16" fill="#b9a8d9"><tspan x="0" y="0">Your router, NAS and the rest of the LAN are never reachable. Friends never connect to each other; the host is the only peer.</tspan></text>
+    <text transform="matrix(1 0 0 1 70 606)" x="0" y="0" xml:space="preserve" font-family="&apos;JetBrains Mono&apos;, monospace" font-size="14" fill="#22d3ee"><tspan x="0" y="0">1</tspan></text>
+    <text transform="matrix(1 0 0 1 90 606)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="15" fill="#b9a8d9"><tspan x="0" y="0">The host publishes a service on one UDP port.</tspan></text>
+    <text transform="matrix(1 0 0 1 470 606)" x="0" y="0" xml:space="preserve" font-family="&apos;JetBrains Mono&apos;, monospace" font-size="14" fill="#8b5cf6"><tspan x="0" y="0">2</tspan></text>
+    <text transform="matrix(1 0 0 1 490 606)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="15" fill="#b9a8d9"><tspan x="0" y="0">The friend&apos;s app opens a loopback port.</tspan></text>
+    <text transform="matrix(1 0 0 1 870 606)" x="0" y="0" xml:space="preserve" font-family="&apos;JetBrains Mono&apos;, monospace" font-size="14" fill="#ff3dbe"><tspan x="0" y="0">3</tspan></text>
+    <text transform="matrix(1 0 0 1 890 606)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="15" fill="#b9a8d9"><tspan x="0" y="0">The host dials the real LAN target.</tspan></text>
+    <text transform="matrix(1 0 0 1 70 660)" x="0" y="0" xml:space="preserve" font-family="&apos;JetBrains Mono&apos;, monospace" font-size="13" fill="#8e7bb5"><tspan x="0" y="0">desynkro.com</tspan></text>
+    <text transform="matrix(1 0 0 1 1430 660)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="14" fill="#b9a8d9" text-anchor="end"><tspan x="0" y="0">No virtual network. No route to the rest of the LAN.</tspan></text>
+  </g>
+</svg>

@@ -153,7 +153,9 @@ packaging decision.
 CI runs vet, race tests, `govulncheck` and a binary build on every push. The
 Linux AppImage is built on every push to main, on tags and by hand, then smoke
 tested under Xvfb. A tag also creates a draft release with the AppImage and
-`SHA256SUMS`.
+`SHA256SUMS`. If `docs/releases/<tag>.md` exists, it becomes the release body;
+otherwise the notes are generated. The AppImage installs the GPLv3 license,
+font licenses and third-party notices under `usr/share/licenses/lan-party/`.
 
 Version strings come from `git describe` and are passed to
 `internal/buildinfo.Version` with `-ldflags`. Untagged builds say `dev`.

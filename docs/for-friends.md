@@ -5,7 +5,7 @@ LAN Party lets me share **one game** from my PC with you over the internet.
 It does not put you on my home network. It makes a private, encrypted path for
 that one game.
 
-![How LAN Party works](mockups/how-it-works.png)
+![How LAN Party works](how-it-works.svg)
 
 ## What you need to do
 
