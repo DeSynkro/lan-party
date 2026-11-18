@@ -141,7 +141,7 @@ func (u *probeUI) hostSessionCard(g group.Group, showError func(error), state *g
 	card.Append(cardText("Hosting as "+g.HostName+" · "+plural(len(g.Members), "member"), "desc"))
 	card.Append(gapBox(8))
 
-	endpoint, err := u.state.CurrentEndpoint()
+	endpoint, err := u.state.GroupEndpoint(g.ID)
 	if err != nil {
 		card.Append(cardText("No public address — friends can't join.", "warning"))
 	} else {
@@ -149,15 +149,24 @@ func (u *probeUI) hostSessionCard(g group.Group, showError func(error), state *g
 		addr.SetHExpand(true)
 		row := gtk.NewBox(gtk.OrientationHorizontal, 8)
 		row.Append(addr)
+		if g.PublicAddress != "" || g.AppPort != 0 {
+			row.Append(tagLabel("Custom"))
+		} else {
+			row.Append(tagLabel("Default"))
+		}
 		change := gtk.NewButtonWithLabel("Change")
 		change.AddCSSClass("quiet")
 		change.ConnectClicked(func() {
-			u.showSettings()
+			u.showGroupConnectionDialog(g, showError)
 		})
 		row.Append(change)
 		card.Append(row)
 	}
-	card.Append(cardText("UDP "+strconv.Itoa(u.state.Settings().AppPort)+" on this PC", "desc"))
+	appPort, portErr := u.state.GroupAppPort(g.ID)
+	if portErr != nil {
+		appPort = u.state.Settings().AppPort
+	}
+	card.Append(cardText("UDP "+strconv.Itoa(appPort)+" on this PC", "desc"))
 	card.Append(gapBox(6))
 	connected := cardText("not running", "desc")
 	if live {
@@ -518,12 +527,17 @@ func (u *probeUI) groupSignature(g group.Group) string {
 	if g.IsHost() {
 		live := u.state.LiveGroupID() == g.ID
 		fmt.Fprintf(&b, "|live=%t", live)
-		if endpoint, err := u.state.CurrentEndpoint(); err == nil {
+		fmt.Fprintf(&b, "|connection=%s,%d", g.PublicAddress, g.AppPort)
+		if endpoint, err := u.state.GroupEndpoint(g.ID); err == nil {
 			fmt.Fprintf(&b, "|endpoint=%s", endpoint)
 		} else {
 			fmt.Fprintf(&b, "|endpoint-error=%s", err)
 		}
-		fmt.Fprintf(&b, "|app-port=%d", u.state.Settings().AppPort)
+		if appPort, err := u.state.GroupAppPort(g.ID); err == nil {
+			fmt.Fprintf(&b, "|app-port=%d", appPort)
+		} else {
+			fmt.Fprintf(&b, "|app-port-error=%s", err)
+		}
 		for _, s := range g.Services {
 			fmt.Fprintf(&b, "|service=%s,%s,%s,%s,%s,%s", s.ID, s.Name, s.Proto, s.Target, group.FormatPorts(s.Ports), s.Hint)
 		}

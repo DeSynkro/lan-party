@@ -73,10 +73,13 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 		feedback,
 	))
 
-	network := textLabel("Network", "section")
+	network := textLabel("Network defaults", "section")
 	network.SetMarginTop(18)
 	network.SetMarginBottom(8)
 	page.Append(network)
+	networkNote := textLabel("Host groups use these defaults unless they set their own connection.", "help")
+	networkNote.SetMarginBottom(8)
+	page.Append(networkNote)
 
 	publicEntry := gtk.NewEntry()
 	publicEntry.SetText(settings.PublicAddress)

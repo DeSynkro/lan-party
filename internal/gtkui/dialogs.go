@@ -2,6 +2,8 @@ package gtkui
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -62,6 +64,186 @@ func (u *probeUI) showCreateGroupDialog() {
 	buttons.SetHAlign(gtk.AlignEnd)
 	content.Append(buttons)
 	groupEntry.GrabFocus()
+	win.Present()
+}
+
+func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)) {
+	settings := u.state.Settings()
+	current, err := u.state.EffectiveConnection(g.ID)
+	if err != nil {
+		showError(err)
+		return
+	}
+
+	win, content := u.dialog("Connection for " + g.Name)
+	win.SetDefaultSize(380, 500)
+
+	content.Append(textLabel("This changes only this group. The defaults live in Settings.", "help"))
+	content.Append(gapBox(12))
+
+	publicPlaceholder := settings.PublicAddress
+	if publicPlaceholder == "" {
+		publicPlaceholder = "home.example.net"
+	}
+	publicEntry := entry(publicPlaceholder)
+	publicEntry.SetText(g.PublicAddress)
+	content.Append(formRow("Public address", publicEntry))
+	content.Append(gapBox(8))
+
+	portPlaceholder := strconv.Itoa(settings.AppPort)
+	portEntry := entry(portPlaceholder)
+	if g.AppPort != 0 {
+		portEntry.SetText(strconv.Itoa(g.AppPort))
+	}
+	content.Append(formRow("App port (UDP)", portEntry))
+	content.Append(gapBox(8))
+
+	defaultEndpoint := "not set"
+	if endpoint, err := apppkg.Endpoint(settings.PublicAddress, settings.AppPort); err == nil {
+		defaultEndpoint = endpoint
+	}
+	content.Append(textLabel("Default: "+defaultEndpoint+" · UDP "+strconv.Itoa(settings.AppPort), "desc"))
+	content.Append(gapBox(10))
+
+	preview := textLabel("", "mono")
+	listen := textLabel("", "desc")
+	warning := textLabel("", "warning")
+	warning.SetVisible(false)
+	errLabel := textLabel("", "error")
+	errLabel.SetVisible(false)
+	content.Append(preview)
+	content.Append(gapBox(4))
+	content.Append(listen)
+	content.Append(gapBox(8))
+	content.Append(warning)
+	content.Append(gapBox(6))
+	content.Append(errLabel)
+	content.Append(gapBox(10))
+
+	oldEndpoint, oldErr := apppkg.Endpoint(current.PublicAddress, current.AppPort)
+	if oldErr != nil {
+		oldEndpoint = ""
+	}
+	live := u.state.LiveGroupID() == g.ID
+
+	buttons := gtk.NewBox(gtk.OrientationHorizontal, 8)
+	useDefaults := gtk.NewButtonWithLabel("Use defaults")
+	useDefaults.AddCSSClass("quiet")
+	cancel := gtk.NewButtonWithLabel("Cancel")
+	cancel.AddCSSClass("quiet")
+	action := gtk.NewButtonWithLabel("Save")
+	action.AddCSSClass("primary")
+
+	updatePreview := func() {
+		errLabel.SetVisible(false)
+		publicText := strings.TrimSpace(publicEntry.Text())
+		portText := strings.TrimSpace(portEntry.Text())
+		port := settings.AppPort
+		if portText != "" {
+			parsed, err := strconv.Atoi(portText)
+			if err != nil || parsed < 1 || parsed > 65535 {
+				preview.SetText("Friends connect to: check the app port")
+				listen.SetText("")
+				warning.SetVisible(false)
+				action.SetLabel("Save")
+				return
+			}
+			port = parsed
+		}
+
+		effectivePublic := publicText
+		if effectivePublic == "" {
+			effectivePublic = settings.PublicAddress
+		}
+		endpoint, err := apppkg.Endpoint(effectivePublic, port)
+		if err != nil {
+			preview.SetText("Friends connect to: not set")
+		} else {
+			preview.SetText("Friends connect to: " + endpoint)
+		}
+		listen.SetText("Host listens on UDP " + strconv.Itoa(port))
+
+		portChanges := live && port != current.AppPort
+		warning.SetVisible(false)
+		action.SetLabel("Save")
+		if !portChanges {
+			return
+		}
+		action.SetLabel("Stop session and apply")
+		note := "The advertised address stays the same. Update your router forward to the new local port."
+		if endpoint != oldEndpoint {
+			note = "The advertised endpoint changes. Existing invites will stop working; create new invites after the restart."
+		}
+		warning.SetText("Changing the app port restarts the session. Everyone will disconnect briefly.\n\n" + note)
+		warning.SetVisible(true)
+	}
+
+	publicEntry.ConnectChanged(func() { updatePreview() })
+	portEntry.ConnectChanged(func() { updatePreview() })
+
+	useDefaults.ConnectClicked(func() {
+		publicEntry.SetText("")
+		portEntry.SetText("")
+		updatePreview()
+	})
+	cancel.ConnectClicked(func() { win.Close() })
+	action.ConnectClicked(func() {
+		errLabel.SetVisible(false)
+		publicText := strings.TrimSpace(publicEntry.Text())
+		portText := strings.TrimSpace(portEntry.Text())
+		port := 0
+		if portText != "" {
+			parsed, err := strconv.Atoi(portText)
+			if err != nil {
+				errLabel.SetText("The app port must be a number.")
+				errLabel.SetVisible(true)
+				return
+			}
+			port = parsed
+		}
+		if err := apppkg.ValidateConnection(publicText, port); err != nil {
+			errLabel.SetText(err.Error())
+			errLabel.SetVisible(true)
+			return
+		}
+
+		newPort := port
+		if newPort == 0 {
+			newPort = settings.AppPort
+		}
+		portChanges := live && newPort != current.AppPort
+		if portChanges {
+			if err := u.state.StopSession(); err != nil {
+				errLabel.SetText(err.Error())
+				errLabel.SetVisible(true)
+				return
+			}
+		}
+		if err := u.state.SetGroupConnection(g.ID, publicText, port); err != nil {
+			errLabel.SetText(err.Error())
+			errLabel.SetVisible(true)
+			return
+		}
+		if portChanges {
+			if err := u.state.StartSession(g.ID); err != nil {
+				win.Close()
+				u.showGroup(g.ID)
+				showError(fmt.Errorf("settings saved, but the session could not restart: %w", err))
+				return
+			}
+		}
+		win.Close()
+		u.showGroup(g.ID)
+	})
+
+	buttons.Append(useDefaults)
+	buttons.Append(cancel)
+	buttons.Append(action)
+	buttons.SetHAlign(gtk.AlignEnd)
+	content.Append(buttons)
+
+	updatePreview()
+	publicEntry.GrabFocus()
 	win.Present()
 }
 

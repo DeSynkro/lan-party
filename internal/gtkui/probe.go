@@ -119,6 +119,13 @@ func runUI(argv []string, defaultAppID string, preview bool) int {
 					ui.showGroup(g.ID)
 					ui.showServiceDialog(g, g.Services[0])
 				}
+			case strings.HasPrefix(screen, "connection:"):
+				if g, ok := ui.state.Group(strings.TrimPrefix(screen, "connection:")); ok {
+					ui.showGroup(g.ID)
+					ui.showGroupConnectionDialog(g, func(err error) {
+						log.Printf("lan-party: %v", err)
+					})
+				}
 			case strings.HasPrefix(screen, "group:"):
 				ui.showGroup(strings.TrimPrefix(screen, "group:"))
 			default:
