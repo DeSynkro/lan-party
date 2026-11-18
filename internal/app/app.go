@@ -405,9 +405,15 @@ func (a *App) SetGroupConnection(groupID, publicAddress string, appPort int) err
 			return errors.New("end the session before changing this group's app port")
 		}
 	}
+	oldPublic, oldPort := g.PublicAddress, g.AppPort
 	g.PublicAddress = publicAddress
 	g.AppPort = appPort
-	return a.saveLocked()
+	if err := a.saveLocked(); err != nil {
+		g.PublicAddress = oldPublic
+		g.AppPort = oldPort
+		return err
+	}
+	return nil
 }
 
 // effectiveConnectionLocked applies the group override or the saved default.

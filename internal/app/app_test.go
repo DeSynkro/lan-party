@@ -939,3 +939,68 @@ func TestCreateInviteExpiryIsOneHour(t *testing.T) {
 		t.Fatalf("invite lifetime = %v", got)
 	}
 }
+
+func TestEffectiveConnectionOneSidedOverrides(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := a.Settings()
+	s.PublicAddress = "home.example.net"
+	s.AppPort = 51820
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := a.SetGroupConnection(g.ID, "group.example.net", 0); err != nil {
+		t.Fatal(err)
+	}
+	got, err := a.EffectiveConnection(g.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.PublicAddress != "group.example.net" || got.AppPort != 51820 || !got.Custom {
+		t.Fatalf("address-only connection = %+v", got)
+	}
+
+	if err := a.SetGroupConnection(g.ID, "", 41000); err != nil {
+		t.Fatal(err)
+	}
+	got, err = a.EffectiveConnection(g.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.PublicAddress != "home.example.net" || got.AppPort != 41000 || !got.Custom {
+		t.Fatalf("port-only connection = %+v", got)
+	}
+}
+
+func TestSetGroupConnectionRestoresOnSaveFailure(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.SetGroupConnection(g.ID, "group.example.net", 41000); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.RemoveAll(a.DataDir()); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(a.DataDir(), []byte("not a directory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := a.SetGroupConnection(g.ID, "other.example.net", 42000); err == nil {
+		t.Fatal("a failed save was not reported")
+	}
+	saved, ok := a.Group(g.ID)
+	if !ok {
+		t.Fatal("group disappeared")
+	}
+	if saved.PublicAddress != "group.example.net" || saved.AppPort != 41000 {
+		t.Fatalf("in-memory group changed after a failed save: %+v", saved)
+	}
+}
