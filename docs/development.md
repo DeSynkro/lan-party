@@ -30,8 +30,9 @@ make build
 make appimage
 ```
 
-Building needs GTK4 development headers (`libgtk-4-dev` on Debian/Ubuntu), a C
-compiler and `pkg-config`. The first build also installs the Go version from
+Building needs GTK4 development headers (`libgtk-4-dev` and
+`gobject-introspection` on Debian/Ubuntu), a C compiler and
+`pkg-config`. The first build also installs the Go version from
 `.go-version` into `.tools/go`. `make env` prints the paths. Everything stays
 inside the project:
 

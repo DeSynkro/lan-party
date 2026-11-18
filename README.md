@@ -49,8 +49,9 @@ make build     # binary in bin/
 make appimage  # Linux AppImage in dist/
 ```
 
-Building needs the GTK4 development headers (`libgtk-4-dev` on Debian/Ubuntu),
-a C compiler and `pkg-config`. The first run downloads the pinned Go toolchain
+Building needs the GTK4 development headers (`libgtk-4-dev` and
+`gobject-introspection` on Debian/Ubuntu), a C compiler and
+`pkg-config`. The first run downloads the pinned Go toolchain
 into `.tools`. Build caches, the module cache and development config stay in
 `.cache` and `.tmp`; nothing is installed system-wide. Release builds use the
 system Go and the pinned `appimagetool`.
