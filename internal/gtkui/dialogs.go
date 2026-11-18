@@ -10,6 +10,7 @@ import (
 
 	apppkg "github.com/desynkro/lan-party/internal/app"
 	"github.com/desynkro/lan-party/internal/group"
+	invitepkg "github.com/desynkro/lan-party/internal/invite"
 	"github.com/desynkro/lan-party/internal/preset"
 )
 
@@ -170,6 +171,10 @@ func (u *probeUI) showInviteDialog(g group.Group) {
 	content.Append(textLabel("Friend's name", "form-label"))
 	nameEntry := entry("Ash")
 	content.Append(nameEntry)
+	if endpoint, err := u.state.CurrentEndpoint(); err == nil {
+		content.Append(gapBox(8))
+		content.Append(textLabel("Invite endpoint: "+endpoint, "desc"))
+	}
 	content.Append(gapBox(10))
 	errLabel := textLabel("", "error")
 	errLabel.SetVisible(false)
@@ -225,6 +230,10 @@ func (u *probeUI) showInviteCodeDialog(g group.Group, name, code string) {
 	codeScroll.SetChild(view)
 	codeScroll.SetSizeRequest(320, 110)
 	content.Append(codeScroll)
+	if inv, err := invitepkg.Decode(code); err == nil {
+		content.Append(gapBox(8))
+		content.Append(textLabel("Code endpoint: "+inv.Endpoint, "desc"))
+	}
 	content.Append(gapBox(10))
 	content.Append(textLabel("Send this code privately. It works once and expires after 24 hours.", "desc"))
 	content.Append(gapBox(12))
