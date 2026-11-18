@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Builds the Linux AppImage. Everything it needs is downloaded into .tools and
-# checked against a pinned checksum, so nothing is installed on the machine.
+# Builds the Linux AppImage. The current package uses the system GTK4 runtime;
+# bundling GTK is a separate packaging decision.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -31,34 +31,54 @@ if [ ! -x "${tool}" ]; then
 fi
 
 rm -rf "${work}"
-mkdir -p "${work}/usr/bin" "${work}/usr/share/applications" "${out}"
+mkdir -p \
+    "${work}/usr/bin" \
+    "${work}/usr/share/applications" \
+    "${work}/usr/share/icons/hicolor/256x256/apps" \
+    "${work}/brand" \
+    "${work}/internal/gtkui/assets" \
+    "${out}"
 
 "${go_bin}" build -trimpath \
     -ldflags "-s -w -X github.com/desynkro/lan-party/internal/buildinfo.Version=${version}" \
     -o "${work}/usr/bin/lan-party" ./cmd/lan-party
 
-install -m 644 "${root}/internal/ui/assets/icon.png" "${work}/lan-party.png"
+cp -a "${root}/brand/fonts" "${work}/brand/fonts"
+cp -a "${root}/brand/png" "${work}/brand/png"
+cp -a "${root}/internal/gtkui/style.css" "${work}/internal/gtkui/style.css"
+cp -a "${root}/internal/gtkui/assets/fonts" "${work}/internal/gtkui/assets/fonts"
+cp -a "${root}/internal/gtkui/assets/icons" "${work}/internal/gtkui/assets/icons"
+
+install -m 644 "${root}/brand/png/icon-app-256.png" "${work}/lan-party.png"
+install -m 644 "${root}/brand/png/icon-app-256.png" \
+    "${work}/usr/share/icons/hicolor/256x256/apps/lan-party.png"
 
 cat > "${work}/lan-party.desktop" <<DESKTOP
 [Desktop Entry]
 Type=Application
 Name=LAN Party
-Comment=One port, not the whole network
+Comment=A LAN cable across the internet
 Exec=lan-party
 Icon=lan-party
 Categories=Network;Game;
 Terminal=false
+StartupWMClass=lan-party
 DESKTOP
-install -m 644 "${work}/lan-party.desktop" "${work}/usr/share/applications/lan-party.desktop"
+install -m 644 "${work}/lan-party.desktop" \
+    "${work}/usr/share/applications/lan-party.desktop"
 
 cat > "${work}/AppRun" <<'APPRUN'
 #!/bin/sh
 here="$(dirname "$(readlink -f "$0")")"
-exec "${here}/usr/bin/lan-party" "$@"
+cd "$here" || exit 1
+exec "$here/usr/bin/lan-party" "$@"
 APPRUN
 chmod 755 "${work}/AppRun"
 
 target="${out}/lan-party_${version}_linux_amd64.AppImage"
-ARCH=x86_64 "${tool}" --appimage-extract-and-run "${work}" "${target}"
+tmp_target="${out}/.lan-party_${version}_linux_amd64.tmp.AppImage"
+rm -f "${tmp_target}"
+ARCH=x86_64 "${tool}" --appimage-extract-and-run "${work}" "${tmp_target}"
+mv -f "${tmp_target}" "${target}"
 
 printf 'built %s\n' "${target}"

@@ -22,7 +22,7 @@ Working on Linux:
 - one-time invites, hashed at rest, 24-hour expiry
 - host approval for new devices and for changed device keys
 - presence, live service updates and revocation
-- a fixed 400×640 interface, tray icon, start on login and start minimised
+- a fixed 400×640 GTK4 interface, tray icon, start on login and start minimised
 - AppImage packaging and CI
 
 Not in this version: a relay for CGNAT hosts, per-friend service grants,
@@ -33,7 +33,7 @@ read [docs/guide.md](docs/guide.md).
 
 ## What it needs
 
-- Linux with X11 or Wayland and working OpenGL.
+- Linux with X11 or Wayland and GTK4 (`libgtk-4`).
 - No keyring daemon: long-lived keys are owner-only files in the app's data
   folder.
 - One UDP port forwarded on the host's router. Friends do not need a forward.
@@ -49,10 +49,14 @@ make build     # binary in bin/
 make appimage  # Linux AppImage in dist/
 ```
 
-The first run downloads the pinned Go toolchain into `.tools`. Build caches,
-the module cache and development config stay in `.cache` and `.tmp`; nothing is
-installed system-wide. Release builds use the system Go and the pinned
-`appimagetool`.
+Building needs the GTK4 development headers (`libgtk-4-dev` on Debian/Ubuntu),
+a C compiler and `pkg-config`. The first run downloads the pinned Go toolchain
+into `.tools`. Build caches, the module cache and development config stay in
+`.cache` and `.tmp`; nothing is installed system-wide. Release builds use the
+system Go and the pinned `appimagetool`.
+
+The AppImage currently expects GTK4 on the target system. Bundling GTK is a
+separate packaging decision.
 
 At runtime the app writes:
 
@@ -79,7 +83,7 @@ and create them again; the app will not silently replace a missing identity.
 - [docs/architecture.md](docs/architecture.md) — how a connection moves
 - [docs/security.md](docs/security.md) — identities, invites, threat model
 - [docs/ui.md](docs/ui.md) — the 400×640 rules and screens
-- [docs/tuner.html](docs/tuner.html) — live browser tuner for the interface tokens
+- [docs/tuner.html](docs/tuner.html) — historical browser reference for the interface design
 - [docs/development.md](docs/development.md) — layout, build, tests, release
 - [docs/design.md](docs/design.md) — the rewrite design
 - [docs/mockups/ui-v1.html](docs/mockups/ui-v1.html) — the reference mockup

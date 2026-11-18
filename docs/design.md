@@ -78,7 +78,7 @@ These would count as failures even if the app technically works:
 
 - Go 1.27.4, pinned in `.tools`, with the module and build caches inside the
   project.
-- Go and Fyne only. No webview, no npm, no bundled browser.
+- Go and GTK4 only. No webview, no npm, no bundled browser.
 - Fixed 400×640 window. No maximise, no resize.
 - Linux runtime data in `~/.config/lan-party` and `~/.local/share/lan-party`.
   Development runs redirect those into `.tmp`.
@@ -397,8 +397,8 @@ internal/invite/        one-time codes
 internal/tunnel/        QUIC listener/dialer, TLS, control stream
 internal/forward/       TCP streams and UDP flows
 internal/session/       host and friend session lifecycle
-internal/ui/            Fyne screens, theme, widgets, guide
-internal/ui/assets/     fonts and icon
+internal/gtkui/         GTK4 screens, style, widgets, guide
+internal/gtkui/assets/  interface fonts and icons
 internal/autostart/     XDG autostart
 internal/buildinfo/     version string
 docs/                   design, architecture, security, UI, guide, development

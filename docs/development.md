@@ -15,10 +15,10 @@ internal/preset/        shipped game ports
 internal/secure/        key files, identities, certificates, pins
 internal/session/       host and friend sessions
 internal/tunnel/        QUIC, TLS pinning, control stream
-internal/ui/            Fyne theme, widgets and screens
-build/                  AppImage and icon helpers
+internal/gtkui/         GTK4 interface, style.css and UI assets
+build/                  AppImage helpers
 docs/                   design, architecture, security, UI, guide
-docs/plans/             the rewrite implementation plan
+docs/plans/             historical rewrite plan
 ```
 
 ## Build
@@ -30,8 +30,10 @@ make build
 make appimage
 ```
 
-The first build installs the Go version from `.go-version` into `.tools/go`.
-`make env` prints the paths. Everything stays inside the project:
+Building needs GTK4 development headers (`libgtk-4-dev` on Debian/Ubuntu), a C
+compiler and `pkg-config`. The first build also installs the Go version from
+`.go-version` into `.tools/go`. `make env` prints the paths. Everything stays
+inside the project:
 
 | Thing | Where |
 | --- | --- |
@@ -45,8 +47,9 @@ The first build installs the Go version from `.go-version` into `.tools/go`.
 
 No global `go install`, npm or package is used.
 
-Dependencies are Fyne for the window and quic-go for the encrypted transport.
-There is no webview, no bundled browser, no npm tree and no keyring daemon.
+Dependencies are GTK4 through gotk4, quic-go for the encrypted transport and
+systray for the tray icon. There is no webview, no bundled browser, no npm tree
+and no keyring daemon.
 
 ## Tests
 
@@ -68,7 +71,7 @@ The tests cover:
 - the app policy: invite redemption, approval, new devices, rate limiting
 - an end-to-end app test: host creates a group, invite, approval, friend joins,
   TCP echo, revoke
-- UI screen text and a render smoke test
+- GTK service-form composition, live-refresh signatures and CSS colour checks
 
 The end-to-end app test uses in-memory key stores. Tests never write to the
 real data or key directories.
@@ -76,31 +79,32 @@ real data or key directories.
 ### UI previews
 
 ```sh
-mkdir -p .tmp/preview
-LANPARTY_PREVIEW="$PWD/.tmp/preview" go test ./internal/ui -run TestPreviewScreens -v
+make gtk-probe
 ```
 
-This writes 400×640 PNGs for Home, the host group, the friend screen, Settings
-and the guide.
+The probe uses the GTK interface and the project-local XDG directories. To open
+a screen directly, set `LANPARTY_GTK_SCREEN`:
 
-## Theming and tuning
+```sh
+LANPARTY_GTK_SCREEN=group:<group-id> make gtk-probe
+LANPARTY_GTK_SCREEN=service:<group-id> make gtk-probe
+```
 
-`internal/ui/tokens.json` holds the window size, spacing, type sizes and
-palette. `internal/ui/tokens.go` embeds it, validates it and applies it at
-startup. The app falls back to the built-in defaults if the file is missing,
-malformed or out of range.
+Supported values include `settings`, `guide`, `create`, `join`, `group:<id>`,
+`invite:<id>`, `service:<id>`, `service-detail:<id>`, `member:<id>` and
+`delete:<id>`. `LANPARTY_GTK_APP_ID` lets a preview instance run beside the
+normal app.
 
-`docs/tuner.html` is a browser page that edits the same keys with a live
-400×640 reference. Export `tokens.json`, replace the file in `internal/ui` and
-run `make run`. The tuner's defaults match the checked-in file; the file is the
-source of truth.
+## Styling
 
-The tuner is a reference, not a Fyne render. If local fonts do not load, run
-`python3 -m http.server 8000` from the repository root and open
-`http://localhost:8000/docs/tuner.html`.
+`internal/gtkui/style.css` is the source of truth for colours, spacing, type
+sizes and component styling. Brand fonts and PNGs live in `brand/`; interface
+fonts and icons live in `internal/gtkui/assets/`.
 
-Structure still belongs in Go. The tokens do not move sections or create
-components; they only change measured values and colours.
+The app loads `style.css` at startup and finds the asset root from
+`LANPARTY_ASSET_ROOT`, the current directory, or the executable directory. The
+AppImage uses the executable-relative lookup. `docs/tuner.html` is retained as
+a historical design reference; it is not connected to the GTK renderer.
 
 ## Runtime data
 
@@ -131,12 +135,13 @@ identity.
 
 ## Packaging
 
-`build/appimage.sh` assembles an AppDir with the binary, desktop file and icon,
-downloads a pinned `appimagetool` into `.tools`, verifies its checksum and
-writes `dist/lan-party_<version>_linux_amd64.AppImage`.
+`build/appimage.sh` assembles an AppDir with the binary, brand assets, GTK
+styles, desktop file and icon, downloads a pinned `appimagetool` into `.tools`,
+verifies its checksum and writes
+`dist/lan-party_<version>_linux_amd64.AppImage`.
 
-`build/icon/main.go` redraws the placeholder keyhole icon with `make icon`.
-The final logo is still being designed; the generator is only a placeholder.
+The AppImage currently uses the system GTK4 runtime. Bundling GTK is still a
+separate packaging decision.
 
 ## Releases
 

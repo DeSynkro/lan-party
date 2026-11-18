@@ -1,57 +1,57 @@
 # Interface
 
-One window, fixed at 400×640. The native title bar stays; the app does not
-pretend to be frameless. Content scrolls under a 48px app bar.
+One window, fixed at 400×640. It is borderless and floats as a normal window;
+the app bar is the drag surface. Content scrolls under a 48px app bar.
 
 This is a compact utility that sits beside a game. Density is deliberate:
 small type, short labels, one primary action per screen.
 
 ## Rules
 
-- Window: 400×640, `SetFixedSize(true)`, centred on first open. No maximise, no
-  resize.
-- App bar: 48px, a back button or the brand on the left, help and settings on
-  the right. One hairline under it.
-- Page padding: 12px top and bottom, 16px sides. Cards: 10px inner padding
-  and 12px radius. Buttons: 8px radius.
-- Space: 4px grid. Sections are 12–14px apart; rows inside a section are
-  4–6px apart.
+- Window: 400×640, fixed size, borderless, no OS title bar or resize handles.
+  The window floats under tiling window managers such as Krohnkite.
+- App bar: 38px minimum, a back button or the brand on the left, help and
+  settings on the right. The bar, title row and top strip are draggable.
+- Page padding: 20px. Cards: 14px inner padding and 12px radius. Buttons: 9px
+  radius.
+- Space: 4px grid. Sections are 14px apart; rows inside a section are
+  4–8px apart.
 - One primary button per screen. Everything else is secondary or quiet.
-- No gradients, glows, coloured shadows, looping motion or emoji.
+- Gradients are limited to the window background and primary buttons. No
+  glows, coloured shadows, looping motion or emoji.
 - Sentence case. No exclamation marks.
 - The roster never shows the friend's local LAN IP or a tunnel address. The
   host sees the source address it actually has, in member details.
 
 ## Palette
 
-The palette below is the current baseline from the mockup. It is isolated in
-`internal/ui/theme.go`; the final palette and logo are still open, so a change
-should not touch screen code.
+The palette below is the current baseline and lives in
+`internal/gtkui/style.css`.
 
 | Role | Value |
 | --- | --- |
-| Background | `#0f1013` |
-| Surface / card | `#17181c` |
-| Raised | `#1d2025` |
-| Hairline | `#2a2d34` |
-| Text | `#e8eaee` |
-| Secondary | `#a3a7b0` |
-| Muted | `#7d8390` |
-| Accent / loopback | `#5ad1e6` |
-| Live | `#4ade80` |
-| Warning | `#e0b341` |
-| Danger | `#e0575c` |
-| Primary button fill | `#12778a` |
-| Primary button ink | `#eafcff` |
+| Background | `#08040F` |
+| Deep / card | `#120A2E` |
+| Surface / popover | `#150C2E` |
+| Raised | `#1A1035` |
+| Hairline | `#2C1A55` |
+| Text | `#FDF4FF` |
+| Secondary | `#C9B8E8` |
+| Muted | `#907FAF` |
+| Accent | `#FF3DBE` |
+| Violet | `#8B5CF6` |
+| Cyan | `#22D3EE` |
+| Live | `#4ADE80` |
+| Warning | `#F5B942` |
+| Danger | `#FF6B81` |
 
-The contrast test in `internal/ui/theme_test.go` requires at least 4.5:1 for
-the text, secondary, muted, accent, live, warning, danger and primary-button
-pairs.
+`internal/gtkui/style_test.go` rejects any `@colour` reference that is not
+defined in the stylesheet.
 
 ## Type
 
-- IBM Plex Sans for the interface; JetBrains Mono for addresses, ports and the
-  version.
+- Space Grotesk for the brand and titles; IBM Plex Sans for the interface;
+  JetBrains Mono for addresses, ports and the version.
 - App bar title and names: 14–15, semibold.
 - Headline: 22, semibold.
 - Body: 13, regular.
@@ -71,21 +71,20 @@ pairs.
 - **Status dot:** 8px; green only when a real connection is live, muted when
   idle or offline.
 - **Tag:** a small outlined label for a protocol or role.
-- **Primary / secondary / quiet / danger buttons:** the custom button widget in
-  `widgets.go`; not stock Fyne buttons.
-- **Copy feedback:** the button label changes to `Copied` for 1.5 seconds.
+- **Primary / secondary / quiet buttons:** GTK buttons styled in `style.css`,
+  not the stock theme buttons.
+- **Copy feedback:** the button label changes to `Copied` until the screen is
+  rebuilt.
 
 ## Screens
 
 ### Home
 
-- Headline “A LAN cable across the internet.”
-- One line explaining the loopback idea.
+- Horizontal brand lockup and the loopback explanation.
 - `Host a group` (primary) and `Join with an invite` (secondary).
 - A first-run link to the setup guide.
 - `Your groups` and `Groups you joined`, each row showing the name, role,
-  member count or host name, a live dot when the group has a session, and a
-  quiet `Delete` action on host groups.
+  member count or host name, and a live dot when the group has a session.
 - An empty-state card under `Your groups` when nothing is saved.
 
 ### Host group
@@ -174,40 +173,26 @@ cannot be reached without a relay, which this version does not have.
   gone, and the host creates a new one.
 - The guide and settings say what is actually forwarded and what is not.
 
-## Tuning the interface
+## Styling
 
-The measurements live in `internal/ui/tokens.json`. The app embeds that file at
-build time, so the real screens and the tuner use the same values.
+`internal/gtkui/style.css` holds the colours, spacing, type sizes and component
+styles. Brand fonts and PNGs live in `brand/`; interface fonts and icons live
+in `internal/gtkui/assets/`.
 
-Open `docs/tuner.html` in a browser. It shows a live 400×640 reference with
-Home, Host, Friend and Settings tabs and sliders for window size, spacing,
-type sizes and the palette. Use **Download tokens.json**, replace
-`internal/ui/tokens.json` with the file, and run `make run`.
-
-If the fonts do not load when the page is opened directly, serve the repository
-locally:
-
-```sh
-python3 -m http.server 8000
-# http://localhost:8000/docs/tuner.html
-```
-
-The tuner is a browser reference, not a Fyne render. Text metrics, the native
-checkbox, scrollbars and dialogs differ slightly. The numbers are exact, and
-the real window is one `make run` away.
-
-The token file controls measurements and colours, not structure. Section order,
-layout, wording and new components still live in the Go screens.
+`docs/tuner.html` is retained as a historical design reference. It is not
+connected to the GTK renderer.
 
 ## Previewing
 
-The UI tests render screens with Fyne's test driver. To write PNGs:
+`make gtk-probe` opens the GTK interface with the project-local configuration.
+To open a screen directly, set `LANPARTY_GTK_SCREEN`:
 
 ```sh
-mkdir -p .tmp/preview
-LANPARTY_PREVIEW="$PWD/.tmp/preview" go test ./internal/ui -run TestPreviewScreens -v
+LANPARTY_GTK_SCREEN=group:<group-id> make gtk-probe
+LANPARTY_GTK_SCREEN=service:<group-id> make gtk-probe
 ```
 
-The files are `home.png`, `host.png`, `friend.png`, `settings.png` and
-`guide.png` at 400×640. These are useful when changing spacing, type or the
-palette.
+Supported values include `settings`, `guide`, `create`, `join`, `group:<id>`,
+`invite:<id>`, `service:<id>`, `service-detail:<id>`, `member:<id>` and
+`delete:<id>`. `LANPARTY_GTK_APP_ID` lets a preview run beside the normal app.
+Screenshots for the docs are written to `docs/mockups/`.

@@ -6,22 +6,22 @@
 <style>
   @font-face {
     font-family: "IBM Plex Sans";
-    src: url("../internal/ui/assets/fonts/IBMPlexSans-Regular.ttf") format("truetype");
+    src: url("../internal/gtkui/assets/fonts/IBMPlexSans-Regular.ttf") format("truetype");
     font-weight: 400;
   }
   @font-face {
     font-family: "IBM Plex Sans";
-    src: url("../internal/ui/assets/fonts/IBMPlexSans-Medium.ttf") format("truetype");
+    src: url("../internal/gtkui/assets/fonts/IBMPlexSans-Medium.ttf") format("truetype");
     font-weight: 500;
   }
   @font-face {
     font-family: "IBM Plex Sans";
-    src: url("../internal/ui/assets/fonts/IBMPlexSans-SemiBold.ttf") format("truetype");
+    src: url("../internal/gtkui/assets/fonts/IBMPlexSans-SemiBold.ttf") format("truetype");
     font-weight: 600;
   }
   @font-face {
     font-family: "JetBrains Mono";
-    src: url("../internal/ui/assets/fonts/JetBrainsMono-Regular.ttf") format("truetype");
+    src: url("../internal/gtkui/assets/fonts/JetBrainsMono-Regular.ttf") format("truetype");
     font-weight: 400;
   }
 
@@ -316,9 +316,9 @@
 
 <div class="top">
   <h1>LAN Party · UI tuner</h1>
-  <p>A reference for the Fyne app. Move the values, then export <code>tokens.json</code>.</p>
+  <p>Historical reference for the interface. The GTK app uses <code>internal/gtkui/style.css</code>.</p>
   <div class="spacer"></div>
-  <p>Window <code>400×640</code> · not a pixel-perfect Fyne render</p>
+  <p>Window <code>400×640</code> · not a pixel-perfect GTK render</p>
 </div>
 
 <div class="layout">
@@ -533,7 +533,7 @@
       </div>
     </div>
 
-    <p class="note">This page is a reference. Fyne renders the real window; text metrics, the native checkbox and dialogs differ slightly. The numbers are the same tokens the app reads.</p>
+    <p class="note">This page is a historical reference. GTK renders the real window; text metrics and native widgets differ. The live styles are in <code>internal/gtkui/style.css</code>.</p>
   </section>
 
   <aside class="controls">
@@ -783,7 +783,7 @@ function setChrome(screen) {
   const left = document.getElementById("appbar-left");
   const right = document.getElementById("appbar-right");
   if (screen === "home") {
-    left.innerHTML = '<img class="mark" src="../internal/ui/assets/icon.png" alt=""><span class="appbar-title">LAN Party</span>';
+    left.innerHTML = '<img class="mark" src="../brand/png/mark-22.png" alt=""><span class="appbar-title">LAN Party</span>';
     right.innerHTML = '<span class="help">?</span><span>Settings</span>';
   } else if (screen === "host" || screen === "friend") {
     left.innerHTML = '<span class="back">Back</span><span class="appbar-title">Friday Night</span>';
@@ -812,7 +812,7 @@ document.getElementById("download").addEventListener("click", () => {
   a.download = "tokens.json";
   a.click();
   URL.revokeObjectURL(url);
-  statusEl.textContent = "Downloaded tokens.json. Replace internal/ui/tokens.json with it.";
+  statusEl.textContent = "This reference is historical. The GTK app does not read tokens.json.";
 });
 
 document.getElementById("copy").addEventListener("click", async () => {

@@ -28,18 +28,18 @@ func statusNotifierAvailable() bool {
 
 func startTray(u *probeUI) bool {
 	if !u.trayAvailable {
-		log.Println("gtk probe: no StatusNotifier host; tray disabled")
+		log.Println("lan-party: no StatusNotifier host; tray disabled")
 		return false
 	}
 
 	icon, err := os.ReadFile(filepath.Join(u.root, "brand", "png", "tray-icon-color-24.png"))
 	if err != nil {
-		log.Printf("gtk probe: tray icon: %v", err)
+		log.Printf("lan-party: tray icon: %v", err)
 		return false
 	}
 
 	go systray.Run(func() {
-		log.Println("gtk probe: tray ready")
+		log.Println("lan-party: tray ready")
 		systray.SetIcon(icon)
 		systray.SetTitle("LAN Party")
 		systray.SetTooltip("LAN Party")
@@ -68,7 +68,7 @@ func startTray(u *probeUI) bool {
 			}
 		}()
 	}, func() {
-		log.Println("gtk probe: tray stopped")
+		log.Println("lan-party: tray stopped")
 	})
 
 	return true

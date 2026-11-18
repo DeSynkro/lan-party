@@ -66,7 +66,7 @@ party, and it says so.
 | `internal/tunnel` | QUIC listener/dialer, TLS pinning, control stream, data streams, datagrams |
 | `internal/forward` | TCP pipes and UDP flow forwarding |
 | `internal/session` | host and friend session lifecycle, presence, service updates |
-| `internal/ui` | Fyne screens, theme, widgets, in-app guide |
+| `internal/gtkui` | GTK4 screens, style, widgets, in-app guide |
 | `internal/autostart` | XDG desktop entry for login |
 | `internal/buildinfo` | version string |
 | `internal/preset` | the shipped game port table |

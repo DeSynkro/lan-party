@@ -1,5 +1,4 @@
-// Package gtkui contains the GTK4 interface. The probe is a standalone screen
-// used to validate layout, fonts and theme before the Fyne UI is replaced.
+// Package gtkui contains the GTK4 interface.
 package gtkui
 
 import (
@@ -42,25 +41,35 @@ type probeUI struct {
 	settings    *gtk.Button
 }
 
-// RunProbe opens the GTK probe window and blocks until it closes.
+// Run opens the desktop app and blocks until it closes.
+func Run(argv []string) int {
+	return runUI(argv, "com.desynkro.lanparty", false)
+}
+
+// RunProbe opens the preview UI and blocks until it closes. It accepts the
+// same environment hooks as Run for screenshots and layout work.
 func RunProbe(argv []string) int {
-	root, err := repoRoot()
+	return runUI(argv, "com.desynkro.lanparty.gtkprobe", true)
+}
+
+func runUI(argv []string, defaultAppID string, preview bool) int {
+	root, err := assetRoot()
 	if err != nil {
-		log.Printf("gtk probe: %v", err)
+		log.Printf("lan-party: %v", err)
 		return 1
 	}
 	setupFonts(root)
 
 	state, err := apppkg.New(config.Resolve())
 	if err != nil {
-		log.Printf("gtk probe: %v", err)
+		log.Printf("lan-party: %v", err)
 		return 1
 	}
 	defer state.Close()
 
 	appID := os.Getenv("LANPARTY_GTK_APP_ID")
 	if appID == "" {
-		appID = "com.desynkro.lanparty.gtkprobe"
+		appID = defaultAppID
 	}
 	app := gtk.NewApplication(appID, gio.ApplicationFlagsNone)
 	var ui *probeUI
@@ -72,46 +81,50 @@ func RunProbe(argv []string) int {
 		loadCSS(root)
 		ui = newProbeUI(app, root, state)
 		ui.build()
-		screen := os.Getenv("LANPARTY_GTK_SCREEN")
-		switch {
-		case screen == "settings":
-			ui.showSettings()
-		case screen == "guide":
-			ui.showGuide()
-		case screen == "create":
-			ui.showHome()
-			ui.showCreateGroupDialog()
-		case screen == "join":
-			ui.showHome()
-			ui.showJoinDialog()
-		case strings.HasPrefix(screen, "invite:"):
-			if g, ok := ui.state.Group(strings.TrimPrefix(screen, "invite:")); ok {
-				ui.showGroup(g.ID)
-				ui.showInviteDialog(g)
+		if preview {
+			screen := os.Getenv("LANPARTY_GTK_SCREEN")
+			switch {
+			case screen == "settings":
+				ui.showSettings()
+			case screen == "guide":
+				ui.showGuide()
+			case screen == "create":
+				ui.showHome()
+				ui.showCreateGroupDialog()
+			case screen == "join":
+				ui.showHome()
+				ui.showJoinDialog()
+			case strings.HasPrefix(screen, "invite:"):
+				if g, ok := ui.state.Group(strings.TrimPrefix(screen, "invite:")); ok {
+					ui.showGroup(g.ID)
+					ui.showInviteDialog(g)
+				}
+			case strings.HasPrefix(screen, "service:"):
+				if g, ok := ui.state.Group(strings.TrimPrefix(screen, "service:")); ok {
+					ui.showGroup(g.ID)
+					ui.showAddServiceDialog(g)
+				}
+			case strings.HasPrefix(screen, "delete:"):
+				if g, ok := ui.state.Group(strings.TrimPrefix(screen, "delete:")); ok {
+					ui.showGroup(g.ID)
+					ui.confirmDeleteGroup(g)
+				}
+			case strings.HasPrefix(screen, "member:"):
+				if g, ok := ui.state.Group(strings.TrimPrefix(screen, "member:")); ok && len(g.Members) > 0 {
+					ui.showGroup(g.ID)
+					ui.showMemberDialog(g, g.Members[0])
+				}
+			case strings.HasPrefix(screen, "service-detail:"):
+				if g, ok := ui.state.Group(strings.TrimPrefix(screen, "service-detail:")); ok && len(g.Services) > 0 {
+					ui.showGroup(g.ID)
+					ui.showServiceDialog(g, g.Services[0])
+				}
+			case strings.HasPrefix(screen, "group:"):
+				ui.showGroup(strings.TrimPrefix(screen, "group:"))
+			default:
+				ui.showHome()
 			}
-		case strings.HasPrefix(screen, "service:"):
-			if g, ok := ui.state.Group(strings.TrimPrefix(screen, "service:")); ok {
-				ui.showGroup(g.ID)
-				ui.showAddServiceDialog(g)
-			}
-		case strings.HasPrefix(screen, "delete:"):
-			if g, ok := ui.state.Group(strings.TrimPrefix(screen, "delete:")); ok {
-				ui.showGroup(g.ID)
-				ui.confirmDeleteGroup(g)
-			}
-		case strings.HasPrefix(screen, "member:"):
-			if g, ok := ui.state.Group(strings.TrimPrefix(screen, "member:")); ok && len(g.Members) > 0 {
-				ui.showGroup(g.ID)
-				ui.showMemberDialog(g, g.Members[0])
-			}
-		case strings.HasPrefix(screen, "service-detail:"):
-			if g, ok := ui.state.Group(strings.TrimPrefix(screen, "service-detail:")); ok && len(g.Services) > 0 {
-				ui.showGroup(g.ID)
-				ui.showServiceDialog(g, g.Services[0])
-			}
-		case strings.HasPrefix(screen, "group:"):
-			ui.showGroup(strings.TrimPrefix(screen, "group:"))
-		default:
+		} else {
 			ui.showHome()
 		}
 		ui.start()
@@ -535,18 +548,41 @@ func setupFonts(root string) {
 	}
 }
 
-func repoRoot() (string, error) {
-	dir, err := os.Getwd()
+func assetRoot() (string, error) {
+	var starts []string
+	if root := os.Getenv("LANPARTY_ASSET_ROOT"); root != "" {
+		starts = append(starts, root)
+	}
+	if wd, err := os.Getwd(); err == nil {
+		starts = append(starts, wd)
+	}
+	if exe, err := os.Executable(); err == nil {
+		starts = append(starts, filepath.Dir(exe))
+	}
+	for _, start := range starts {
+		if root, ok := findAssetRoot(start); ok {
+			return root, nil
+		}
+	}
+	return "", fmt.Errorf("could not find brand fonts from %s", strings.Join(starts, ", "))
+}
+
+func findAssetRoot(start string) (string, bool) {
+	dir, err := filepath.Abs(start)
 	if err != nil {
-		return "", err
+		return "", false
 	}
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "brand", "fonts", "SpaceGrotesk.ttf")); err == nil {
-			return dir, nil
+			return dir, true
+		}
+		installed := filepath.Join(dir, "share", "lan-party")
+		if _, err := os.Stat(filepath.Join(installed, "brand", "fonts", "SpaceGrotesk.ttf")); err == nil {
+			return installed, true
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "", fmt.Errorf("could not find brand fonts from %s", dir)
+			return "", false
 		}
 		dir = parent
 	}

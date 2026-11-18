@@ -17,7 +17,7 @@ export XDG_DATA_HOME := $(ROOT)/.tmp/data
 export XDG_CACHE_HOME := $(ROOT)/.tmp/cache
 export PATH := $(ROOT)/.tools/go/bin:$(PATH)
 
-.PHONY: help dirs env toolchain tidy fmt vet test test-race vuln build run gtk-probe appimage appimage-gtk icon clean
+.PHONY: help dirs env toolchain tidy fmt vet test test-race vuln build run gtk-probe appimage clean
 
 help: ## List targets
 	@awk 'BEGIN {FS = ":.*## "; print "Targets:"} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -59,14 +59,8 @@ run: toolchain ## Run the app with project-local config
 gtk-probe: toolchain ## Run the GTK4 interface probe
 	@$(GO) run ./cmd/gtk-probe
 
-appimage: toolchain ## Build the Linux AppImage into dist/
+appimage: toolchain ## Build the Linux AppImage into dist/ (system GTK4)
 	@VERSION=$(VERSION) build/appimage.sh
-
-appimage-gtk: toolchain ## Build the GTK test AppImage into dist/ (system GTK4)
-	@VERSION=$(VERSION) build/appimage-gtk.sh
-
-icon: toolchain ## Redraw internal/ui/assets/icon.png
-	@$(GO) run ./build/icon
 
 clean: ## Remove build output and caches
 	@rm -rf "$(ROOT)/bin" "$(CACHE)" "$(ROOT)/.tmp"

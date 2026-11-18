@@ -43,7 +43,7 @@ func Set(configHome string, enabled bool) error {
 	entry := fmt.Sprintf(`[Desktop Entry]
 Type=Application
 Name=LAN Party
-Comment=One port, not the whole network
+Comment=A LAN cable across the internet
 Exec="%s"
 Terminal=false
 X-GNOME-Autostart-enabled=true

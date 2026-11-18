@@ -1,7 +1,11 @@
 package main
 
-import "github.com/desynkro/lan-party/internal/ui"
+import (
+	"os"
+
+	"github.com/desynkro/lan-party/internal/gtkui"
+)
 
 func main() {
-	ui.Run()
+	os.Exit(gtkui.Run(os.Args))
 }
