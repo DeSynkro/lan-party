@@ -29,6 +29,8 @@ func TestStoreRoundTrip(t *testing.T) {
 	created := time.Date(2026, 11, 17, 12, 0, 0, 0, time.UTC)
 	want := CreateHostGroup("Friday Night", "Desynkro")
 	want.CreatedAt = created
+	want.PublicAddress = "group.example.net"
+	want.AppPort = 41000
 	if err := want.AddService(Service{
 		Name:   "Minecraft",
 		Proto:  "tcp",
@@ -50,6 +52,9 @@ func TestStoreRoundTrip(t *testing.T) {
 	}
 	if got[0].ID != want.ID || got[0].Name != want.Name || got[0].HostName != want.HostName {
 		t.Fatalf("group = %+v", got[0])
+	}
+	if got[0].PublicAddress != want.PublicAddress || got[0].AppPort != want.AppPort {
+		t.Fatalf("connection = %+v", got[0])
 	}
 	if len(got[0].Services) != 1 || got[0].Services[0].Target != "192.168.1.50" {
 		t.Fatalf("services = %+v", got[0].Services)
@@ -129,5 +134,26 @@ func TestStoreSavesEmptyList(t *testing.T) {
 	}
 	if len(groups) != 0 {
 		t.Fatalf("loaded %d groups", len(groups))
+	}
+}
+
+func TestStoreLoadsGroupWithoutConnectionFields(t *testing.T) {
+	store := testStore(t)
+	if err := os.MkdirAll(filepath.Dir(store.Path()), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	data := `{"version":1,"groups":[{"id":"group-1","name":"Friday Night","role":"host","hostName":"Desynkro"}]}`
+	if err := os.WriteFile(store.Path(), []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	groups, err := store.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(groups) != 1 {
+		t.Fatalf("loaded %d groups", len(groups))
+	}
+	if groups[0].PublicAddress != "" || groups[0].AppPort != 0 {
+		t.Fatalf("connection = %+v", groups[0])
 	}
 }
