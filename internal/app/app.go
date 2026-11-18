@@ -114,7 +114,10 @@ func (a *App) SaveSettings(s config.Settings) error {
 	defer a.mu.Unlock()
 
 	if a.host != nil && s.AppPort != a.settings.AppPort {
-		return errors.New("end the session before changing the app port")
+		idx := a.groupIndexLocked(a.liveGroupID)
+		if idx < 0 || a.groups[idx].AppPort == 0 {
+			return errors.New("end the session before changing the app port")
+		}
 	}
 	if err := config.SaveSettings(a.paths, s); err != nil {
 		return err
@@ -435,8 +438,7 @@ func (a *App) CreateInvite(groupID, peerName string) (string, error) {
 		return "", errors.New("group not found")
 	}
 	g := cloneGroup(a.groups[idx])
-	public := a.settings.PublicAddress
-	appPort := a.settings.AppPort
+	public, appPort := a.effectiveConnectionLocked(g)
 	a.mu.Unlock()
 
 	if g.Role != group.RoleHost {
@@ -544,7 +546,7 @@ func (a *App) StartSession(groupID string) error {
 		return errors.New("a session is already running")
 	}
 	services := append([]group.Service(nil), a.groups[idx].Services...)
-	appPort := a.settings.AppPort
+	_, appPort := a.effectiveConnectionLocked(a.groups[idx])
 	a.mu.Unlock()
 
 	identity, ok, err := a.keys.Load("host/" + groupID)

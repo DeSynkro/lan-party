@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"io/fs"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -699,5 +700,218 @@ func TestSetGroupConnectionValidates(t *testing.T) {
 	}
 	if err := a.SetGroupConnection(g.ID, "", 0); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func differentUDPPort(t *testing.T, avoid ...int) int {
+	t.Helper()
+	for i := 0; i < 20; i++ {
+		port := freeUDPPort(t)
+		ok := true
+		for _, used := range avoid {
+			if port == used {
+				ok = false
+				break
+			}
+		}
+		if ok {
+			return port
+		}
+	}
+	t.Fatal("could not find a different free UDP port")
+	return 0
+}
+
+func TestCreateInviteUsesGroupConnection(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := a.Settings()
+	s.PublicAddress = "home.example.net"
+	s.AppPort = 51820
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.SetGroupConnection(g.ID, "group.example.net:40000", 41000); err != nil {
+		t.Fatal(err)
+	}
+
+	code, err := a.CreateInvite(g.ID, "Ash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	inv, err := invite.Decode(code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inv.Endpoint != "group.example.net:40000" {
+		t.Fatalf("endpoint = %q", inv.Endpoint)
+	}
+}
+
+func TestExistingInviteKeepsEndpoint(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := a.Settings()
+	s.PublicAddress = "home.example.net"
+	s.AppPort = 51820
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	code, err := a.CreateInvite(g.ID, "Ash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved, ok := a.Group(g.ID)
+	if !ok || len(saved.Invites) != 1 {
+		t.Fatalf("saved group = %+v", saved)
+	}
+	inviteID := saved.Invites[0].ID
+
+	if err := a.SetGroupConnection(g.ID, "group.example.net:40000", 41000); err != nil {
+		t.Fatal(err)
+	}
+	if got := a.InviteCode(inviteID); got != code {
+		t.Fatal("an existing invite code changed")
+	}
+	oldInvite, err := invite.Decode(code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if oldInvite.Endpoint != "home.example.net:51820" {
+		t.Fatalf("old endpoint = %q", oldInvite.Endpoint)
+	}
+
+	newCode, err := a.CreateInvite(g.ID, "Blair")
+	if err != nil {
+		t.Fatal(err)
+	}
+	newInvite, err := invite.Decode(newCode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if newInvite.Endpoint != "group.example.net:40000" {
+		t.Fatalf("new endpoint = %q", newInvite.Endpoint)
+	}
+}
+
+func TestStartSessionUsesGroupPort(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	globalHeld, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer globalHeld.Close()
+	globalPort := globalHeld.LocalAddr().(*net.UDPAddr).Port
+	groupPort := differentUDPPort(t, globalPort)
+
+	s := a.Settings()
+	s.PublicAddress = "home.example.net"
+	s.AppPort = globalPort
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.SetGroupConnection(g.ID, "", groupPort); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.StartSession(g.ID); err != nil {
+		t.Fatalf("session did not use the group port: %v", err)
+	}
+	if a.LiveGroupID() != g.ID {
+		t.Fatalf("live group = %q", a.LiveGroupID())
+	}
+}
+
+func TestSetGroupConnectionLiveRules(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := a.Settings()
+	s.PublicAddress = "home.example.net"
+	s.AppPort = freeUDPPort(t)
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	groupPort := differentUDPPort(t, s.AppPort)
+	if err := a.SetGroupConnection(g.ID, "", groupPort); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.StartSession(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	defer a.StopSession()
+
+	otherPort := differentUDPPort(t, groupPort, s.AppPort)
+	if err := a.SetGroupConnection(g.ID, "", otherPort); err == nil {
+		t.Fatal("a live app-port change was accepted")
+	}
+	if err := a.SetGroupConnection(g.ID, "new.example.net", groupPort); err != nil {
+		t.Fatalf("an address-only change was blocked: %v", err)
+	}
+	if err := a.SetGroupConnection(g.ID, "", groupPort); err != nil {
+		t.Fatalf("the same effective port was blocked: %v", err)
+	}
+
+	if err := a.StopSession(); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.SetGroupConnection(g.ID, "", otherPort); err != nil {
+		t.Fatalf("a port change after stopping was blocked: %v", err)
+	}
+}
+
+func TestSaveSettingsPortRules(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	globalPort := freeUDPPort(t)
+	s := a.Settings()
+	s.PublicAddress = "home.example.net"
+	s.AppPort = globalPort
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.StartSession(g.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	nextGlobal := differentUDPPort(t, globalPort)
+	s = a.Settings()
+	s.AppPort = nextGlobal
+	if err := a.SaveSettings(s); err == nil {
+		t.Fatal("the global port changed while the live group inherited it")
+	}
+	if err := a.StopSession(); err != nil {
+		t.Fatal(err)
+	}
+
+	groupPort := differentUDPPort(t, nextGlobal)
+	if err := a.SetGroupConnection(g.ID, "", groupPort); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.StartSession(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	defer a.StopSession()
+
+	after := differentUDPPort(t, groupPort, nextGlobal)
+	s = a.Settings()
+	s.AppPort = after
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatalf("the global port change was blocked by a group override: %v", err)
 	}
 }
