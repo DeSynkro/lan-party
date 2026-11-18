@@ -34,10 +34,21 @@ jobs:
           export CC=gcc
           export CGO_ENABLED=1
           export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig
-          go_bin="$(cygpath -u "$GOROOT")/bin/go.exe"
-          if [ ! -x "$go_bin" ]; then
-            go_bin=go
+          go_bin=go
+          if [ -n "${GOROOT:-}" ]; then
+            go_root="$(cygpath -u "$GOROOT" 2>/dev/null || true)"
+            if [ -n "$go_root" ] && [ -x "$go_root/bin/go.exe" ]; then
+              go_bin="$go_root/bin/go.exe"
+            fi
           fi
+          if ! command -v "$go_bin" >/dev/null 2>&1; then
+            go_bin="$(find /c/hostedtoolcache/windows/go -name go.exe -type f 2>/dev/null | head -1)"
+          fi
+          if [ -z "$go_bin" ]; then
+            echo "Go toolchain not found" >&2
+            exit 1
+          fi
+          echo "go_bin=$go_bin"
           "$go_bin" version
           "$go_bin" build -trimpath -o lan-party.exe ./cmd/lan-party
           "$go_bin" version -m lan-party.exe > lan-party-build.txt
