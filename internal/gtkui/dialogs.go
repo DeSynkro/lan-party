@@ -371,7 +371,6 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 			setProtocol(protoIndex(item.Proto))
 			presetMenu.SetLabel(item.Name)
 			presetPopover.Popdown()
-			presetMenu.SetActive(false)
 			updatePreview()
 		})
 		presetList.Append(button)

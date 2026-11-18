@@ -389,7 +389,7 @@ func (u *probeUI) buildHomeContent() *gtk.Box {
 	lockup := gtk.NewPictureForFilename(filepath.Join(u.root, "brand", "png", "lockup-horizontal-dark-640.png"))
 	lockup.SetSizeRequest(340, 81)
 	lockup.SetCanShrink(true)
-	lockup.SetContentFit(gtk.ContentFitContain)
+	lockup.SetKeepAspectRatio(true)
 	lockup.SetHAlign(gtk.AlignCenter)
 	lockup.SetMarginBottom(10)
 	page.Append(lockup)

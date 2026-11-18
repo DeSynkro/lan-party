@@ -1,0 +1,44 @@
+name: Compatibility spike
+
+on:
+  push:
+    branches: [compat-spike]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CGO_ENABLED: "1"
+
+jobs:
+  build:
+    name: Build on ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-22.04, ubuntu-24.04]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+      - name: Install GTK and GLib build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-4-dev \
+            libglib2.0-dev \
+            libgirepository1.0-dev \
+            gobject-introspection \
+            pkg-config \
+            build-essential \
+            libwayland-dev \
+            libxkbcommon-dev \
+            wayland-protocols \
+            xorg-dev
+      - name: Build
+        run: go build -trimpath -o /tmp/lan-party ./cmd/lan-party
+      - name: Test
+        run: go test ./...
