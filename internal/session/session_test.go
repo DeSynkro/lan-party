@@ -435,7 +435,9 @@ func TestResume(t *testing.T) {
 }
 
 func TestHostPortInUse(t *testing.T) {
-	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	// Hold the same wildcard address the host binds. Windows allows a
+	// specific-address socket to coexist with a wildcard bind; Linux does not.
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero})
 	if err != nil {
 		t.Fatal(err)
 	}
