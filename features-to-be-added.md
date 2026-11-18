@@ -49,40 +49,6 @@ Done when a host behind CGNAT can tick the box, point at their own relay,
 and a friend can play without either side opening a port. The normal direct
 path stays the default.
 
-## Per-group public address and app port
-
-**Status:** idea, not scheduled
-
-Hosted groups currently share the global public address and app port from
-Settings. That is awkward when different groups are hosted over different
-networks, VPNs or router forwards, or when each group should keep a stable
-invite address.
-
-Add optional overrides on a host group:
-
-- Public address (hostname or IP, with an optional outside port)
-- App port (the local UDP port the host listens on)
-- Leave either blank to use the global setting.
-- The group screen should show which address and port it will use.
-- Invites for that group should use the overrides.
-- Start session must bind the group's app port, not the global one.
-- Only one host session runs at a time, so overlapping ports are not an
-  issue yet.
-
-Why it helps: a group can stay tied to a particular network or port forward,
-and changing global settings will not change that group's invites. The outside
-port override already exists globally through `host:port` in the public
-address; this makes it per group.
-
-Things to work out later:
-
-- Whether the app port override is worth the extra UI given only one session
-  can run at a time.
-- What happens when the overridden port is already in use.
-- Whether changing the address or port while a session is live should be
-  blocked or require ending the session.
-- How this interacts with relay mode when that exists.
-
 ## Friend-side bind address
 
 **Status:** idea, not scheduled
@@ -111,3 +77,8 @@ Caveats:
 Done when a friend can set a different local address for a service or for all
 services, see the address in the UI, and still get the default loopback-only
 behaviour unless they opt in.
+
+## Done
+
+- Per-group public address and app port (1.1).
+- One-hour invite lifetime (1.1).

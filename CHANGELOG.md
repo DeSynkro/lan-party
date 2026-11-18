@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0 — Unreleased
+
+- Host groups can use their own public address and UDP app port; blank values
+  use the Settings defaults.
+- Changing a live group's app port stops the session, saves, and restarts on
+  the new port. The dialog warns that everyone disconnects briefly.
+- Invites now expire after 1 hour instead of 24 hours.
+
 ## 1.0.0 — 2026-11-18
 
 First stable release.

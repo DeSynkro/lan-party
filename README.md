@@ -109,6 +109,7 @@ make appimage  # Linux AppImage in dist/
 
 - **One port, one friend:** each service publishes a loopback address such as `127.0.0.1:25565`.
 - **TCP and UDP:** forward either or both, with an optional port remap.
+- **Per-group connection:** a host group can use its own public address and UDP port; blank fields use the Settings defaults.
 - **One-time invites:** hashed at rest, 1-hour expiry, and host approval for every new device or changed device key.
 - **Live presence:** see who is connected, their RTT, and revoke a device immediately.
 - **Live service updates:** add, remove or change a service while friends are connected.

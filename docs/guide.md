@@ -68,7 +68,7 @@ one, put the external port in the **Public address** setting, for example
 
 ### 3. Set the public address
 
-In **Settings → Network**, enter the address friends should connect to. Usually
+In **Settings → Network defaults**, enter the address friends should connect to. Usually
 that is just a hostname or an IP:
 
 - `desynkro.example.net`
@@ -88,6 +88,24 @@ If the router's WAN address is different from the public address your ISP gives
 you, you may be behind carrier-grade NAT. In that case a direct connection will
 not work. This version has no relay, so there is no workaround inside the app.
 Try a different connection or a public host.
+
+### Use a different address or port for one group
+
+Settings holds the defaults for every group. A host group can override them for
+itself:
+
+1. Open the group and click **Change** next to the endpoint.
+2. Enter a public address, an app port, or both.
+3. Leave a field blank to use the default from Settings.
+
+The card shows **Default** or **Custom** next to the endpoint. The address can
+include an outside port, just like the default. The app port is the UDP port on
+this PC.
+
+Changing the app port while the session is live restarts it. Everyone
+disconnects briefly. If the advertised endpoint changes, create new invites
+after the restart. If it stays the same, update your router forward to the new
+local port.
 
 ### 4. Start the session and send an invite
 
