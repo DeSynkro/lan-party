@@ -78,6 +78,35 @@ Done when a friend can set a different local address for a service or for all
 services, see the address in the UI, and still get the default loopback-only
 behaviour unless they opt in.
 
+## Single-file Windows launcher
+
+**Status:** idea, not scheduled
+
+The Windows build is portable but is a folder containing the exe, GTK DLLs,
+pixbuf loaders, schemas, icons and assets. A small Go launcher can embed that
+folder as a zip, extract it once to
+`%LocalAppData%\lan-party\runtime\<version>`, and start `lan-party.exe` with the
+GTK data, pixbuf and working-directory environment.
+
+- One file to download and run.
+- The runtime still exists under AppData, but the user only sees one exe.
+- Reuse the extracted runtime on later runs; remove old versions when the
+  launcher version changes.
+- A 7-Zip SFX is an alternative; the Go launcher is preferred for versioning,
+  cleanup, error dialogs and signing.
+
+Trade-offs:
+
+- The first run is slower while it extracts.
+- The launcher is large because it contains the runtime.
+- Antivirus and SmartScreen can still flag self-extracting launchers,
+  especially unsigned.
+- An installer remains a separate option if installing into Program Files is
+  acceptable.
+
+Done when a signed single exe runs the portable app, reuses the extracted
+runtime, and cleans up old versions.
+
 ## Done
 
 - Per-group public address and app port (1.1).
