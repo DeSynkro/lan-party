@@ -51,3 +51,22 @@ func TestByID(t *testing.T) {
 		t.Fatal("unknown preset was found")
 	}
 }
+
+func TestRAthenaPreset(t *testing.T) {
+	p, ok := ByID("rathena")
+	if !ok {
+		t.Fatal("rathena is missing")
+	}
+	if p.Name != "rAthena Ragnarok Online" || p.Proto != "tcp" {
+		t.Fatalf("preset = %+v", p)
+	}
+	want := []int{5121, 6121, 6900}
+	if len(p.Ports) != len(want) {
+		t.Fatalf("ports = %v, want %v", p.Ports, want)
+	}
+	for i := range want {
+		if p.Ports[i] != want[i] {
+			t.Fatalf("ports = %v, want %v", p.Ports, want)
+		}
+	}
+}

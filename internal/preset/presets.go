@@ -18,6 +18,7 @@ var builtin = []Preset{
 	{ID: "valheim", Name: "Valheim", Proto: "udp", Ports: []int{2456, 2457, 2458}, Hint: "Join Game, then add address"},
 	{ID: "factorio", Name: "Factorio", Proto: "udp", Ports: []int{34197}, Hint: "Connect to address"},
 	{ID: "palworld", Name: "Palworld", Proto: "udp", Ports: []int{8211}, Hint: "Join with address"},
+	{ID: "rathena", Name: "rAthena Ragnarok Online", Proto: "tcp", Ports: []int{5121, 6121, 6900}, Hint: "Login 6900, character 6121, map 5121"},
 	{ID: "stardew", Name: "Stardew Valley", Proto: "tcp", Ports: []int{24642}, Hint: "Join LAN, then enter address"},
 	{ID: "zomboid", Name: "Project Zomboid", Proto: "udp", Ports: []int{16261, 16262}, Hint: "Add server by address"},
 	{ID: "sevendays", Name: "7 Days to Die", Proto: "both", Ports: []int{26900, 26901, 26902, 26903}, Hint: "Add server by address"},
