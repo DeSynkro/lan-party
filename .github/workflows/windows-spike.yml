@@ -28,6 +28,7 @@ jobs:
             mingw-w64-ucrt-x86_64-gobject-introspection
             mingw-w64-ucrt-x86_64-pkgconf
             mingw-w64-ucrt-x86_64-gcc
+            zip
       - name: Build LAN Party
         shell: msys2 {0}
         run: |
@@ -50,8 +51,9 @@ jobs:
           fi
           echo "go_bin=$go_bin"
           "$go_bin" version
-          "$go_bin" build -trimpath -o lan-party.exe ./cmd/lan-party
-          "$go_bin" version -m lan-party.exe > lan-party-build.txt
+          export GO_BIN="$go_bin"
+          export VERSION="1.1.0-dev-${GITHUB_SHA::7}"
+          bash build/windows.sh
       - name: Run backend tests
         shell: msys2 {0}
         run: |
@@ -88,7 +90,7 @@ jobs:
         with:
           name: windows-spike
           path: |
-            lan-party.exe
-            lan-party-build.txt
+            dist/*.zip
+            dist/lan-party-build.txt
           if-no-files-found: error
           retention-days: 14
