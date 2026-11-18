@@ -160,3 +160,90 @@ func TestHostAndFriendEndToEnd(t *testing.T) {
 	}
 	waitFor(t, 3*time.Second, func() bool { return !friend.FriendPresence().Live })
 }
+
+func TestFriendReconnectAfterDisconnectAndHostRestart(t *testing.T) {
+	host := newTestApp(t)
+	friend := newTestApp(t)
+
+	echoAddr := tcpEchoServer(t)
+	published := freeTCPPort(t)
+	appPort := freeUDPPort(t)
+
+	g, err := host.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings := host.Settings()
+	settings.PublicAddress = net.JoinHostPort("127.0.0.1", strconv.Itoa(appPort))
+	settings.AppPort = appPort
+	if err := host.SaveSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+	if err := host.AddService(g.ID, group.Service{
+		Name:   "Echo",
+		Proto:  "tcp",
+		Target: echoAddr,
+		Ports:  []int{published},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := host.StartSession(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = host.StopSession() })
+
+	code, err := host.CreateInvite(g.ID, "Ash")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	joined := make(chan error, 1)
+	go func() {
+		_, err := friend.JoinInvite(ctx, code, "ash-pc")
+		joined <- err
+	}()
+
+	var approval *Approval
+	waitFor(t, 3*time.Second, func() bool {
+		approval = host.Approval()
+		return approval != nil
+	})
+	if !host.ResolveApproval(approval.ID, true) {
+		t.Fatal("could not approve the device")
+	}
+	if err := <-joined; err != nil {
+		t.Fatal(err)
+	}
+
+	fg := friend.Groups()[0]
+	if fg.HostGroupID != g.ID {
+		t.Fatalf("host group id = %q, want %q", fg.HostGroupID, g.ID)
+	}
+
+	if err := friend.StopSession(); err != nil {
+		t.Fatal(err)
+	}
+	reconnectCtx, reconnectCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	if err := friend.Reconnect(reconnectCtx, fg.ID); err != nil {
+		t.Fatal(err)
+	}
+	reconnectCancel()
+	waitFor(t, 3*time.Second, func() bool { return friend.FriendPresence().Live })
+
+	if err := host.StopSession(); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, 3*time.Second, func() bool { return !friend.FriendPresence().Live })
+
+	if err := host.StartSession(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	reconnectCtx, reconnectCancel = context.WithTimeout(context.Background(), 5*time.Second)
+	if err := friend.Reconnect(reconnectCtx, fg.ID); err != nil {
+		t.Fatal(err)
+	}
+	reconnectCancel()
+	waitFor(t, 3*time.Second, func() bool { return friend.FriendPresence().Live })
+}

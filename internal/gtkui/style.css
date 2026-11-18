@@ -466,3 +466,27 @@ box.preset-surface {
   border-radius: 10px;
   padding: 6px;
 }
+
+box.invite-row {
+  background-color: @deep;
+  background-image: none;
+  border: 1px solid @hairline;
+  border-radius: 9px;
+  min-height: 40px;
+  padding: 0 14px;
+}
+
+scrolledwindow.code-box {
+  background-color: @ink;
+  background-image: none;
+  border: 1px solid @hairline;
+  border-radius: 8px;
+}
+
+scrolledwindow.code-box > viewport,
+textview.code-view,
+textview.code-view > text {
+  background-color: @ink;
+  background-image: none;
+  color: @pale;
+}

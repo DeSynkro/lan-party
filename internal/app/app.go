@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/desynkro/lan-party/internal/autostart"
@@ -237,7 +238,11 @@ func (a *App) DeleteGroup(id string) error {
 
 	keyName := "host/" + id
 	if g.Role == group.RoleFriend {
-		keyName = "device/" + id
+		if g.HostGroupID != "" {
+			keyName = "device/" + g.HostGroupID
+		} else {
+			keyName = "device/" + id
+		}
 	}
 	if err := a.keys.Delete(keyName); err != nil {
 		return fmt.Errorf("remove key: %w", err)
@@ -448,15 +453,23 @@ func (a *App) StartSession(groupID string) error {
 		return errors.New("the host key for this group is missing. If this group came from an older build, delete it and create it again")
 	}
 
-	host, err := session.StartHost(context.Background(), session.HostConfig{
-		Identity:     identity,
-		GroupID:      groupID,
-		AppPort:      appPort,
-		Services:     services,
-		Authenticate: hostAuth{app: a, groupID: groupID},
-	})
-	if err != nil {
-		return err
+	var host *session.Host
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		host, err = session.StartHost(context.Background(), session.HostConfig{
+			Identity:     identity,
+			GroupID:      groupID,
+			AppPort:      appPort,
+			Services:     services,
+			Authenticate: hostAuth{app: a, groupID: groupID},
+		})
+		if err == nil {
+			break
+		}
+		if !errors.Is(err, syscall.EADDRINUSE) || time.Now().After(deadline) {
+			return err
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	a.mu.Lock()
@@ -504,7 +517,10 @@ func (a *App) JoinInvite(ctx context.Context, code, deviceName string) (group.Gr
 		return group.Group{}, errors.New("end the current session first")
 	}
 	for _, g := range a.groups {
-		if g.ID == inv.GroupID && g.Role == group.RoleFriend {
+		if g.Role != group.RoleFriend {
+			continue
+		}
+		if g.HostGroupID == inv.GroupID || (g.HostGroupID == "" && g.HostPin == inv.HostPin) {
 			a.mu.Unlock()
 			return group.Group{}, errors.New("you have already joined this group")
 		}
@@ -538,6 +554,7 @@ func (a *App) JoinInvite(ctx context.Context, code, deviceName string) (group.Gr
 		inv.PeerName,
 		friendServices(friend.Services()),
 	)
+	g.HostGroupID = inv.GroupID
 
 	a.mu.Lock()
 	if a.host != nil || a.friend != nil {
@@ -570,14 +587,30 @@ func (a *App) Reconnect(ctx context.Context, groupID string) error {
 		a.mu.Unlock()
 		return errors.New("only a joined group can be reconnected")
 	}
-	if a.host != nil || a.friend != nil {
+	if a.host != nil {
 		a.mu.Unlock()
 		return errors.New("a session is already running")
 	}
+	var stale *session.Friend
+	if a.friend != nil {
+		if a.friend.Presence().Live {
+			a.mu.Unlock()
+			return errors.New("a session is already running")
+		}
+		stale = a.friend
+		a.friend = nil
+		a.liveGroupID = ""
+	}
 	g := cloneGroup(a.groups[idx])
 	a.mu.Unlock()
+	if stale != nil {
+		_ = stale.Close()
+	}
 
-	identity, ok, err := a.keys.Load("device/" + groupID)
+	if g.HostGroupID == "" {
+		return errors.New("this joined group was saved by an older build; delete it and join again with a new invite")
+	}
+	identity, ok, err := a.keys.Load("device/" + g.HostGroupID)
 	if err != nil {
 		return err
 	}
@@ -587,7 +620,7 @@ func (a *App) Reconnect(ctx context.Context, groupID string) error {
 
 	friend, err := session.Join(ctx, session.JoinConfig{
 		Identity:   identity,
-		Invite:     invite.Invite{Version: invite.CurrentVersion, GroupID: g.ID, GroupName: g.Name, HostName: g.HostName, Endpoint: g.Endpoint, HostPin: g.HostPin, PeerName: g.SelfName},
+		Invite:     invite.Invite{Version: invite.CurrentVersion, GroupID: g.HostGroupID, GroupName: g.Name, HostName: g.HostName, Endpoint: g.Endpoint, HostPin: g.HostPin, PeerName: g.SelfName},
 		DeviceName: a.DeviceName(),
 		MemberID:   g.SelfID,
 	})

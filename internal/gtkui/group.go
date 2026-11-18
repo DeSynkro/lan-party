@@ -255,16 +255,15 @@ func (u *probeUI) hostInvites(g group.Group, state *groupLive) *gtk.Box {
 		if i > 0 {
 			box.Append(gapBox(8))
 		}
-		row := gtk.NewButton()
-		row.AddCSSClass("row")
-		content := gtk.NewBox(gtk.OrientationHorizontal, 8)
-		content.AddCSSClass("row-content")
+		row := gtk.NewBox(gtk.OrientationHorizontal, 8)
+		row.AddCSSClass("invite-row")
+		row.SetHExpand(true)
 		name := lineLabel(inv.Name, "row-title")
 		name.SetHExpand(true)
-		content.Append(name)
+		row.Append(name)
 		expiry := lineLabel(expiresIn(inv.ExpiresAt), "row-meta")
 		state.inviteExpiry[inv.ID] = expiry
-		content.Append(expiry)
+		row.Append(expiry)
 		if code := u.state.InviteCode(inv.ID); code != "" {
 			copy := gtk.NewButtonWithLabel("Copy")
 			copy.AddCSSClass("quiet")
@@ -272,13 +271,12 @@ func (u *probeUI) hostInvites(g group.Group, state *groupLive) *gtk.Box {
 				u.win.Widget.Clipboard().SetText(code)
 				copy.SetLabel("Copied")
 			})
-			content.Append(copy)
+			row.Append(copy)
 		}
 		cancel := gtk.NewButtonWithLabel("Cancel")
 		cancel.AddCSSClass("quiet")
 		cancel.ConnectClicked(func() { u.confirmCancelInvite(g, inv) })
-		content.Append(cancel)
-		row.SetChild(content)
+		row.Append(cancel)
 		box.Append(row)
 	}
 	return box
@@ -359,28 +357,41 @@ func (u *probeUI) friendServices(g group.Group) *gtk.Box {
 		box.Append(cardText("No service open. The host has not published anything yet.", "desc"))
 		return box
 	}
-	for i, b := range bounds {
+	views := buildFriendServiceViews(bounds)
+	for i, view := range views {
 		if i > 0 {
 			box.Append(gapBox(8))
 		}
 		card := gtk.NewBox(gtk.OrientationVertical, 0)
 		card.AddCSSClass("card")
 		top := gtk.NewBox(gtk.OrientationHorizontal, 8)
-		name := lineLabel(b.Service, "row-title")
-		name.SetHExpand(true)
-		top.Append(name)
-		top.Append(tagLabel(protoName(b.Proto)))
+		name := view.name
+		if name == "" {
+			name = "Service"
+		}
+		title := lineLabel(name, "row-title")
+		title.SetHExpand(true)
+		top.Append(title)
+		if proto := protocolSetName(view.protocols); proto != "" {
+			top.Append(tagLabel(proto))
+		}
 		card.Append(top)
 		card.Append(gapBox(8))
-		card.Append(cardText(b.Address, "mono"))
-		if b.Error != "" {
-			card.Append(cardText(b.Error, "warning"))
-		} else if b.Port != b.PublishedPort {
-			card.Append(cardText(fmt.Sprintf("Port %d was busy; this game uses %d.", b.PublishedPort, b.Port), "desc"))
+		for _, address := range view.addresses {
+			card.Append(cardText(address.address, "mono"))
 		}
-		if b.Hint != "" {
+		if len(view.addresses) == 0 && len(view.errors) == 0 {
+			card.Append(cardText("The local port could not be opened.", "warning"))
+		}
+		for _, message := range view.errors {
+			card.Append(cardText(message, "warning"))
+		}
+		for _, note := range view.notes {
+			card.Append(cardText(note, "desc"))
+		}
+		if view.hint != "" {
 			card.Append(gapBox(6))
-			card.Append(cardText(b.Hint, "desc"))
+			card.Append(cardText(view.hint, "desc"))
 		}
 		box.Append(card)
 	}
