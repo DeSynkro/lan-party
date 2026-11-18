@@ -219,7 +219,7 @@ Turn **Start on login** off and on again so the autostart entry points at the ne
   <a href="docs/roadmap.svg"><img src="docs/roadmap.svg" alt="LAN Party roadmap: 1.0 Linux, 1.1 Windows and group overrides, 1.2 relay and packaging, 2.0 beyond" width="900"></a>
 </p>
 
-The short version: **1.0** is the Linux release. **1.1** brings Windows and the smaller quality-of-life features. **1.2** adds the self-hosted relay. **2.0** is the long shelf for Flatpak, auto-update and the next big idea.
+The short version: **1.0** is the Linux release. **1.1** is the Windows release; the per-group connection overrides and one-hour invites are already in. **1.2** adds the self-hosted relay. **2.0** is the long shelf for Flatpak, auto-update and the next big idea.
 
 The full notes live in [features-to-be-added.md](features-to-be-added.md). Versions and scope are a direction, not a promise.
 

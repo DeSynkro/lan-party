@@ -112,7 +112,7 @@
       <path d="M1257.8 497 L1292 497 C1299.732 497 1306 503.268 1306 511 L1306 511 C1306 518.732 1299.732 525 1292 525 L1257.8 525 C1250.068 525 1243.8 518.732 1243.8 511 L1243.8 511 C1243.8 503.268 1250.068 497 1257.8 497 Z" fill="#ff3dbe" fill-opacity="0.1" stroke="#ff3dbe" stroke-opacity="0.45"/>
       <text transform="matrix(1 0 0 1 1274.224 515.32)" x="0.7" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans SmBld&apos;, sans-serif" font-size="12" font-weight="600" fill="#ff3dbe" letter-spacing="1.4" text-anchor="middle"><tspan x="0.7" y="0">NEXT</tspan></text>
     </g>
-    <text transform="matrix(1 0 0 1 236 556)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="18" fill="#b9a8d9"><tspan x="0" y="0">The next release: Windows, plus the small features that remove daily friction.</tspan></text>
+    <text transform="matrix(1 0 0 1 236 556)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="18" fill="#b9a8d9"><tspan x="0" y="0">The next release: bring LAN Party to Windows.</tspan></text>
     <path d="M253 578 L416.3 578 C425.689 578 433.3 585.611 433.3 595 L433.3 595 C433.3 604.389 425.689 612 416.3 612 L253 612 C243.611 612 236 604.389 236 595 L236 595 C236 585.611 243.611 578 253 578 Z" fill="#1a0e3d" stroke="#ff3dbe" stroke-opacity="0.22"/>
     <circle cx="251" cy="595" r="3" fill="#ff3dbe"/>
     <text transform="matrix(1 0 0 1 261 600.6)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="16" fill="#e9ddf9"><tspan x="0" y="0">Native Windows build</tspan></text>
@@ -121,7 +121,7 @@
     <text transform="matrix(1 0 0 1 468.344 600.6)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="16" fill="#e9ddf9"><tspan x="0" y="0">Per-group address &amp; port</tspan></text>
     <path d="M694.232 578 L881.032 578 C890.421 578 898.032 585.611 898.032 595 L898.032 595 C898.032 604.389 890.421 612 881.032 612 L694.232 612 C684.843 612 677.232 604.389 677.232 595 L677.232 595 C677.232 585.611 684.843 578 694.232 578 Z" fill="#1a0e3d" stroke="#ff3dbe" stroke-opacity="0.22"/>
     <circle cx="692.232" cy="595" r="3" fill="#ff3dbe"/>
-    <text transform="matrix(1 0 0 1 702.232 600.6)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="16" fill="#e9ddf9"><tspan x="0" y="0">Friend-side bind address</tspan></text>
+    <text transform="matrix(1 0 0 1 702.232 600.6)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="16" fill="#e9ddf9"><tspan x="0" y="0">One-hour invites</tspan></text>
     <circle cx="120" cy="744" r="14" fill="#08040f" stroke="#8b5cf6" stroke-opacity="0.35" stroke-width="2"/>
     <circle cx="120" cy="744" r="7" fill="#8b5cf6"/>
     <path d="M224 666 L1310 666 C1321.046 666 1330 674.954 1330 686 L1330 822 C1330 833.046 1321.046 842 1310 842 L224 842 C212.954 842 204 833.046 204 822 L204 686 C204 674.954 212.954 666 224 666 Z" fill="#120a2e" fill-opacity="0.88" stroke="#ffffff" stroke-opacity="0.1" stroke-width="1.5"/>

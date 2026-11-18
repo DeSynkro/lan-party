@@ -51,7 +51,7 @@ path stays the default.
 
 ## Friend-side bind address
 
-**Status:** idea, not scheduled
+**Status:** deferred — not planned for 1.1. Revisit if a game rejects `127.0.0.1`.
 
 The friend app always binds forwarded services to `127.0.0.1`. A few games may
 reject localhost or expect a LAN address. Add an advanced option to choose
