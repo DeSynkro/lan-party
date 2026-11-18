@@ -34,7 +34,11 @@ jobs:
             wayland-protocols \
             xorg-dev
       - name: Vet
-        run: go vet ./...
+        run: |
+          # GTK packages use cgo and are compiled by the test/build steps.
+          # Vet the backend packages that do not require GTK here.
+          packages=$(go list ./... | grep -vE '/(internal/gtkui|cmd/lan-party|cmd/gtk-probe)$')
+          go vet $packages
       - name: Test
         run: go test -race ./...
       - name: Build
@@ -59,8 +63,12 @@ jobs:
             libxkbcommon-dev \
             wayland-protocols \
             xorg-dev
+      - name: Build for vulnerability scan
+        run: go build -trimpath -o /tmp/lan-party ./cmd/lan-party
       - name: govulncheck
-        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+        # Source mode cannot type-check gotk4's cgo bindings. Scan the real
+        # binary instead so the linked code and dependencies are covered.
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -mode=binary /tmp/lan-party
 
   linux:
     name: Linux AppImage
