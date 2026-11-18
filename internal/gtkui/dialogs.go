@@ -76,7 +76,7 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 	}
 
 	win, content := u.dialog("Connection for " + g.Name)
-	win.SetDefaultSize(380, 500)
+	win.SetDefaultSize(380, 420)
 
 	content.Append(textLabel("This changes only this group. The defaults live in Settings.", "help"))
 	content.Append(gapBox(12))
