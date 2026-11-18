@@ -541,9 +541,9 @@ func setupFonts(root string) {
   <dir>%s</dir>
   <cachedir>%s</cachedir>
 </fontconfig>
-`, escape.Replace(filepath.Join(root, "brand", "fonts")),
-		escape.Replace(filepath.Join(root, "internal", "gtkui", "assets", "fonts")),
-		escape.Replace(cache))
+`, escape.Replace(filepath.ToSlash(filepath.Join(root, "brand", "fonts"))),
+		escape.Replace(filepath.ToSlash(filepath.Join(root, "internal", "gtkui", "assets", "fonts"))),
+		escape.Replace(filepath.ToSlash(cache)))
 
 	path := filepath.Join(dir, "fonts.conf")
 	if err := os.WriteFile(path, []byte(config), 0o600); err != nil {

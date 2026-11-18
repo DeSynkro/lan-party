@@ -3,7 +3,6 @@ package gtkui
 import (
 	"log"
 	"os"
-	"path/filepath"
 
 	"fyne.io/systray"
 	"github.com/diamondburned/gotk4/pkg/core/glib"
@@ -15,7 +14,7 @@ func startTray(u *probeUI) bool {
 		return false
 	}
 
-	icon, err := os.ReadFile(filepath.Join(u.root, "brand", "png", "tray-icon-color-24.png"))
+	icon, err := os.ReadFile(trayIconPath(u.root))
 	if err != nil {
 		log.Printf("lan-party: tray icon: %v", err)
 		return false
