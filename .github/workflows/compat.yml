@@ -37,8 +37,42 @@ jobs:
             libwayland-dev \
             libxkbcommon-dev \
             wayland-protocols \
-            xorg-dev
+            xorg-dev \
+            xvfb
       - name: Build
         run: go build -trimpath -o /tmp/lan-party ./cmd/lan-party
       - name: Test
         run: go test ./...
+      - name: Build compatibility AppImage
+        if: matrix.runner == 'ubuntu-22.04'
+        run: VERSION=compat-${GITHUB_SHA::7} ./build/appimage.sh
+      - name: Smoke test compatibility AppImage
+        if: matrix.runner == 'ubuntu-22.04'
+        run: |
+          set -euo pipefail
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          export GDK_BACKEND=x11
+          export LIBGL_ALWAYS_SOFTWARE=1
+          export GSK_RENDERER=cairo
+          export XDG_CONFIG_HOME="$(mktemp -d)"
+          export XDG_DATA_HOME="$(mktemp -d)"
+          export XDG_CACHE_HOME="$(mktemp -d)"
+          appimage="$(ls dist/*.AppImage | head -1)"
+          xvfb-run -a bash -c '
+            "$0" >/tmp/appimage.log 2>&1 &
+            pid=$!
+            sleep 4
+            if ! kill -0 "$pid" 2>/dev/null; then
+              cat /tmp/appimage.log
+              exit 1
+            fi
+            kill "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+          ' "$appimage"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: matrix.runner == 'ubuntu-22.04'
+        with:
+          name: linux-appimage-compat
+          path: dist/*.AppImage
+          if-no-files-found: error
+          retention-days: 14
