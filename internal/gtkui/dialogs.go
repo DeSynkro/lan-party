@@ -2,7 +2,6 @@ package gtkui
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -124,7 +123,7 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 	if oldErr != nil {
 		oldEndpoint = ""
 	}
-	live := u.state.LiveGroupID() == g.ID
+	live := func() bool { return u.state.LiveGroupID() == g.ID }
 
 	buttons := gtk.NewBox(gtk.OrientationHorizontal, 8)
 	useDefaults := gtk.NewButtonWithLabel("Use defaults")
@@ -163,7 +162,7 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 		}
 		listen.SetText("Host listens on UDP " + strconv.Itoa(port))
 
-		portChanges := live && port != current.AppPort
+		portChanges := live() && port != current.AppPort
 		warning.SetVisible(false)
 		action.SetLabel("Save")
 		if !portChanges {
@@ -194,8 +193,8 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 		port := 0
 		if portText != "" {
 			parsed, err := strconv.Atoi(portText)
-			if err != nil {
-				errLabel.SetText("The app port must be a number.")
+			if err != nil || parsed < 1 || parsed > 65535 {
+				errLabel.SetText("The app port must be between 1 and 65535.")
 				errLabel.SetVisible(true)
 				return
 			}
@@ -211,7 +210,7 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 		if newPort == 0 {
 			newPort = settings.AppPort
 		}
-		portChanges := live && newPort != current.AppPort
+		portChanges := live() && newPort != current.AppPort
 		if portChanges {
 			if err := u.state.StopSession(); err != nil {
 				errLabel.SetText(err.Error())
@@ -226,9 +225,9 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 		}
 		if portChanges {
 			if err := u.state.StartSession(g.ID); err != nil {
-				win.Close()
-				u.showGroup(g.ID)
-				showError(fmt.Errorf("settings saved, but the session could not restart: %w", err))
+				updatePreview()
+				errLabel.SetText("Settings saved, but the session could not restart: " + err.Error() + ". Fix the port and start the session again.")
+				errLabel.SetVisible(true)
 				return
 			}
 		}
@@ -353,7 +352,7 @@ func (u *probeUI) showInviteDialog(g group.Group) {
 	content.Append(textLabel("Friend's name", "form-label"))
 	nameEntry := entry("Ash")
 	content.Append(nameEntry)
-	if endpoint, err := u.state.CurrentEndpoint(); err == nil {
+	if endpoint, err := u.state.GroupEndpoint(g.ID); err == nil {
 		content.Append(gapBox(8))
 		content.Append(textLabel("Invite endpoint: "+endpoint, "desc"))
 	}

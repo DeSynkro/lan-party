@@ -11,7 +11,7 @@ import (
 
 func (u *probeUI) buildGuidePage() *gtk.ScrolledWindow {
 	settings := u.state.Settings()
-	rule := fmt.Sprintf("Forward UDP %d to %s", settings.AppPort, localIPv4())
+	rule := fmt.Sprintf("Forward the group's UDP app port (default %d) to %s", settings.AppPort, localIPv4())
 
 	page := gtk.NewBox(gtk.OrientationVertical, 0)
 	page.AddCSSClass("page")
@@ -123,7 +123,7 @@ func (u *probeUI) buildGuidePage() *gtk.ScrolledWindow {
 	page.Append(security)
 
 	page.Append(gapBox(10))
-	page.Append(cardText("App port "+strconv.Itoa(settings.AppPort)+" · UDP", "desc"))
+	page.Append(cardText("Default app port "+strconv.Itoa(settings.AppPort)+" · UDP", "desc"))
 
 	scroll := gtk.NewScrolledWindow()
 	scroll.SetPolicy(gtk.PolicyNever, gtk.PolicyAutomatic)

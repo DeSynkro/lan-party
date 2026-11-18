@@ -141,26 +141,32 @@ func (u *probeUI) hostSessionCard(g group.Group, showError func(error), state *g
 	card.Append(cardText("Hosting as "+g.HostName+" · "+plural(len(g.Members), "member"), "desc"))
 	card.Append(gapBox(8))
 
-	endpoint, err := u.state.GroupEndpoint(g.ID)
-	if err != nil {
-		card.Append(cardText("No public address — friends can't join.", "warning"))
+	endpoint, endpointErr := u.state.GroupEndpoint(g.ID)
+	row := gtk.NewBox(gtk.OrientationHorizontal, 8)
+	if endpointErr != nil {
+		addr := lineLabel("not set", "mono")
+		addr.SetHExpand(true)
+		row.Append(addr)
 	} else {
 		addr := lineLabel(endpoint, "mono")
 		addr.SetHExpand(true)
-		row := gtk.NewBox(gtk.OrientationHorizontal, 8)
 		row.Append(addr)
-		if g.PublicAddress != "" || g.AppPort != 0 {
-			row.Append(tagLabel("Custom"))
-		} else {
-			row.Append(tagLabel("Default"))
-		}
-		change := gtk.NewButtonWithLabel("Change")
-		change.AddCSSClass("quiet")
-		change.ConnectClicked(func() {
-			u.showGroupConnectionDialog(g, showError)
-		})
-		row.Append(change)
-		card.Append(row)
+	}
+	if g.PublicAddress != "" || g.AppPort != 0 {
+		row.Append(tagLabel("Custom"))
+	} else {
+		row.Append(tagLabel("Default"))
+	}
+	change := gtk.NewButtonWithLabel("Change")
+	change.AddCSSClass("quiet")
+	change.ConnectClicked(func() {
+		u.showGroupConnectionDialog(g, showError)
+	})
+	row.Append(change)
+	card.Append(row)
+	if endpointErr != nil {
+		card.Append(gapBox(4))
+		card.Append(cardText("No public address — friends can't join.", "warning"))
 	}
 	appPort, portErr := u.state.GroupAppPort(g.ID)
 	if portErr != nil {
