@@ -21,8 +21,14 @@ rm -rf "${work}"
 mkdir -p "${app}/share/lan-party" "${out}"
 
 "${go_bin}" build -trimpath \
-    -ldflags "-s -w -X github.com/desynkro/lan-party/internal/buildinfo.Version=${version}" \
+    -ldflags "-s -w -H=windowsgui -X github.com/desynkro/lan-party/internal/buildinfo.Version=${version}" \
     -o "${app}/lan-party.exe" ./cmd/lan-party
+
+# A console build for diagnosing startup problems. The release exe above is a
+# GUI subsystem binary and does not open a terminal.
+"${go_bin}" build -trimpath \
+    -ldflags "-s -w -X github.com/desynkro/lan-party/internal/buildinfo.Version=${version}" \
+    -o "${app}/lan-party-console.exe" ./cmd/lan-party
 
 # App assets are found from <exe dir>/share/lan-party by assetRoot.
 mkdir -p "${app}/share/lan-party/internal/gtkui"
@@ -115,6 +121,9 @@ LAN Party ${version} (Windows test build)
 
 Run lan-party.cmd. The first launch may show a Windows Defender SmartScreen
 warning because this build is not signed.
+
+If it does not start, run lan-party-console.exe from a Command Prompt to see
+the log.
 
 The host needs one UDP port forwarded and a public address. The first host run
 may ask for Windows Firewall access; allow it on private networks.
