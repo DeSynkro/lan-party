@@ -17,10 +17,14 @@ import (
 )
 
 const (
-	attemptWindow = time.Minute
-	attemptLimit  = 5
-	approvalLimit = 2 * time.Minute
+	attemptWindow       = time.Minute
+	attemptLimit        = 5
+	maxAttemptIPs       = 1024
+	approvalLimit       = 2 * time.Minute
+	maxPendingApprovals = 32
 )
+
+var errTooManyApprovals = errors.New("too many pending approvals")
 
 // Approval is one device waiting for the host's answer.
 type Approval struct {
@@ -90,6 +94,9 @@ func (a *App) authenticate(ctx context.Context, groupID string, req tunnel.AuthR
 			Fingerprint: req.Fingerprint,
 		})
 		if err != nil {
+			if errors.Is(err, errTooManyApprovals) {
+				return deny("too many devices are waiting for approval; try again later"), nil
+			}
 			return deny("the host did not answer in time"), nil
 		}
 		if !allowed {
@@ -138,6 +145,9 @@ func (a *App) authenticate(ctx context.Context, groupID string, req tunnel.AuthR
 			Fingerprint: req.Fingerprint,
 		})
 		if err != nil {
+			if errors.Is(err, errTooManyApprovals) {
+				return deny("too many devices are waiting for approval; try again later"), nil
+			}
 			return deny("the host did not answer in time"), nil
 		}
 		if !allowed {
@@ -277,6 +287,10 @@ func (a *App) requestApproval(ctx context.Context, approval Approval) (bool, err
 	pending := &pendingApproval{Approval: approval, ch: make(chan bool, 1)}
 
 	a.mu.Lock()
+	if len(a.pending) >= maxPendingApprovals {
+		a.mu.Unlock()
+		return false, errTooManyApprovals
+	}
 	a.pending = append(a.pending, pending)
 	a.mu.Unlock()
 
@@ -389,7 +403,34 @@ func (l *attemptLimiter) Fail(ip string, now time.Time) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.pruneLocked(ip, now)
+
+	if _, exists := l.byIP[ip]; !exists && len(l.byIP) >= maxAttemptIPs {
+		l.pruneAllLocked(now)
+		if len(l.byIP) >= maxAttemptIPs {
+			for victim := range l.byIP {
+				delete(l.byIP, victim)
+				break
+			}
+		}
+	}
 	l.byIP[ip] = append(l.byIP[ip], now)
+}
+
+func (l *attemptLimiter) pruneAllLocked(now time.Time) {
+	cutoff := now.Add(-attemptWindow)
+	for ip, times := range l.byIP {
+		kept := times[:0]
+		for _, at := range times {
+			if at.After(cutoff) {
+				kept = append(kept, at)
+			}
+		}
+		if len(kept) == 0 {
+			delete(l.byIP, ip)
+		} else {
+			l.byIP[ip] = kept
+		}
+	}
 }
 
 func (l *attemptLimiter) pruneLocked(ip string, now time.Time) {

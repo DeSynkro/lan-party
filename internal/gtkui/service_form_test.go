@@ -5,6 +5,18 @@ import (
 	"testing"
 )
 
+func TestServiceWarningText(t *testing.T) {
+	if got := serviceWarningText("127.0.0.1", "25565", "", "tcp"); !strings.Contains(got, "on this PC") {
+		t.Fatalf("loopback warning = %q", got)
+	}
+	if got := serviceWarningText("192.168.0.10", "22", "", "tcp"); !strings.Contains(got, "administrative") {
+		t.Fatalf("admin port warning = %q", got)
+	}
+	if got := serviceWarningText("192.168.0.10", "25565", "", "tcp"); got != "" {
+		t.Fatalf("normal service warning = %q", got)
+	}
+}
+
 func TestServiceRoutePreviewRangeWithFriendPort(t *testing.T) {
 	got := serviceRoutePreview("192.168.0.10", "2456-2458", "25565")
 	want := "Leave the friend port blank to use the game port range."

@@ -7,6 +7,31 @@ import (
 	"github.com/desynkro/lan-party/internal/group"
 )
 
+func serviceWarningText(ip, gamePortsText, friendPortsText, proto string) string {
+	gamePorts, err := group.ParsePorts(gamePortsText)
+	if err != nil {
+		return ""
+	}
+	var friendPorts []int
+	if strings.TrimSpace(friendPortsText) != "" {
+		friendPorts, err = group.ParsePorts(friendPortsText)
+		if err != nil {
+			return ""
+		}
+	}
+	target, ports, err := group.ComposeServiceTarget(ip, gamePorts, friendPorts)
+	if err != nil {
+		return ""
+	}
+	warnings := group.ServiceWarnings(group.Service{
+		Name:   "service",
+		Proto:  proto,
+		Target: target,
+		Ports:  ports,
+	})
+	return strings.Join(warnings, "\n")
+}
+
 func serviceRoutePreview(ip, gamePortsText, friendPortsText string) string {
 	gamePorts, err := group.ParsePorts(gamePortsText)
 	if err != nil {

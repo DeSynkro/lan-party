@@ -11,9 +11,12 @@ import (
 )
 
 const (
-	defaultMaxStreams      = 128
-	defaultApprovalTimeout = 2 * time.Minute
-	denialGrace            = 250 * time.Millisecond
+	defaultMaxStreams           = 128
+	defaultApprovalTimeout      = 2 * time.Minute
+	defaultMaxPendingHandshakes = 32
+	defaultHandshakeTimeout     = 10 * time.Second
+	controlWriteTimeout         = 5 * time.Second
+	denialGrace                 = 250 * time.Millisecond
 )
 
 func serverTLS(identity secure.Identity) (*tls.Config, error) {

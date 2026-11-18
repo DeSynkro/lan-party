@@ -199,7 +199,7 @@ func ServiceWarnings(s Service) []string {
 	var warnings []string
 	_, loopback, err := ParseTarget(s.Target)
 	if err == nil && loopback {
-		warnings = append(warnings, "the target is on this PC; only games on this machine can use it")
+		warnings = append(warnings, "the game server is on this PC")
 	}
 	admin := map[int]bool{22: true, 3389: true, 445: true, 5900: true}
 	for _, port := range s.Ports {

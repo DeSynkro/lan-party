@@ -311,6 +311,11 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 	content.Append(preview)
 	content.Append(gapBox(4))
 
+	warning := textLabel("", "warning")
+	warning.SetVisible(false)
+	content.Append(warning)
+	content.Append(gapBox(4))
+
 	errLabel := textLabel("", "error")
 	errLabel.SetVisible(false)
 	content.Append(errLabel)
@@ -318,6 +323,9 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 
 	updatePreview := func() {
 		preview.SetText(serviceRoutePreview(ipEntry.Text(), gamePortsEntry.Text(), friendPortsEntry.Text()))
+		warnings := serviceWarningText(ipEntry.Text(), gamePortsEntry.Text(), friendPortsEntry.Text(), protoValue(selectedProtocol))
+		warning.SetText(warnings)
+		warning.SetVisible(warnings != "")
 		errLabel.SetVisible(false)
 	}
 	ipEntry.ConnectChanged(func() { updatePreview() })

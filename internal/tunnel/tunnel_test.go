@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/desynkro/lan-party/internal/secure"
+	"github.com/quic-go/quic-go"
 )
 
 type memStore map[string]string
@@ -55,19 +56,58 @@ func (f authFunc) Authenticate(ctx context.Context, req AuthRequest) (AuthDecisi
 
 func startServer(t *testing.T, auth Authenticator, maxStreams int) (*Server, string) {
 	t.Helper()
+	return startServerConfig(t, auth, ServerConfig{MaxStreams: maxStreams})
+}
+
+func startServerConfig(t *testing.T, auth Authenticator, cfg ServerConfig) (*Server, string) {
+	t.Helper()
 	host := testIdentity(t, "host")
-	srv, err := Listen(ServerConfig{
-		Identity:        host,
-		ListenAddr:      "127.0.0.1:0",
-		Authenticate:    auth,
-		MaxStreams:      maxStreams,
-		ApprovalTimeout: 3 * time.Second,
-	})
+	cfg.Identity = host
+	if cfg.ListenAddr == "" {
+		cfg.ListenAddr = "127.0.0.1:0"
+	}
+	cfg.Authenticate = auth
+	if cfg.ApprovalTimeout <= 0 {
+		cfg.ApprovalTimeout = 3 * time.Second
+	}
+	srv, err := Listen(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = srv.Close() })
 	return srv, secure.Pin(host.Public)
+}
+
+func rawDial(t *testing.T, srv *Server, pin string) (*quic.Conn, *quic.Stream, error) {
+	t.Helper()
+	tlsConf, err := clientTLS(testIdentity(t, "raw-client"), pin)
+	if err != nil {
+		return nil, nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	qc, err := quic.DialAddr(ctx, srv.Addr().String(), tlsConf, clientQUICConfig())
+	if err != nil {
+		return nil, nil, err
+	}
+	stream, err := qc.OpenStreamSync(ctx)
+	if err != nil {
+		_ = qc.CloseWithError(1, "stream failed")
+		return nil, nil, err
+	}
+	return qc, stream, nil
+}
+
+func waitFor(t *testing.T, timeout time.Duration, condition func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if condition() {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("condition did not become true in time")
 }
 
 func dial(t *testing.T, srv *Server, pin, token string) *Conn {
@@ -321,5 +361,87 @@ func TestServerCloseEndsConnection(t *testing.T) {
 	case <-client.Context().Done():
 	case <-time.After(2 * time.Second):
 		t.Fatal("the client connection stayed open after the server closed")
+	}
+}
+
+func TestHandshakeTimeoutDropsSilentPeer(t *testing.T) {
+	srv, pin := startServerConfig(t, allowAuth(), ServerConfig{
+		HandshakeTimeout:     150 * time.Millisecond,
+		MaxPendingHandshakes: 1,
+	})
+	qc, stream, err := rawDial(t, srv, pin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer qc.CloseWithError(0, "test done")
+
+	_ = stream.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if _, err := stream.Read(make([]byte, 1)); err == nil {
+		t.Fatal("a silent handshake stayed open past the deadline")
+	}
+	waitFor(t, 2*time.Second, func() bool {
+		srv.mu.Lock()
+		defer srv.mu.Unlock()
+		return len(srv.pending) == 0
+	})
+}
+
+func TestHandshakeLimitRejectsExtraPeers(t *testing.T) {
+	srv, pin := startServerConfig(t, allowAuth(), ServerConfig{
+		HandshakeTimeout:     5 * time.Second,
+		MaxPendingHandshakes: 1,
+	})
+	qc, _, err := rawDial(t, srv, pin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer qc.CloseWithError(0, "test done")
+	waitFor(t, 2*time.Second, func() bool {
+		srv.mu.Lock()
+		defer srv.mu.Unlock()
+		return len(srv.pending) == 1
+	})
+
+	extra, extraStream, err := rawDial(t, srv, pin)
+	if err == nil {
+		defer extra.CloseWithError(0, "test done")
+		_ = extraStream.SetReadDeadline(time.Now().Add(time.Second))
+		if _, err := extraStream.Read(make([]byte, 1)); err == nil {
+			t.Fatal("an extra pending handshake stayed open")
+		}
+	}
+	srv.mu.Lock()
+	pending := len(srv.pending)
+	srv.mu.Unlock()
+	if pending != 1 {
+		t.Fatalf("pending handshakes = %d, want 1", pending)
+	}
+}
+
+func TestServerCloseUnblocksPendingHandshake(t *testing.T) {
+	srv, pin := startServerConfig(t, allowAuth(), ServerConfig{
+		HandshakeTimeout:     time.Minute,
+		MaxPendingHandshakes: 1,
+	})
+	qc, _, err := rawDial(t, srv, pin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer qc.CloseWithError(0, "test done")
+	waitFor(t, 2*time.Second, func() bool {
+		srv.mu.Lock()
+		defer srv.mu.Unlock()
+		return len(srv.pending) == 1
+	})
+
+	done := make(chan struct{})
+	go func() {
+		_ = srv.Close()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("server close blocked on a pending handshake")
 	}
 }

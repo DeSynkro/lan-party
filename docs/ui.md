@@ -156,7 +156,8 @@ cannot be reached without a relay, which this version does not have.
 - Publish a service: preset picker, name, protocol, game server IP, game server
   port(s), optional friend port, hint, and a live route preview. Inline
   validation; a friend port is only valid with a single game port, and a game
-  port range needs the friend port left blank.
+  port range needs the friend port left blank. Loopback targets and
+  administrative ports show a non-blocking warning.
 - Device approval: friend, device, address, key fingerprint, Allow/Deny. It
   appears wherever the host is in the app and brings the window forward.
 - Confirmations for delete group, leave group, end session, disconnect, remove

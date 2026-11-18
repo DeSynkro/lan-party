@@ -170,8 +170,13 @@ The app writes no secrets to logs. It has no telemetry and no auto-update.
 - 16 services, 8 ports each, 32 members
 - 128 concurrent TCP streams per peer
 - 64 UDP flows per service per peer, 60-second idle timeout
-- 5 failed enrollment attempts per address per minute
+- 64 host connections, with at most 8 simultaneous connections per member
+- 32 pending device approvals
+- 32 pending QUIC handshakes, with a 10-second hello deadline
+- 5 failed enrollment attempts per address per minute, tracking at most 1024
+  source addresses
 - 2-minute approval wait
+- 5-second control-stream write deadline
 - one control message is capped at 64 KiB
 - a friend accepts at most 16 services and 8 ports per service from the host,
   so a compromised host cannot fill the friend's loopback port space

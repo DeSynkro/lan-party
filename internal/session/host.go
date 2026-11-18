@@ -22,6 +22,11 @@ type Presence struct {
 	RemoteAddr string
 }
 
+const (
+	maxHostPeers      = 64
+	maxPeersPerMember = 8
+)
+
 // HostConfig is everything needed to publish a group.
 type HostConfig struct {
 	Identity     secure.Identity
@@ -176,9 +181,11 @@ func (h *Host) acceptLoop() {
 			udp:      map[int]*hostUDP{},
 		}
 
-		h.mu.Lock()
-		h.peers[p] = struct{}{}
-		h.mu.Unlock()
+		if !h.trackPeer(p) {
+			p.cancel()
+			_ = conn.Close()
+			continue
+		}
 
 		go func() {
 			<-p.ctx.Done()
@@ -188,6 +195,28 @@ func (h *Host) acceptLoop() {
 		go h.streams(p)
 		go h.datagrams(p)
 	}
+}
+
+func (h *Host) trackPeer(p *hostPeer) bool {
+	if p.memberID == "" {
+		return false
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if len(h.peers) >= maxHostPeers {
+		return false
+	}
+	sameMember := 0
+	for peer := range h.peers {
+		if peer.memberID == p.memberID {
+			sameMember++
+		}
+	}
+	if sameMember >= maxPeersPerMember {
+		return false
+	}
+	h.peers[p] = struct{}{}
+	return true
 }
 
 func (h *Host) control(p *hostPeer) {

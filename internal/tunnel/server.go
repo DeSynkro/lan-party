@@ -16,25 +16,31 @@ import (
 
 // ServerConfig is everything the tunnel needs from the host.
 type ServerConfig struct {
-	Identity        secure.Identity
-	ListenAddr      string
-	Authenticate    Authenticator
-	MaxStreams      int
-	ApprovalTimeout time.Duration
+	Identity             secure.Identity
+	ListenAddr           string
+	Authenticate         Authenticator
+	MaxStreams           int
+	ApprovalTimeout      time.Duration
+	MaxPendingHandshakes int
+	HandshakeTimeout     time.Duration
 }
 
 // Server accepts friends and delivers authenticated connections.
 type Server struct {
-	listener        *quic.Listener
-	auth            Authenticator
-	approvalTimeout time.Duration
-	conns           chan *Conn
-	ctx             context.Context
-	cancel          context.CancelFunc
-	wg              sync.WaitGroup
-	mu              sync.Mutex
-	active          map[*Conn]struct{}
-	closeOnce       sync.Once
+	listener         *quic.Listener
+	auth             Authenticator
+	approvalTimeout  time.Duration
+	handshakeTimeout time.Duration
+	pendingSlots     chan struct{}
+	conns            chan *Conn
+	ctx              context.Context
+	cancel           context.CancelFunc
+	wg               sync.WaitGroup
+	mu               sync.Mutex
+	active           map[*Conn]struct{}
+	pending          map[*quic.Conn]struct{}
+	closing          bool
+	closeOnce        sync.Once
 }
 
 // Listen opens the host's QUIC socket.
@@ -60,15 +66,26 @@ func Listen(cfg ServerConfig) (*Server, error) {
 	if timeout <= 0 {
 		timeout = defaultApprovalTimeout
 	}
+	handshakeTimeout := cfg.HandshakeTimeout
+	if handshakeTimeout <= 0 {
+		handshakeTimeout = defaultHandshakeTimeout
+	}
+	maxPending := cfg.MaxPendingHandshakes
+	if maxPending <= 0 {
+		maxPending = defaultMaxPendingHandshakes
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	s := &Server{
-		listener:        listener,
-		auth:            cfg.Authenticate,
-		approvalTimeout: timeout,
-		conns:           make(chan *Conn, 16),
-		ctx:             ctx,
-		cancel:          cancel,
-		active:          map[*Conn]struct{}{},
+		listener:         listener,
+		auth:             cfg.Authenticate,
+		approvalTimeout:  timeout,
+		handshakeTimeout: handshakeTimeout,
+		pendingSlots:     make(chan struct{}, maxPending),
+		conns:            make(chan *Conn, 16),
+		ctx:              ctx,
+		cancel:           cancel,
+		active:           map[*Conn]struct{}{},
+		pending:          map[*quic.Conn]struct{}{},
 	}
 	go s.acceptLoop()
 	return s, nil
@@ -92,6 +109,10 @@ func (s *Server) Addr() net.Addr { return s.listener.Addr() }
 // Close stops the listener and every connection it accepted.
 func (s *Server) Close() error {
 	s.closeOnce.Do(func() {
+		s.mu.Lock()
+		s.closing = true
+		s.mu.Unlock()
+
 		s.cancel()
 		_ = s.listener.Close()
 
@@ -100,8 +121,15 @@ func (s *Server) Close() error {
 		for c := range s.active {
 			conns = append(conns, c)
 		}
+		pending := make([]*quic.Conn, 0, len(s.pending))
+		for qc := range s.pending {
+			pending = append(pending, qc)
+		}
 		s.mu.Unlock()
 
+		for _, qc := range pending {
+			_ = qc.CloseWithError(0, "server closed")
+		}
 		for _, c := range conns {
 			_ = c.Close()
 		}
@@ -117,9 +145,32 @@ func (s *Server) acceptLoop() {
 			return
 		}
 
+		select {
+		case s.pendingSlots <- struct{}{}:
+		default:
+			_ = qc.CloseWithError(2, "server busy")
+			continue
+		}
+
+		s.mu.Lock()
+		if s.closing {
+			s.mu.Unlock()
+			<-s.pendingSlots
+			_ = qc.CloseWithError(0, "server closed")
+			continue
+		}
+		s.pending[qc] = struct{}{}
 		s.wg.Add(1)
+		s.mu.Unlock()
+
 		go func() {
 			defer s.wg.Done()
+			defer func() { <-s.pendingSlots }()
+			defer func() {
+				s.mu.Lock()
+				delete(s.pending, qc)
+				s.mu.Unlock()
+			}()
 
 			c, err := s.handshake(qc)
 			if err != nil {
@@ -128,6 +179,11 @@ func (s *Server) acceptLoop() {
 			}
 
 			s.mu.Lock()
+			if s.closing {
+				s.mu.Unlock()
+				_ = c.Close()
+				return
+			}
 			s.active[c] = struct{}{}
 			s.mu.Unlock()
 
@@ -148,12 +204,18 @@ func (s *Server) handshake(qc *quic.Conn) (*Conn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("control stream: %w", err)
 	}
+	if err := stream.SetReadDeadline(time.Now().Add(s.handshakeTimeout)); err != nil {
+		return nil, fmt.Errorf("set hello deadline: %w", err)
+	}
 	reader := bufio.NewReader(stream)
 	enc := json.NewEncoder(stream)
 
 	hello, err := readControl(reader)
 	if err != nil {
 		return nil, fmt.Errorf("read hello: %w", err)
+	}
+	if err := stream.SetReadDeadline(time.Time{}); err != nil {
+		return nil, fmt.Errorf("clear hello deadline: %w", err)
 	}
 	if hello.Type != MsgHello || hello.Version != ProtocolVersion {
 		return nil, errors.New("the peer speaks a different protocol")
@@ -193,7 +255,7 @@ func (s *Server) handshake(qc *quic.Conn) (*Conn, error) {
 		case reason == "":
 			reason = "the host denied the join"
 		}
-		_ = enc.Encode(ControlMessage{Type: MsgDenied, Reason: reason})
+		_ = writeControl(enc, stream, ControlMessage{Type: MsgDenied, Reason: reason})
 		time.Sleep(denialGrace)
 		return nil, fmt.Errorf("%w: %s", ErrDenied, reason)
 	}
@@ -206,7 +268,7 @@ func (s *Server) handshake(qc *quic.Conn) (*Conn, error) {
 		return nil, errors.New("the authenticator did not assign a member id")
 	}
 
-	if err := enc.Encode(ControlMessage{
+	if err := writeControl(enc, stream, ControlMessage{
 		Type:     MsgWelcome,
 		MemberID: memberID,
 		Services: decision.Services,

@@ -102,10 +102,18 @@ func readControl(r *bufio.Reader) (ControlMessage, error) {
 func (c *Conn) Send(msg ControlMessage) error {
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
-	if err := c.enc.Encode(msg); err != nil {
+	if err := writeControl(c.enc, c.control, msg); err != nil {
 		return fmt.Errorf("send control message: %w", err)
 	}
 	return nil
+}
+
+func writeControl(enc *json.Encoder, stream *quic.Stream, msg ControlMessage) error {
+	if err := stream.SetWriteDeadline(time.Now().Add(controlWriteTimeout)); err != nil {
+		return err
+	}
+	defer func() { _ = stream.SetWriteDeadline(time.Time{}) }()
+	return enc.Encode(msg)
 }
 
 // Messages delivers control messages from the peer until the connection ends.
