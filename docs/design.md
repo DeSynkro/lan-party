@@ -296,6 +296,7 @@ Minecraft server is still an offline-mode Minecraft server.
 ```
 Group {
   id, name, role (host|friend), createdAt, hostName
+  publicAddress, appPort // host groups: optional overrides; empty/0 uses Settings
   endpoint              // friend groups: public host:port
   services[]
   members[]
@@ -327,7 +328,9 @@ Invite {
 Settings {
   closeToTray, startOnLogin, startMinimised
   approveNewDevices
-  publicAddress          // host or host:port
+  publicAddress          // default host or host:port for groups without an override
+  appPort                // default local UDP port for groups without an override
+}
   appPort                // default 51820
 }
 ```

@@ -195,8 +195,9 @@ Check, in this order:
 
 ### The public address changed
 
-Update it in **Settings → Network**. Old invites still point at the old
-address; create new invites after the change.
+Update it in **Settings → Network defaults**, or in the group's own connection
+dialog. Old invites still point at the old address; create new invites after
+the change.
 
 ### A friend's port is already in use
 
@@ -225,9 +226,12 @@ group and create it again, then send a new invite.
 
 ### The app port is not 51820
 
-That is allowed. Set **App port** in Settings and forward that UDP port on the
-router. If the app port changes while a host session is live, end the session
-first.
+That is allowed. Set **App port** in **Settings → Network defaults**, or set a
+group-specific app port on the group screen. Forward that UDP port on the
+router. If the app port changes while a host session is live, the group dialog
+stops the session, saves, and restarts it after confirmation. Everyone
+disconnects briefly; update the router forward and, if the advertised endpoint
+changed, send new invites.
 
 ## Security notes
 

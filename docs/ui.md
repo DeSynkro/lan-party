@@ -91,8 +91,9 @@ defined in the stylesheet.
 
 - App bar: back, group name, help, settings.
 - Session panel: status dot and `Session live` / `Session off`, start/end
-  button, `Hosting as …`, public address (or an amber “no public address”
-  warning), app port, and a truthful connected count.
+  button, `Hosting as …`, public address with a `Default`/`Custom` tag (or an
+  amber “no public address” warning), app port, `Change` opening the group-only
+  connection dialog, and a truthful connected count.
 - Published: count, `Add service`, one card per service with the name, protocol,
   `Friends open 127.0.0.1:<ports>`, `Game server <address>` and the hint.
   Tapping a card opens details and Remove.
@@ -128,11 +129,13 @@ defined in the stylesheet.
   with the title. There is no `?` on individual settings; the description is
   always visible. Descriptions are smaller text under the title, not beside the
   tickbox.
-- Network: public address and app port, with a live preview of the endpoint
-  that will go into invites, a Save button and inline errors. The public
-  address is usually just a hostname or IP; a `:port` suffix is only for an
-  outside port that differs from the app port. The app port cannot change
-  while a host session is live.
+- Network defaults: public address and app port, with a live preview of the
+  endpoint that will go into invites, a Save button and inline errors. These are
+  the defaults for host groups without their own connection. The public address
+  is usually just a hostname or IP; a `:port` suffix is only for an outside port
+  that differs from the app port. A host group can override either value in its
+  own connection dialog; changing a live group's app port stops and restarts the
+  session after confirmation.
 - Security: Approve new devices.
 - About: version, data directory, key location.
 - Links to the setup guide.
