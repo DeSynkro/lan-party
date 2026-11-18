@@ -141,7 +141,8 @@ styles, desktop file and icon, downloads a pinned `appimagetool` into `.tools`,
 verifies its checksum and writes
 `dist/lan-party_<version>_linux_amd64.AppImage`.
 
-The AppImage currently uses the system GTK4 runtime. Bundling GTK is still a
+The AppImage currently uses the system GTK4 runtime. Release builds use Ubuntu
+24.04 for a conservative glibc and CPU-ISA baseline. Bundling GTK is still a
 separate packaging decision.
 
 ## Releases

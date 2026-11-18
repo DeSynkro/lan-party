@@ -3,6 +3,9 @@
 # bundling GTK is a separate packaging decision.
 set -euo pipefail
 
+# Keep the Go code at the baseline x86-64 level for older CPUs.
+export GOAMD64=v1
+
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${root}"
 
