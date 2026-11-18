@@ -35,8 +35,8 @@ func (f *FileStore) Get(service, user string) (string, error) {
 		}
 		return "", fmt.Errorf("stat key file: %w", err)
 	}
-	if perm := info.Mode().Perm(); perm&0o077 != 0 {
-		return "", fmt.Errorf("key file %s is readable by other users", path)
+	if err := checkKeyFile(path, info); err != nil {
+		return "", err
 	}
 
 	data, err := os.ReadFile(path)

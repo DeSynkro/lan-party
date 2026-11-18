@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -133,19 +134,21 @@ func TestNewStoresKeysAsOwnerOnlyFiles(t *testing.T) {
 	if len(entries) != 1 {
 		t.Fatalf("wrote %d key files, want 1", len(entries))
 	}
-	info, err := entries[0].Info()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Fatalf("key file mode is %o, want 600", perm)
-	}
-	dirInfo, err := os.Stat(keyDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if perm := dirInfo.Mode().Perm(); perm != 0o700 {
-		t.Fatalf("key directory mode is %o, want 700", perm)
+	if runtime.GOOS != "windows" {
+		info, err := entries[0].Info()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if perm := info.Mode().Perm(); perm != 0o600 {
+			t.Fatalf("key file mode is %o, want 600", perm)
+		}
+		dirInfo, err := os.Stat(keyDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if perm := dirInfo.Mode().Perm(); perm != 0o700 {
+			t.Fatalf("key directory mode is %o, want 700", perm)
+		}
 	}
 }
 

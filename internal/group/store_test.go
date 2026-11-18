@@ -3,6 +3,7 @@ package group
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -60,19 +61,21 @@ func TestStoreRoundTrip(t *testing.T) {
 		t.Fatalf("services = %+v", got[0].Services)
 	}
 
-	info, err := os.Stat(store.Path())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if mode := info.Mode().Perm(); mode != 0o600 {
-		t.Fatalf("file mode = %o", mode)
-	}
-	dir, err := os.Stat(filepath.Dir(store.Path()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if mode := dir.Mode().Perm(); mode != 0o700 {
-		t.Fatalf("dir mode = %o", mode)
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(store.Path())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if mode := info.Mode().Perm(); mode != 0o600 {
+			t.Fatalf("file mode = %o", mode)
+		}
+		dir, err := os.Stat(filepath.Dir(store.Path()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if mode := dir.Mode().Perm(); mode != 0o700 {
+			t.Fatalf("dir mode = %o", mode)
+		}
 	}
 }
 

@@ -3,6 +3,7 @@ package gtkui
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -19,7 +20,11 @@ func TestFindAssetRoot(t *testing.T) {
 		t.Fatalf("installed layout = %q, %v; want %q", got, ok, installed)
 	}
 
-	empty, err := os.MkdirTemp("/tmp", "lan-party-assets-empty-")
+	emptyBase := ""
+	if runtime.GOOS != "windows" {
+		emptyBase = "/tmp"
+	}
+	empty, err := os.MkdirTemp(emptyBase, "lan-party-assets-empty-")
 	if err != nil {
 		t.Fatal(err)
 	}

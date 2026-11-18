@@ -3,6 +3,7 @@ package secure
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -28,23 +29,28 @@ func TestFileStorePersistsWithOwnerOnlyFiles(t *testing.T) {
 		t.Fatal("the identity changed between loads")
 	}
 
-	info, err := os.Stat(kr.path(keyService, "host/group-1"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
-		t.Fatalf("key file mode is %o, want 600", perm)
-	}
-	dirInfo, err := os.Stat(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if perm := dirInfo.Mode().Perm(); perm != 0o700 {
-		t.Fatalf("key directory mode is %o, want 700", perm)
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(kr.path(keyService, "host/group-1"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if perm := info.Mode().Perm(); perm != 0o600 {
+			t.Fatalf("key file mode is %o, want 600", perm)
+		}
+		dirInfo, err := os.Stat(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if perm := dirInfo.Mode().Perm(); perm != 0o700 {
+			t.Fatalf("key directory mode is %o, want 700", perm)
+		}
 	}
 }
 
 func TestFileStoreRejectsLoosePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows uses profile ACLs, not Unix modes")
+	}
 	dir := filepath.Join(t.TempDir(), "keys")
 	kr := NewFileStore(dir)
 	if _, err := NewStore(kr).LoadOrCreate("device/group-1"); err != nil {

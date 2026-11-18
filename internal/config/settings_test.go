@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -55,19 +56,21 @@ func TestSettingsRoundTrip(t *testing.T) {
 		t.Fatalf("got %+v, want %+v", got, want)
 	}
 
-	info, err := os.Stat(filepath.Join(p.ConfigDir, "settings.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if mode := info.Mode().Perm(); mode != 0o600 {
-		t.Fatalf("file mode = %o", mode)
-	}
-	dir, err := os.Stat(p.ConfigDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if mode := dir.Mode().Perm(); mode != 0o700 {
-		t.Fatalf("dir mode = %o", mode)
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(filepath.Join(p.ConfigDir, "settings.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if mode := info.Mode().Perm(); mode != 0o600 {
+			t.Fatalf("file mode = %o", mode)
+		}
+		dir, err := os.Stat(p.ConfigDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if mode := dir.Mode().Perm(); mode != 0o700 {
+			t.Fatalf("dir mode = %o", mode)
+		}
 	}
 }
 
