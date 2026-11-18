@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/desynkro/lan-party/internal/autostart"
@@ -576,7 +575,7 @@ func (a *App) StartSession(groupID string) error {
 		if err == nil {
 			break
 		}
-		if !errors.Is(err, syscall.EADDRINUSE) || time.Now().After(deadline) {
+		if !isAddrInUse(err) || time.Now().After(deadline) {
 			return err
 		}
 		time.Sleep(100 * time.Millisecond)
