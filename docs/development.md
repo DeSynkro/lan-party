@@ -30,9 +30,9 @@ make build
 make appimage
 ```
 
-Building needs GTK4 development headers (`libgtk-4-dev` and
-`gobject-introspection` on Debian/Ubuntu), a C compiler and
-`pkg-config`. The first build also installs the Go version from
+Building needs GTK4 and GLib 2.84+ development headers (`libgtk-4-dev`,
+`libglib2.0-dev` and `gobject-introspection` on Debian/Ubuntu), a C compiler
+and `pkg-config`. The first build also installs the Go version from
 `.go-version` into `.tools/go`. `make env` prints the paths. Everything stays
 inside the project:
 
@@ -141,9 +141,10 @@ styles, desktop file and icon, downloads a pinned `appimagetool` into `.tools`,
 verifies its checksum and writes
 `dist/lan-party_<version>_linux_amd64.AppImage`.
 
-The AppImage currently uses the system GTK4 runtime. Release builds use Ubuntu
-24.04 for a conservative glibc and CPU-ISA baseline. Bundling GTK is still a
-separate packaging decision.
+The AppImage currently uses the system GTK4 runtime. Release builds use the
+Ubuntu 26.04 runner, which has the GLib 2.84+ headers required by gotk4.
+Bundling GTK and lowering the runtime GLib floor remain separate packaging
+decisions.
 
 ## Releases
 

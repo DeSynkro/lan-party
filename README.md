@@ -33,7 +33,7 @@ read [docs/guide.md](docs/guide.md).
 
 ## What it needs
 
-- Linux with X11 or Wayland and GTK4 (`libgtk-4`).
+- Linux with X11 or Wayland, GTK4 and GLib 2.84 or newer.
 - No keyring daemon: long-lived keys are owner-only files in the app's data
   folder.
 - One UDP port forwarded on the host's router. Friends do not need a forward.
@@ -49,9 +49,9 @@ make build     # binary in bin/
 make appimage  # Linux AppImage in dist/
 ```
 
-Building needs the GTK4 development headers (`libgtk-4-dev` and
-`gobject-introspection` on Debian/Ubuntu), a C compiler and
-`pkg-config`. The first run downloads the pinned Go toolchain
+Building needs GTK4 and GLib 2.84+ development headers (`libgtk-4-dev`,
+`libglib2.0-dev` and `gobject-introspection` on Debian/Ubuntu), a C compiler
+and `pkg-config`. The first run downloads the pinned Go toolchain
 into `.tools`. Build caches, the module cache and development config stay in
 `.cache` and `.tmp`; nothing is installed system-wide. Release builds use the
 system Go and the pinned `appimagetool`.
