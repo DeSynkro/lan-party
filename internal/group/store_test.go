@@ -157,3 +157,31 @@ func TestStoreLoadsGroupWithoutConnectionFields(t *testing.T) {
 		t.Fatalf("connection = %+v", groups[0])
 	}
 }
+
+func TestStoreKeepsInviteExpiry(t *testing.T) {
+	store := testStore(t)
+	want := CreateHostGroup("Friday Night", "Desynkro")
+	created := time.Now().UTC()
+	expires := created.Add(24 * time.Hour)
+	if err := want.AddInvite(Invite{
+		Name:      "Ash",
+		TokenHash: "hash",
+		CreatedAt: created,
+		ExpiresAt: expires,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Save([]Group{want}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || len(got[0].Invites) != 1 {
+		t.Fatalf("loaded = %+v", got)
+	}
+	if !got[0].Invites[0].ExpiresAt.Equal(expires) {
+		t.Fatalf("expiry = %v, want %v", got[0].Invites[0].ExpiresAt, expires)
+	}
+}
