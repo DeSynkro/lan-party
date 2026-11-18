@@ -598,3 +598,106 @@ func TestCreateInvitesAreUniqueForSameName(t *testing.T) {
 		t.Fatal("two invites for the same name produced the same token")
 	}
 }
+
+func TestEffectiveConnectionFallsBackToSettings(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := a.Settings()
+	s.PublicAddress = "home.example.net"
+	s.AppPort = 51820
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := a.EffectiveConnection(g.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.PublicAddress != "home.example.net" || got.AppPort != 51820 || got.Custom {
+		t.Fatalf("connection = %+v", got)
+	}
+}
+
+func TestEffectiveConnectionUsesGroupOverrides(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := a.Settings()
+	s.PublicAddress = "home.example.net"
+	s.AppPort = 51820
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := a.SetGroupConnection(g.ID, "group.example.net:40000", 41000); err != nil {
+		t.Fatal(err)
+	}
+	got, err := a.EffectiveConnection(g.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.PublicAddress != "group.example.net:40000" || got.AppPort != 41000 || !got.Custom {
+		t.Fatalf("connection = %+v", got)
+	}
+	endpoint, err := a.GroupEndpoint(g.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if endpoint != "group.example.net:40000" {
+		t.Fatalf("endpoint = %q", endpoint)
+	}
+	port, err := a.GroupAppPort(g.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if port != 41000 {
+		t.Fatalf("app port = %d", port)
+	}
+
+	if err := a.SetGroupConnection(g.ID, "", 0); err != nil {
+		t.Fatal(err)
+	}
+	got, err = a.EffectiveConnection(g.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.PublicAddress != "home.example.net" || got.AppPort != 51820 || got.Custom {
+		t.Fatalf("connection after clear = %+v", got)
+	}
+}
+
+func TestSetGroupConnectionValidates(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := a.SetGroupConnection(g.ID, "https://example.net", 51820); err == nil {
+		t.Fatal("a URL was accepted as a public address")
+	}
+	if err := a.SetGroupConnection(g.ID, "home.example.net", 70000); err == nil {
+		t.Fatal("an invalid app port was accepted")
+	}
+	if err := a.SetGroupConnection("missing", "home.example.net", 51820); err == nil {
+		t.Fatal("a missing group was accepted")
+	}
+
+	friend := group.CreateFriendGroup("Friday Night", "Desynkro", "home.example.net:51820", "pin", "self", "Ash", nil)
+	a.groups = append(a.groups, friend)
+	if err := a.SetGroupConnection(friend.ID, "home.example.net", 51820); err == nil {
+		t.Fatal("a friend group was changed")
+	}
+
+	if err := a.SetGroupConnection(g.ID, "group.example.net", 41000); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.SetGroupConnection(g.ID, "", 0); err != nil {
+		t.Fatal(err)
+	}
+}

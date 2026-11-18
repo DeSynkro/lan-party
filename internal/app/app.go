@@ -319,6 +319,108 @@ func (a *App) CurrentEndpoint() (string, error) {
 	return publicEndpoint(public, appPort)
 }
 
+// GroupConnection is a host group's effective connection values.
+type GroupConnection struct {
+	PublicAddress string
+	AppPort       int
+	Custom        bool
+}
+
+// ValidateConnection checks a group's optional public address and app port.
+func ValidateConnection(publicAddress string, appPort int) error {
+	if err := config.ValidateAddress(strings.TrimSpace(publicAddress)); err != nil {
+		return err
+	}
+	if appPort != 0 && (appPort < 1 || appPort > 65535) {
+		return errors.New("the app port must be between 1 and 65535")
+	}
+	return nil
+}
+
+// EffectiveConnection resolves a group's overrides against the saved defaults.
+func (a *App) EffectiveConnection(groupID string) (GroupConnection, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	idx := a.groupIndexLocked(groupID)
+	if idx < 0 {
+		return GroupConnection{}, errors.New("group not found")
+	}
+	g := a.groups[idx]
+	public, appPort := a.effectiveConnectionLocked(g)
+	return GroupConnection{
+		PublicAddress: public,
+		AppPort:       appPort,
+		Custom:        g.PublicAddress != "" || g.AppPort != 0,
+	}, nil
+}
+
+// GroupEndpoint resolves the endpoint friends use for this group.
+func (a *App) GroupEndpoint(groupID string) (string, error) {
+	connection, err := a.EffectiveConnection(groupID)
+	if err != nil {
+		return "", err
+	}
+	return publicEndpoint(connection.PublicAddress, connection.AppPort)
+}
+
+// GroupAppPort returns the UDP port the host listens on for this group.
+func (a *App) GroupAppPort(groupID string) (int, error) {
+	connection, err := a.EffectiveConnection(groupID)
+	if err != nil {
+		return 0, err
+	}
+	return connection.AppPort, nil
+}
+
+// SetGroupConnection saves a host group's optional connection overrides.
+// Empty address and appPort zero both mean "use the saved defaults".
+func (a *App) SetGroupConnection(groupID, publicAddress string, appPort int) error {
+	publicAddress = strings.TrimSpace(publicAddress)
+	if err := ValidateConnection(publicAddress, appPort); err != nil {
+		return err
+	}
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	idx := a.groupIndexLocked(groupID)
+	if idx < 0 {
+		return errors.New("group not found")
+	}
+	g := &a.groups[idx]
+	if !g.IsHost() {
+		return errors.New("only a hosted group can change its connection")
+	}
+	if a.host != nil && a.liveGroupID == groupID {
+		_, oldPort := a.effectiveConnectionLocked(*g)
+		newPort := appPort
+		if newPort == 0 {
+			newPort = a.settings.AppPort
+		}
+		if newPort != oldPort {
+			return errors.New("end the session before changing this group's app port")
+		}
+	}
+	g.PublicAddress = publicAddress
+	g.AppPort = appPort
+	return a.saveLocked()
+}
+
+// effectiveConnectionLocked applies the group override or the saved default.
+// Callers hold a.mu.
+func (a *App) effectiveConnectionLocked(g group.Group) (string, int) {
+	public := g.PublicAddress
+	if strings.TrimSpace(public) == "" {
+		public = a.settings.PublicAddress
+	}
+	appPort := g.AppPort
+	if appPort == 0 {
+		appPort = a.settings.AppPort
+	}
+	return public, appPort
+}
+
 // CreateInvite issues a one-time code for a named friend.
 func (a *App) CreateInvite(groupID, peerName string) (string, error) {
 	peerName = strings.TrimSpace(peerName)
