@@ -30,7 +30,7 @@ make build
 make appimage
 ```
 
-Building needs GTK4 and GLib 2.84+ development headers (`libgtk-4-dev`,
+Building needs GTK4 and GLib 2.72+ development headers (`libgtk-4-dev`,
 `libglib2.0-dev` and `gobject-introspection` on Debian/Ubuntu), a C compiler
 and `pkg-config`. The first build also installs the Go version from
 `.go-version` into `.tools/go`. `make env` prints the paths. Everything stays
@@ -142,16 +142,18 @@ verifies its checksum and writes
 `dist/lan-party_<version>_linux_amd64.AppImage`.
 
 The AppImage currently uses the system GTK4 runtime. It builds on every push
-to main and on tags; the artifact is retained for 14 days. Release builds use
-the Ubuntu 26.04 runner, which has the GLib 2.84+ headers required by gotk4.
-Bundling GTK and lowering the runtime GLib floor remain separate packaging
-decisions.
+to main and on tags; the artifact is retained for 14 days. Builds use the
+Ubuntu 22.04 runner and gotk4 v0.2.2, which sets the runtime floor at GTK 4.6,
+GLib 2.72, GLIBC_2.34 and the x86-64 baseline ISA. Each build is launched under
+Xvfb on that floor before it is uploaded. Bundling GTK remains a separate
+packaging decision.
 
 ## Releases
 
 CI runs vet, race tests, `govulncheck` and a binary build on every push. The
-Linux AppImage is built on a tag or by hand. A tag also creates a draft release
-with the AppImage and `SHA256SUMS`.
+Linux AppImage is built on every push to main, on tags and by hand, then smoke
+tested under Xvfb. A tag also creates a draft release with the AppImage and
+`SHA256SUMS`.
 
 Version strings come from `git describe` and are passed to
 `internal/buildinfo.Version` with `-ldflags`. Untagged builds say `dev`.

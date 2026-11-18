@@ -16,7 +16,9 @@ env:
 jobs:
   test:
     name: Build and test
-    runs-on: ubuntu-26.04
+    # Test on the oldest supported build baseline: Ubuntu 22.04 with GTK 4.6
+    # and GLib 2.72.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -27,6 +29,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libgtk-4-dev \
+            libglib2.0-dev \
+            libgirepository1.0-dev \
             gobject-introspection \
             pkg-config \
             libgl1-mesa-dev \
@@ -47,7 +51,7 @@ jobs:
 
   vuln:
     name: Security scan
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -58,6 +62,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libgtk-4-dev \
+            libglib2.0-dev \
+            libgirepository1.0-dev \
             gobject-introspection \
             pkg-config \
             libgl1-mesa-dev \
@@ -77,10 +83,10 @@ jobs:
     # Build for every main/tag push and manual run; PRs only run the checks.
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: [test, vuln]
-    # Ubuntu 26.04 provides the GLib 2.84+ headers required by gotk4.
-    # Pin the image explicitly so a rolling ubuntu-latest migration cannot
-    # move the build onto an older GLib.
-    runs-on: ubuntu-26.04
+    # Ubuntu 22.04 keeps the AppImage floor low: GTK 4.6, GLib 2.72,
+    # GLIBC_2.34 and x86-64-baseline. Pin the image explicitly so a rolling
+    # ubuntu-latest migration cannot raise that floor.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -91,22 +97,48 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libgtk-4-dev \
+            libglib2.0-dev \
+            libgirepository1.0-dev \
             gobject-introspection \
             pkg-config \
             libgl1-mesa-dev \
             libwayland-dev \
             libxkbcommon-dev \
             wayland-protocols \
-            xorg-dev
+            xorg-dev \
+            xvfb
       - name: Build AppImage
         run: |
           set -euo pipefail
-          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ] || [ "${GITHUB_REF_TYPE}" = "branch" ]; then
             version="dev-${GITHUB_SHA::7}"
           else
             version="${GITHUB_REF_NAME#v}"
           fi
           VERSION="${version}" ./build/appimage.sh
+      - name: Smoke test AppImage
+        run: |
+          set -euo pipefail
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          export GDK_BACKEND=x11
+          export LIBGL_ALWAYS_SOFTWARE=1
+          export GSK_RENDERER=cairo
+          export XDG_CONFIG_HOME="$(mktemp -d)"
+          export XDG_DATA_HOME="$(mktemp -d)"
+          export XDG_CACHE_HOME="$(mktemp -d)"
+          appimage="$(ls dist/*.AppImage | head -1)"
+          xvfb-run -a bash -c '
+            "$0" >/tmp/appimage.log 2>&1 &
+            pid=$!
+            sleep 5
+            if ! kill -0 "$pid" 2>/dev/null; then
+              echo "AppImage exited during startup" >&2
+              cat /tmp/appimage.log
+              exit 1
+            fi
+            kill "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+          ' "$appimage"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: linux-appimage
@@ -118,7 +150,7 @@ jobs:
     name: Release
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [test, vuln, linux]
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
