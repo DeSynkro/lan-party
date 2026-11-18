@@ -4,7 +4,7 @@ package gtkui
 
 import "path/filepath"
 
-// trayIconPath is the PNG the Linux panel accepts.
+// trayIconPath is the higher-resolution PNG the Linux panel accepts.
 func trayIconPath(root string) string {
-	return filepath.Join(root, "brand", "png", "tray-icon-color-24.png")
+	return filepath.Join(root, "brand", "png", "tray-icon-color-64.png")
 }
