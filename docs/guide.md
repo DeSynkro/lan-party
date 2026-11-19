@@ -84,6 +84,10 @@ router's WAN/status page, or a dynamic DNS name you control. A hostname is the
 better choice because it survives an address change. The settings screen shows
 the exact endpoint that will go into invites under the fields.
 
+Changing these defaults cancels open invites for groups that use them. Create
+new invites after the change. A group with its own connection keeps its invites
+unless its effective endpoint also changes.
+
 If the router's WAN address is different from the public address your ISP gives
 you, you may be behind carrier-grade NAT. In that case a direct connection will
 not work. This version has no relay, so there is no workaround inside the app.
@@ -103,9 +107,9 @@ include an outside port, just like the default. The app port is the UDP port on
 this PC.
 
 Changing the app port while the session is live restarts it. Everyone
-disconnects briefly. If the advertised endpoint changes, create new invites
-after the restart. If it stays the same, update your router forward to the new
-local port.
+disconnects briefly. If the advertised endpoint changes, open invites are
+cancelled; create new invites after the restart. If it stays the same, update
+your router forward to the new local port.
 
 ### 4. Start the session and send an invite
 
@@ -196,8 +200,8 @@ Check, in this order:
 ### The public address changed
 
 Update it in **Settings → Network defaults**, or in the group's own connection
-dialog. Old invites still point at the old address; create new invites after
-the change.
+dialog. Open invites that used the old endpoint are cancelled; create new
+invites after the change.
 
 ### A friend's port is already in use
 
