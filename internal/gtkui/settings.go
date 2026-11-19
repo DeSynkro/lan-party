@@ -154,6 +154,20 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	networkCard.Append(save)
 	page.Append(networkCard)
 
+	connection := textLabel("Connection", "section")
+	connection.SetMarginTop(18)
+	connection.SetMarginBottom(8)
+	page.Append(connection)
+	page.Append(u.settingCard(
+		"Reconnect automatically",
+		"Retry for up to 30 minutes when a friend connection drops.",
+		settings.AutoReconnect,
+		func(v bool) error {
+			return saveSetting(func(s *config.Settings) { s.AutoReconnect = v })
+		},
+		feedback,
+	))
+
 	security := textLabel("Security", "section")
 	security.SetMarginTop(18)
 	security.SetMarginBottom(8)

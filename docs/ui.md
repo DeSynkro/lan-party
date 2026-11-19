@@ -109,9 +109,10 @@ defined in the stylesheet.
 ### Friend group
 
 - App bar: back, group name, help, settings.
-- Status panel: `Host live` / `Host offline`, hosted-by line, RTT, a note when
-  the host removed the device or the connection ended, and a
-  Disconnect/Reconnect button.
+- Status panel: `Host live` / `Reconnecting` / `Host offline`, hosted-by line,
+  RTT, a note when the host removed the device or the connection ended, the
+  next retry while reconnecting, and a Disconnect/Reconnect now/Reconnect
+  button.
 - Ready to play: one card per service. Each address is `127.0.0.1:<port>` with
   Copy; multi-port services list each address; a local port that fell back from
   the published port says so. The host's hint is shown under the address.
@@ -136,6 +137,8 @@ defined in the stylesheet.
   that differs from the app port. A host group can override either value in its
   own connection dialog; changing a live group's app port stops and restarts the
   session after confirmation.
+- Connection: Reconnect automatically, on by default. It retries a dropped
+  friend connection for up to 30 minutes.
 - Security: Approve new devices.
 - About: version, data directory, key location.
 - Links to the setup guide.
@@ -174,8 +177,10 @@ cannot be reached without a relay, which this version does not have.
 
 - `Live` means a QUIC connection is up. No invented reachability counts.
 - The friend screen says `Host offline`, not `Connected`, when the host is
-  unreachable.
+  unreachable. While retrying it says `Reconnecting`.
 - The friend screen says `Host live` only after the connection is established.
+- Auto-reconnect stops after 30 minutes or when the host revokes the device.
+  The stopped message says so and keeps Reconnect available.
 - An invite that is redeemed or expired is not offered for copying.
 - A code is only shown again while the app is running; after a restart it is
   gone, and the host creates a new one.

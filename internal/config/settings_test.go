@@ -26,6 +26,9 @@ func TestSettingsDefaults(t *testing.T) {
 	if !s.CloseToTray {
 		t.Fatal("CloseToTray should be on by default")
 	}
+	if !s.AutoReconnect {
+		t.Fatal("AutoReconnect should be on by default")
+	}
 }
 
 func TestLoadSettingsMissingFile(t *testing.T) {
@@ -44,6 +47,7 @@ func TestSettingsRoundTrip(t *testing.T) {
 	want.PublicAddress = "home.example.net:40000"
 	want.StartMinimised = true
 	want.CloseToTray = true
+	want.AutoReconnect = false
 
 	if err := SaveSettings(p, want); err != nil {
 		t.Fatal(err)

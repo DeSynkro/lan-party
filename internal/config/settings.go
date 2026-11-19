@@ -21,6 +21,7 @@ type Settings struct {
 	CloseToTray       bool   `json:"closeToTray"`
 	StartOnLogin      bool   `json:"startOnLogin"`
 	StartMinimised    bool   `json:"startMinimised"`
+	AutoReconnect     bool   `json:"autoReconnect"`
 	ApproveNewDevices bool   `json:"approveNewDevices"`
 	PublicAddress     string `json:"publicAddress"`
 	AppPort           int    `json:"appPort"`
@@ -30,6 +31,7 @@ type Settings struct {
 func DefaultSettings() Settings {
 	return Settings{
 		CloseToTray:       true,
+		AutoReconnect:     true,
 		ApproveNewDevices: true,
 		AppPort:           DefaultAppPort,
 	}

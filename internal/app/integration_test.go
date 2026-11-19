@@ -247,3 +247,64 @@ func TestFriendReconnectAfterDisconnectAndHostRestart(t *testing.T) {
 	reconnectCancel()
 	waitFor(t, 3*time.Second, func() bool { return friend.FriendPresence().Live })
 }
+
+func TestFriendAutoReconnectsAfterHostRestart(t *testing.T) {
+	host := newTestApp(t)
+	friend := newTestApp(t)
+
+	appPort := freeUDPPort(t)
+	g, err := host.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings := host.Settings()
+	settings.PublicAddress = net.JoinHostPort("127.0.0.1", strconv.Itoa(appPort))
+	settings.AppPort = appPort
+	if err := host.SaveSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+	if err := host.StartSession(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = host.StopSession() })
+
+	code, err := host.CreateInvite(g.ID, "Ash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	joined := make(chan error, 1)
+	go func() {
+		_, err := friend.JoinInvite(ctx, code, "ash-pc")
+		joined <- err
+	}()
+
+	var approval *Approval
+	waitFor(t, 3*time.Second, func() bool {
+		approval = host.Approval()
+		return approval != nil
+	})
+	if !host.ResolveApproval(approval.ID, true) {
+		t.Fatal("could not approve the device")
+	}
+	if err := <-joined; err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, 3*time.Second, func() bool { return friend.FriendPresence().Live })
+	fg := friend.Groups()[0]
+
+	if err := host.StopSession(); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, 3*time.Second, func() bool { return !friend.FriendPresence().Live })
+
+	if err := host.StartSession(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, 8*time.Second, func() bool { return friend.FriendPresence().Live })
+
+	if status := friend.ReconnectStatus(fg.ID); status.Active || status.Stopped {
+		t.Fatalf("reconnect status after success = %+v", status)
+	}
+}

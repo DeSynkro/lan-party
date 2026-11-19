@@ -10,6 +10,7 @@ import (
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 	"github.com/diamondburned/gotk4/pkg/pango"
 
+	apppkg "github.com/desynkro/lan-party/internal/app"
 	"github.com/desynkro/lan-party/internal/group"
 )
 
@@ -35,6 +36,7 @@ type groupLive struct {
 	friendDetail     *gtk.Label
 	friendHostDot    *gtk.Label
 	friendHostDetail *gtk.Label
+	friendAction     *gtk.Button
 }
 
 func (u *probeUI) buildGroupContent(g group.Group) (*gtk.Box, *groupLive) {
@@ -299,6 +301,7 @@ func (u *probeUI) hostInvites(g group.Group, state *groupLive) *gtk.Box {
 
 func (u *probeUI) friendSessionCard(g group.Group, showError func(error), state *groupLive) *gtk.Box {
 	presence := u.state.FriendPresence()
+	reconnect := u.state.ReconnectStatus(g.ID)
 	live := u.state.LiveGroupID() == g.ID && presence.Live
 	card := gtk.NewBox(gtk.OrientationVertical, 0)
 	card.AddCSSClass("card")
@@ -311,6 +314,8 @@ func (u *probeUI) friendSessionCard(g group.Group, showError func(error), state 
 	status := lineLabel("Host offline", "card-title")
 	if live {
 		status.SetText("Host live")
+	} else if reconnect.Active {
+		status.SetText("Reconnecting")
 	}
 	state.friendStatus = status
 	top.Append(status)
@@ -318,13 +323,18 @@ func (u *probeUI) friendSessionCard(g group.Group, showError func(error), state 
 	spacer.SetHExpand(true)
 	top.Append(spacer)
 
-	action := gtk.NewButtonWithLabel("Reconnect")
-	action.AddCSSClass("primary")
+	actionLabel := "Reconnect"
 	if live {
-		action.SetLabel("Disconnect")
+		actionLabel = "Disconnect"
+	} else if reconnect.Active {
+		actionLabel = "Reconnect now"
 	}
+	action := gtk.NewButtonWithLabel(actionLabel)
+	action.AddCSSClass("primary")
+	state.friendAction = action
 	action.ConnectClicked(func() {
-		if live {
+		presence := u.state.FriendPresence()
+		if u.state.LiveGroupID() == g.ID && presence.Live {
 			u.confirmDisconnect(g)
 			return
 		}
@@ -339,15 +349,31 @@ func (u *probeUI) friendSessionCard(g group.Group, showError func(error), state 
 	card.Append(gapBox(10))
 	card.Append(cardText("Hosted by "+g.HostName, "desc"))
 	detail := "Start the session on the host, then reconnect."
-	if live {
+	switch {
+	case live:
 		detail = presence.RTT.Round(time.Millisecond).String()
-	} else if note := u.state.FriendNote(); note != "" {
-		detail = note
+	case reconnect.Active:
+		detail = reconnectWaitText(reconnect)
+	case u.state.FriendNote() != "":
+		detail = u.state.FriendNote()
+	case reconnect.Stopped:
+		detail = "Auto-reconnect stopped. Reconnect when the host is back."
 	}
 	detailLabel := cardText(detail, "desc")
 	state.friendDetail = detailLabel
 	card.Append(detailLabel)
 	return card
+}
+
+func reconnectWaitText(status apppkg.ReconnectStatus) string {
+	if status.Next.IsZero() {
+		return "Trying now…"
+	}
+	remaining := time.Until(status.Next)
+	if remaining <= 0 {
+		return "Trying now…"
+	}
+	return "Next try in " + strconv.Itoa(int(remaining.Round(time.Second)/time.Second)) + "s."
 }
 
 func (u *probeUI) friendServices(g group.Group) *gtk.Box {
@@ -644,21 +670,39 @@ func (state *groupLive) refresh(u *probeUI, g group.Group) {
 	}
 
 	presence := u.state.FriendPresence()
+	reconnect := u.state.ReconnectStatus(g.ID)
 	live := u.state.LiveGroupID() == g.ID && presence.Live
 	setStatusDot(state.friendDot, live)
 	if state.friendStatus != nil {
-		if live {
+		switch {
+		case live:
 			state.friendStatus.SetText("Host live")
-		} else {
+		case reconnect.Active:
+			state.friendStatus.SetText("Reconnecting")
+		default:
 			state.friendStatus.SetText("Host offline")
+		}
+	}
+	if state.friendAction != nil {
+		switch {
+		case live:
+			state.friendAction.SetLabel("Disconnect")
+		case reconnect.Active:
+			state.friendAction.SetLabel("Reconnect now")
+		default:
+			state.friendAction.SetLabel("Reconnect")
 		}
 	}
 	if state.friendDetail != nil {
 		switch {
 		case live:
 			state.friendDetail.SetText(presence.RTT.Round(time.Millisecond).String())
+		case reconnect.Active:
+			state.friendDetail.SetText(reconnectWaitText(reconnect))
 		case u.state.FriendNote() != "":
 			state.friendDetail.SetText(u.state.FriendNote())
+		case reconnect.Stopped:
+			state.friendDetail.SetText("Auto-reconnect stopped. Reconnect when the host is back.")
 		default:
 			state.friendDetail.SetText("Start the session on the host, then reconnect.")
 		}

@@ -365,13 +365,15 @@ Screens:
   the address friends open. People with approval state and a device-details
   view. Invite rows with copy and expiry.
 - **Friend group.** Host status, then one card per published service with the
-  loopback address, a copy button and the game's hint. People shows the host and
-  you. Leave asks for confirmation.
+  loopback address, a copy button and the game's hint. A dropped connection is
+  retried automatically for up to 30 minutes unless the setting is off or the
+  host revoked the device. People shows the host and you. Leave asks for
+  confirmation.
 - **Settings.** Startup (close to tray on by default; unticking makes closing
   the window quit, start on login, start minimised),
   Network (public hostname or IP, optional outside port in the address, app
-  port, live endpoint preview), Security (approve new devices), About
-  (version, data location, key location).
+  port, live endpoint preview), Connection (reconnect automatically),
+  Security (approve new devices), About (version, data location, key location).
 - **How to Use.** Offline guide with Hosting, Joining, Problems and Security
   sections. It reads the real app port and the host's local address, so the
   port-forward line is concrete, e.g. “Forward UDP 51820 to 192.168.1.20”, with a

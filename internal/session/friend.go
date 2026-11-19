@@ -51,6 +51,7 @@ type Friend struct {
 	udpChans map[int]chan []byte
 	services []tunnel.ServiceInfo
 	note     string
+	revoked  bool
 }
 
 // Join opens the tunnel, waits for the host, and binds the published services.
@@ -106,6 +107,16 @@ func (f *Friend) Services() []tunnel.ServiceInfo {
 		out[i].Ports = append([]int(nil), svc.Ports...)
 	}
 	return out
+}
+
+// Done is closed when the friend session ends.
+func (f *Friend) Done() <-chan struct{} { return f.ctx.Done() }
+
+// Revoked reports whether the host removed this device.
+func (f *Friend) Revoked() bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.revoked
 }
 
 // Presence reports whether the host connection is still live.
@@ -237,6 +248,9 @@ func (f *Friend) control() {
 			case tunnel.MsgServices:
 				f.bind(msg.Services)
 			case tunnel.MsgRevoked:
+				f.mu.Lock()
+				f.revoked = true
+				f.mu.Unlock()
 				f.shutdown("the host removed this device")
 				return
 			case tunnel.MsgBye:

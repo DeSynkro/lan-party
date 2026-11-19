@@ -179,22 +179,9 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 		}
 
 		endpointChanges := oldErr == nil && (endpointErr != nil || endpoint != oldEndpoint)
-		after := "saving"
-		if restartNeeded {
-			after = "the restart"
-		}
-		switch {
-		case endpointChanges:
-			open := len(g.OpenInvites(time.Now()))
-			if open > 0 {
-				endpointNote.SetText("The advertised endpoint changes. This cancels " +
-					plural(open, "open invite") + ". Create new invites after " + after + ".")
-			} else {
-				endpointNote.SetText("The advertised endpoint changes. Invites sent earlier will stop working. Create new invites after " + after + ".")
-			}
-			endpointNote.SetVisible(true)
-		case portChanges:
-			endpointNote.SetText("The advertised address stays the same. Update your router forward to the new local port.")
+		open := len(g.OpenInvites(time.Now()))
+		if note := connectionEndpointNote(endpointChanges, portChanges, open, restartNeeded); note != "" {
+			endpointNote.SetText(note)
 			endpointNote.SetVisible(true)
 		}
 	}

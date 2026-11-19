@@ -37,6 +37,9 @@ type App struct {
 	pending     []*pendingApproval
 	inviteCodes map[string]string
 	limiter     *attemptLimiter
+
+	reconnectMu   sync.Mutex
+	autoReconnect *reconnectState
 }
 
 // New opens the stores and uses owner-only key files under the data dir.
@@ -139,7 +142,13 @@ func (a *App) SaveSettings(s config.Settings) error {
 		a.rollbackInvitesLocked(cancelled)
 		return err
 	}
+	wasAutoReconnect := a.settings.AutoReconnect
 	a.settings = s
+	if !s.AutoReconnect {
+		a.stopAutoReconnectLocked()
+	} else if !wasAutoReconnect && a.friend != nil && !a.friend.Presence().Live && a.liveGroupID != "" {
+		a.startAutoReconnectLocked(a.liveGroupID, time.Now())
+	}
 	return nil
 }
 
@@ -700,6 +709,10 @@ func (a *App) RemoveInvite(groupID, inviteID string) error {
 
 // StartSession opens the tunnel for a host group.
 func (a *App) StartSession(groupID string) error {
+	a.stopAutoReconnect()
+	a.reconnectMu.Lock()
+	defer a.reconnectMu.Unlock()
+
 	a.mu.Lock()
 	idx := a.groupIndexLocked(groupID)
 	if idx < 0 {
@@ -710,13 +723,26 @@ func (a *App) StartSession(groupID string) error {
 		a.mu.Unlock()
 		return errors.New("only a group you host can be started")
 	}
+	a.stopAutoReconnectLocked()
+	var stale *session.Friend
+	if a.friend != nil && !a.friend.Presence().Live {
+		stale = a.friend
+		a.friend = nil
+		a.liveGroupID = ""
+	}
 	if a.host != nil || a.friend != nil {
 		a.mu.Unlock()
+		if stale != nil {
+			_ = stale.Close()
+		}
 		return errors.New("a session is already running")
 	}
 	services := append([]group.Service(nil), a.groups[idx].Services...)
 	_, appPort := a.effectiveConnectionLocked(a.groups[idx])
 	a.mu.Unlock()
+	if stale != nil {
+		_ = stale.Close()
+	}
 
 	identity, ok, err := a.keys.Load("host/" + groupID)
 	if err != nil {
@@ -760,6 +786,7 @@ func (a *App) StartSession(groupID string) error {
 // StopSession closes whatever is running.
 func (a *App) StopSession() error {
 	a.mu.Lock()
+	a.stopAutoReconnectLocked()
 	host := a.host
 	friend := a.friend
 	a.host = nil
@@ -779,14 +806,28 @@ func (a *App) StopSession() error {
 
 // JoinInvite accepts a pasted code and waits for the host's approval.
 func (a *App) JoinInvite(ctx context.Context, code, deviceName string) (group.Group, error) {
+	a.stopAutoReconnect()
+	a.reconnectMu.Lock()
+	defer a.reconnectMu.Unlock()
+
 	inv, err := invite.Decode(code)
 	if err != nil {
 		return group.Group{}, err
 	}
 
 	a.mu.Lock()
+	a.stopAutoReconnectLocked()
+	var stale *session.Friend
+	if a.friend != nil && !a.friend.Presence().Live {
+		stale = a.friend
+		a.friend = nil
+		a.liveGroupID = ""
+	}
 	if a.host != nil || a.friend != nil {
 		a.mu.Unlock()
+		if stale != nil {
+			_ = stale.Close()
+		}
 		return group.Group{}, errors.New("end the current session first")
 	}
 	for _, g := range a.groups {
@@ -795,10 +836,16 @@ func (a *App) JoinInvite(ctx context.Context, code, deviceName string) (group.Gr
 		}
 		if g.HostGroupID == inv.GroupID || (g.HostGroupID == "" && g.HostPin == inv.HostPin) {
 			a.mu.Unlock()
+			if stale != nil {
+				_ = stale.Close()
+			}
 			return group.Group{}, errors.New("you have already joined this group")
 		}
 	}
 	a.mu.Unlock()
+	if stale != nil {
+		_ = stale.Close()
+	}
 
 	if strings.TrimSpace(deviceName) == "" {
 		deviceName = a.DeviceName()
@@ -845,30 +892,43 @@ func (a *App) JoinInvite(ctx context.Context, code, deviceName string) (group.Gr
 	a.friend = friend
 	a.liveGroupID = g.ID
 	a.mu.Unlock()
+	go a.watchFriend(friend, g.ID)
 	return cloneGroup(g), nil
 }
 
 // Reconnect reopens a saved friend group using the saved device key.
 func (a *App) Reconnect(ctx context.Context, groupID string) error {
+	a.stopAutoReconnect()
+	a.reconnectMu.Lock()
+	err := a.reconnect(ctx, groupID)
+	a.reconnectMu.Unlock()
+	if err != nil && ctx.Err() == nil && !isPermanentReconnect(err) {
+		a.startAutoReconnect(groupID, time.Now())
+	}
+	return err
+}
+
+// reconnect is the shared manual and automatic reconnect path.
+func (a *App) reconnect(ctx context.Context, groupID string) error {
 	a.mu.Lock()
 	idx := a.groupIndexLocked(groupID)
 	if idx < 0 {
 		a.mu.Unlock()
-		return errors.New("group not found")
+		return permanentReconnect(errors.New("group not found"))
 	}
 	if a.groups[idx].Role != group.RoleFriend {
 		a.mu.Unlock()
-		return errors.New("only a joined group can be reconnected")
+		return permanentReconnect(errors.New("only a joined group can be reconnected"))
 	}
 	if a.host != nil {
 		a.mu.Unlock()
-		return errors.New("a session is already running")
+		return permanentReconnect(errors.New("a session is already running"))
 	}
 	var stale *session.Friend
 	if a.friend != nil {
 		if a.friend.Presence().Live {
 			a.mu.Unlock()
-			return errors.New("a session is already running")
+			return permanentReconnect(errors.New("a session is already running"))
 		}
 		stale = a.friend
 		a.friend = nil
@@ -881,14 +941,14 @@ func (a *App) Reconnect(ctx context.Context, groupID string) error {
 	}
 
 	if g.HostGroupID == "" {
-		return errors.New("this joined group was saved by an older build; delete it and join again with a new invite")
+		return permanentReconnect(errors.New("this joined group was saved by an older build; delete it and join again with a new invite"))
 	}
 	identity, ok, err := a.keys.Load("device/" + g.HostGroupID)
 	if err != nil {
 		return err
 	}
 	if !ok {
-		return errors.New("the device key for this group is missing. If this group came from an older build, delete it and join again")
+		return permanentReconnect(errors.New("the device key for this group is missing. If this group came from an older build, delete it and join again"))
 	}
 
 	friend, err := session.Join(ctx, session.JoinConfig{
@@ -898,20 +958,32 @@ func (a *App) Reconnect(ctx context.Context, groupID string) error {
 		MemberID:   g.SelfID,
 	})
 	if err != nil {
+		if errors.Is(err, tunnel.ErrDenied) {
+			return permanentReconnect(err)
+		}
+		return err
+	}
+	if err := ctx.Err(); err != nil {
+		_ = friend.Close()
 		return err
 	}
 
 	a.mu.Lock()
+	if err := ctx.Err(); err != nil {
+		a.mu.Unlock()
+		_ = friend.Close()
+		return err
+	}
 	if a.host != nil || a.friend != nil {
 		a.mu.Unlock()
 		_ = friend.Close()
-		return errors.New("a session started while reconnecting")
+		return permanentReconnect(errors.New("a session started while reconnecting"))
 	}
 	idx = a.groupIndexLocked(groupID)
 	if idx < 0 {
 		a.mu.Unlock()
 		_ = friend.Close()
-		return errors.New("group not found")
+		return permanentReconnect(errors.New("group not found"))
 	}
 	a.groups[idx].SelfID = friend.MemberID
 	a.groups[idx].Services = friendServices(friend.Services())
@@ -923,6 +995,7 @@ func (a *App) Reconnect(ctx context.Context, groupID string) error {
 	a.friend = friend
 	a.liveGroupID = groupID
 	a.mu.Unlock()
+	go a.watchFriend(friend, groupID)
 	return nil
 }
 

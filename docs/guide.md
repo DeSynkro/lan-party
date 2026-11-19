@@ -151,9 +151,11 @@ invite. You can remove a device later from the People section.
 If the local port is already in use, the app tries the next port and shows the
 address it actually got. The host's published port does not change.
 
-The group stays saved. If the host goes offline, the screen says so and offers
-Reconnect. **Disconnect** ends the session but keeps the group. **Leave group**
-removes the saved group and its device key from your PC.
+The group stays saved. If the host goes offline, the screen says so and retries
+automatically for up to 30 minutes. **Reconnect** tries immediately and resets
+that timer. Turn the retries off in **Settings → Connection**. **Disconnect**
+ends the session but keeps the group. **Leave group** removes the saved group
+and its device key from your PC.
 
 ## Window and tray
 

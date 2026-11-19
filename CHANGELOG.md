@@ -7,11 +7,14 @@
 - Changing a live group's app port stops the session, saves, and restarts on
   the new port. The dialog warns that everyone disconnects briefly.
 - Invites now expire after 1 hour instead of 24 hours.
+- Friend connections retry automatically after a drop for up to 30 minutes;
+  this can be turned off in Settings.
 - Creating an invite starts the host session first when it is off; a session
   for another group blocks the invite instead of being ended silently.
 - New services default to `127.0.0.1`, accept `localhost`, and explain when to
   use a LAN IP instead.
 - Published services can be edited without removing and recreating them.
+- The endpoint-change warning only appears when an invite is open.
 
 ## 1.0.0 — 2026-11-18
 
