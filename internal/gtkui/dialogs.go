@@ -371,6 +371,20 @@ func (u *probeUI) showApprovalDialog(approval apppkg.Approval) {
 
 func (u *probeUI) showInviteDialog(g group.Group) {
 	win, content := u.dialog("Invite a friend")
+
+	liveID := u.state.LiveGroupID()
+	liveName := ""
+	if liveID != "" && liveID != g.ID {
+		if other, ok := u.state.Group(liveID); ok {
+			liveName = other.Name
+		}
+	}
+	sessionState := inviteDialogStateFor(liveID, g.ID, liveName)
+	if sessionState.Warning != "" {
+		content.Append(textLabel(sessionState.Warning, "warning"))
+		content.Append(gapBox(8))
+	}
+
 	content.Append(textLabel("Friend's name", "form-label"))
 	nameEntry := entry("Ash")
 	content.Append(nameEntry)
@@ -388,12 +402,20 @@ func (u *probeUI) showInviteDialog(g group.Group) {
 	cancel := gtk.NewButtonWithLabel("Cancel")
 	cancel.AddCSSClass("quiet")
 	cancel.ConnectClicked(func() { win.Close() })
-	create := gtk.NewButtonWithLabel("Create invite")
+	create := gtk.NewButtonWithLabel(sessionState.Action)
 	create.AddCSSClass("primary")
+	if sessionState.Blocked {
+		create.SetSensitive(false)
+	}
 	create.ConnectClicked(func() {
 		name := strings.TrimSpace(nameEntry.Text())
 		if name == "" {
 			errLabel.SetText("Give the invite a name.")
+			errLabel.SetVisible(true)
+			return
+		}
+		if err := ensureInviteSession(u.state, g.ID); err != nil {
+			errLabel.SetText(err.Error())
 			errLabel.SetVisible(true)
 			return
 		}
@@ -404,6 +426,7 @@ func (u *probeUI) showInviteDialog(g group.Group) {
 			return
 		}
 		win.Close()
+		u.showGroup(g.ID)
 		u.showInviteCodeDialog(g, name, code)
 	})
 	buttons.Append(cancel)

@@ -115,10 +115,11 @@ disconnects briefly. If the advertised endpoint changes, open invites are
 cancelled; create new invites after the restart. If it stays the same, update
 your router forward to the new local port.
 
-### 4. Start the session and send an invite
+### 4. Send an invite
 
-Click **Start session**. Then click **Invite**, enter the friend's name, and
-copy the code.
+Click **Invite**, enter the friend's name, and copy the code. If the session is
+off, the dialog starts it before creating the code. If another group's session
+is live, end that session first.
 
 The code is a single-use invite. It expires after 1 hour. Send it privately.
 Anyone who has it can try to redeem it, and the approval card is your chance to

@@ -155,7 +155,9 @@ cannot be reached without a relay, which this version does not have.
 - Create group: group name and your name.
 - Join: multi-line invite code and device name, then a waiting card while the
   host decides.
-- Invite: friend's name, then the full code with Copy.
+- Invite: when the session is off, a warning and `Start session and invite`
+  action; otherwise friend's name, then the full code with Copy. Another group's
+  live session blocks the action instead of switching sessions.
 - Publish a service: preset picker, name, protocol, game server IP, game server
   port(s), optional friend port, hint, and a live route preview. The IP starts
   at `127.0.0.1` with a visible helper showing this PC's LAN IP; Edit reuses
