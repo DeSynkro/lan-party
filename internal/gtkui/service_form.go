@@ -2,10 +2,34 @@ package gtkui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/desynkro/lan-party/internal/group"
 )
+
+func serviceFormValues(s group.Service) (ip, gamePorts, friendPort, hint string, err error) {
+	host, err := s.GameHost()
+	if err != nil {
+		return "", "", "", "", err
+	}
+	ports, err := s.GamePorts()
+	if err != nil {
+		return "", "", "", "", err
+	}
+	if len(ports) == 1 && len(s.Ports) == 1 && s.Ports[0] != ports[0] {
+		friendPort = strconv.Itoa(s.Ports[0])
+	}
+	return host, group.FormatPorts(ports), friendPort, s.Hint, nil
+}
+
+func serviceTargetHelpFor(ip string) string {
+	first := "Use 127.0.0.1 for a server or container on this PC."
+	if strings.TrimSpace(ip) == "" || ip == "this PC" {
+		return first + "\nFor another PC, use that PC's LAN IP."
+	}
+	return first + "\nFor another PC, use that PC's LAN IP (this PC: " + ip + ")."
+}
 
 func serviceWarningText(ip, gamePortsText, friendPortsText, proto string) string {
 	gamePorts, err := group.ParsePorts(gamePortsText)

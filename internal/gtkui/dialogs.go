@@ -462,7 +462,21 @@ func (u *probeUI) showInviteCodeDialog(g group.Group, name, code string) {
 }
 
 func (u *probeUI) showAddServiceDialog(g group.Group) {
-	win, content := u.dialog("Publish a service")
+	u.showServiceForm(g, nil)
+}
+
+func (u *probeUI) showEditServiceDialog(g group.Group, s group.Service) {
+	u.showServiceForm(g, &s)
+}
+
+func (u *probeUI) showServiceForm(g group.Group, existing *group.Service) {
+	title := "Publish a service"
+	actionLabel := "Publish"
+	if existing != nil {
+		title = "Edit service"
+		actionLabel = "Save changes"
+	}
+	win, content := u.dialog(title)
 	win.SetDefaultSize(360, 540)
 	content.Append(textLabel("Game preset", "form-label"))
 	presetArea := gtk.NewBox(gtk.OrientationVertical, 0)
@@ -504,9 +518,12 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 	content.Append(gapBox(8))
 
 	content.Append(textLabel("Game server IP", "form-label"))
-	ipEntry := entry("192.168.0.10")
-	ipEntry.SetTooltipText("The IP of the PC running the game. Use 127.0.0.1 if it runs on this PC.")
+	ipEntry := entry("127.0.0.1")
+	ipEntry.SetText("127.0.0.1")
+	ipEntry.SetTooltipText("The IP of the PC running the game. Use 127.0.0.1 for this PC, including containers.")
 	content.Append(ipEntry)
+	content.Append(gapBox(4))
+	content.Append(textLabel(serviceTargetHelpFor(localIPv4()), "help"))
 	content.Append(gapBox(8))
 
 	portRow := gtk.NewBox(gtk.OrientationHorizontal, 8)
@@ -598,13 +615,32 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 	presetMenu.SetPopover(presetPopover)
 	presetArea.Append(presetMenu)
 
+	var prefillErr error
+	if existing != nil {
+		nameEntry.SetText(existing.Name)
+		ip, gamePorts, friendPort, hint, err := serviceFormValues(*existing)
+		if err != nil {
+			prefillErr = err
+		} else {
+			ipEntry.SetText(ip)
+			gamePortsEntry.SetText(gamePorts)
+			friendPortsEntry.SetText(friendPort)
+			hintEntry.SetText(hint)
+			setProtocol(protoIndex(existing.Proto))
+		}
+	}
+
 	updatePreview()
+	if prefillErr != nil {
+		errLabel.SetText(prefillErr.Error())
+		errLabel.SetVisible(true)
+	}
 
 	buttons := gtk.NewBox(gtk.OrientationHorizontal, 8)
 	cancel := gtk.NewButtonWithLabel("Cancel")
 	cancel.AddCSSClass("quiet")
 	cancel.ConnectClicked(func() { win.Close() })
-	add := gtk.NewButtonWithLabel("Publish")
+	add := gtk.NewButtonWithLabel(actionLabel)
 	add.AddCSSClass("primary")
 	add.ConnectClicked(func() {
 		gamePorts, err := group.ParsePorts(gamePortsEntry.Text())
@@ -628,15 +664,21 @@ func (u *probeUI) showAddServiceDialog(g group.Group) {
 			errLabel.SetVisible(true)
 			return
 		}
-		s := group.Service{
-			ID:     group.NewID(),
+		service := group.Service{
 			Name:   strings.TrimSpace(nameEntry.Text()),
 			Proto:  protoValue(selectedProtocol),
 			Target: target,
 			Ports:  ports,
 			Hint:   strings.TrimSpace(hintEntry.Text()),
 		}
-		if err := u.state.AddService(g.ID, s); err != nil {
+		if existing != nil {
+			service.ID = existing.ID
+			err = u.state.UpdateService(g.ID, service)
+		} else {
+			service.ID = group.NewID()
+			err = u.state.AddService(g.ID, service)
+		}
+		if err != nil {
 			errLabel.SetText(err.Error())
 			errLabel.SetVisible(true)
 			return
@@ -770,8 +812,15 @@ func (u *probeUI) showServiceDialog(g group.Group, s group.Service) {
 		win.Close()
 		u.showGroup(g.ID)
 	})
+	edit := gtk.NewButtonWithLabel("Edit")
+	edit.AddCSSClass("primary")
+	edit.ConnectClicked(func() {
+		win.Close()
+		u.showEditServiceDialog(g, s)
+	})
 	buttons.Append(cancel)
 	buttons.Append(remove)
+	buttons.Append(edit)
 	buttons.SetHAlign(gtk.AlignEnd)
 	content.Append(buttons)
 	win.Present()

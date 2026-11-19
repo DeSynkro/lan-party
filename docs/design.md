@@ -123,7 +123,8 @@ certificate does not change the pin.
 
 A service has a name, a protocol (TCP, UDP or both), a LAN target and one or
 more ports friends see. The target is an IP literal; hostnames are not resolved
-on the host's behalf.
+on the host's behalf. `localhost` is accepted as an alias for `127.0.0.1` and
+stored in that form.
 
 - If the target is written as `192.168.1.50` and the service publishes ports
   `2456-2458`, friend port `p` goes to `192.168.1.50:p`. This covers games like
@@ -138,6 +139,10 @@ Validation rejects wildcard, multicast and broadcast targets, warns about
 loopback targets (a game server on the same PC is fine) and warns about
 administrative ports such as 22, 3389 and 445. The host can still choose them;
 the warning is not a silent block.
+
+A published service can be edited in place. The service keeps its id, the
+updated target and ports are validated against the other services, and a live
+session receives the new list immediately.
 
 ### TCP
 

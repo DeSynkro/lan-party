@@ -3,6 +3,8 @@ package gtkui
 import (
 	"strings"
 	"testing"
+
+	"github.com/desynkro/lan-party/internal/group"
 )
 
 func TestServiceWarningText(t *testing.T) {
@@ -85,5 +87,65 @@ func TestServiceRoutePreview(t *testing.T) {
 				t.Fatalf("preview accepted invalid input: %q", got)
 			}
 		})
+	}
+}
+
+func TestServiceFormValues(t *testing.T) {
+	cases := []struct {
+		name       string
+		service    group.Service
+		wantIP     string
+		wantGame   string
+		wantFriend string
+	}{
+		{
+			name:     "same port",
+			service:  group.Service{Target: "192.168.1.50", Ports: []int{25565}},
+			wantIP:   "192.168.1.50",
+			wantGame: "25565",
+		},
+		{
+			name:       "remapped port",
+			service:    group.Service{Target: "192.168.1.50:25566", Ports: []int{25565}},
+			wantIP:     "192.168.1.50",
+			wantGame:   "25566",
+			wantFriend: "25565",
+		},
+		{
+			name:     "range",
+			service:  group.Service{Target: "192.168.1.50", Ports: []int{2456, 2457, 2458}},
+			wantIP:   "192.168.1.50",
+			wantGame: "2456-2458",
+		},
+		{
+			name:     "localhost",
+			service:  group.Service{Target: "localhost", Ports: []int{25565}},
+			wantIP:   "127.0.0.1",
+			wantGame: "25565",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ip, game, friend, _, err := serviceFormValues(tc.service)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ip != tc.wantIP || game != tc.wantGame || friend != tc.wantFriend {
+				t.Fatalf("serviceFormValues = %q, %q, %q; want %q, %q, %q", ip, game, friend, tc.wantIP, tc.wantGame, tc.wantFriend)
+			}
+		})
+	}
+	if _, _, _, _, err := serviceFormValues(group.Service{Target: "example.com", Ports: []int{25565}}); err == nil {
+		t.Fatal("an invalid target was accepted")
+	}
+}
+
+func TestServiceTargetHelpFor(t *testing.T) {
+	got := serviceTargetHelpFor("192.168.1.50")
+	if !strings.Contains(got, "Use 127.0.0.1") || !strings.Contains(got, "192.168.1.50") {
+		t.Fatalf("help = %q", got)
+	}
+	if strings.Contains(serviceTargetHelpFor("this PC"), "this PC: this PC") {
+		t.Fatal("the fallback host was repeated")
 	}
 }

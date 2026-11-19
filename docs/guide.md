@@ -23,9 +23,10 @@ Open the app, create a group, then choose **Add service**.
 - **Name:** what the game is called, for example `Minecraft: Java Edition`.
 - **Protocol:** TCP, UDP or both. Check the game's own documentation; most
   survival games use UDP, Minecraft Java and Terraria use TCP.
-- **Game server IP:** the IP of the machine running the server, for example
-  `192.168.1.50`. A name is not accepted; use the IP. If the server runs on the
-  same PC as LAN Party, `127.0.0.1` works.
+- **Game server IP:** the IP of the machine running the server. New services
+  default to `127.0.0.1`, which is right for a server or container on the same
+  PC; `localhost` is accepted as an alias. For a server on another PC, use that
+  PC's LAN IP. Names other than `localhost` are not accepted.
 - **Game server port(s):** the port or ports the game listens on, for example
   `25565`, `2456-2458` or `2456,2600,2610`.
 - **Friend port (optional):** the local port friends use. Leave it blank to use
@@ -34,6 +35,9 @@ Open the app, create a group, then choose **Add service**.
   `25565`.
 - **Hint:** what to paste the address into, for example
   `Direct Connect in Minecraft`.
+
+Published services can be edited from their details; **Edit** reopens this form
+with the current values.
 
 A blank friend port maps every game port to the same number on the friend's PC.
 That covers a range such as Valheim's `2456-2458` and a non-adjacent list such

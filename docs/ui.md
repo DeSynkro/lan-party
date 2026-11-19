@@ -96,7 +96,7 @@ defined in the stylesheet.
   connection dialog, and a truthful connected count.
 - Published: count, `Add service`, one card per service with the name, protocol,
   `Friends open 127.0.0.1:<ports>`, `Game server <address>` and the hint.
-  Tapping a card opens details and Remove.
+  Tapping a card opens details with Edit and Remove.
 - People: count, `Invite`, a `You (host)` row and one row per member. A live dot
   and RTT come from the actual session; idle members are grey. Tapping a member
   opens the host-only details.
@@ -157,10 +157,11 @@ cannot be reached without a relay, which this version does not have.
   host decides.
 - Invite: friend's name, then the full code with Copy.
 - Publish a service: preset picker, name, protocol, game server IP, game server
-  port(s), optional friend port, hint, and a live route preview. Inline
-  validation; a friend port is only valid with a single game port, and a game
-  port range needs the friend port left blank. Loopback targets and
-  administrative ports show a non-blocking warning.
+  port(s), optional friend port, hint, and a live route preview. The IP starts
+  at `127.0.0.1` with a visible helper showing this PC's LAN IP; Edit reuses
+  the form prefilled. Inline validation; a friend port is only valid with a
+  single game port, and a game port range needs the friend port left blank.
+  Loopback targets and administrative ports show a non-blocking warning.
 - Device approval: friend, device, address, key fingerprint, Allow/Deny. It
   appears wherever the host is in the app and brings the window forward.
 - Confirmations for delete group, leave group, end session, disconnect, remove

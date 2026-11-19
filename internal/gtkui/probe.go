@@ -119,6 +119,11 @@ func runUI(argv []string, defaultAppID string, preview bool) int {
 					ui.showGroup(g.ID)
 					ui.showServiceDialog(g, g.Services[0])
 				}
+			case strings.HasPrefix(screen, "service-edit:"):
+				if g, ok := ui.state.Group(strings.TrimPrefix(screen, "service-edit:")); ok && len(g.Services) > 0 {
+					ui.showGroup(g.ID)
+					ui.showEditServiceDialog(g, g.Services[0])
+				}
 			case strings.HasPrefix(screen, "connection:"):
 				if g, ok := ui.state.Group(strings.TrimPrefix(screen, "connection:")); ok {
 					ui.showGroup(g.ID)
