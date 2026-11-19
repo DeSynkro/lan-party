@@ -819,14 +819,14 @@ func (a *App) StopSession() error {
 
 // JoinInvite accepts a pasted code and waits for the host's approval.
 func (a *App) JoinInvite(ctx context.Context, code, deviceName string) (group.Group, error) {
-	a.stopAutoReconnect()
-	a.reconnectMu.Lock()
-	defer a.reconnectMu.Unlock()
-
 	inv, err := invite.Decode(code)
 	if err != nil {
 		return group.Group{}, err
 	}
+
+	a.stopAutoReconnect()
+	a.reconnectMu.Lock()
+	defer a.reconnectMu.Unlock()
 
 	a.mu.Lock()
 	a.stopAutoReconnectLocked()
