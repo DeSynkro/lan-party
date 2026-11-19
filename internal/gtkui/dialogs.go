@@ -414,12 +414,7 @@ func (u *probeUI) showInviteDialog(g group.Group) {
 			errLabel.SetVisible(true)
 			return
 		}
-		if err := ensureInviteSession(u.state, g.ID); err != nil {
-			errLabel.SetText(err.Error())
-			errLabel.SetVisible(true)
-			return
-		}
-		code, err := u.state.CreateInvite(g.ID, name)
+		code, err := u.createInvite(g, name)
 		if err != nil {
 			errLabel.SetText(err.Error())
 			errLabel.SetVisible(true)

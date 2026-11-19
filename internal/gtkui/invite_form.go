@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	apppkg "github.com/desynkro/lan-party/internal/app"
+	"github.com/desynkro/lan-party/internal/group"
 )
 
 type inviteDialogState struct {
@@ -48,4 +49,11 @@ func ensureInviteSession(state *apppkg.App, groupID string) error {
 		return fmt.Errorf("the session for %s is live; end it before inviting from this group", name)
 	}
 	return state.StartSession(groupID)
+}
+
+func (u *probeUI) createInvite(g group.Group, name string) (string, error) {
+	if err := ensureInviteSession(u.state, g.ID); err != nil {
+		return "", err
+	}
+	return u.state.CreateInvite(g.ID, name)
 }

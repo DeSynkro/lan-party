@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -110,6 +111,20 @@ func (h *Host) UpdateServices(services []group.Service) error {
 		p.dropUDP(index.hasUDP)
 	}
 	return nil
+}
+
+// Services returns the services currently published by the host.
+func (h *Host) Services() []group.Service {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	out := make([]group.Service, 0, len(h.services.byID))
+	for _, service := range h.services.byID {
+		service.Ports = append([]int(nil), service.Ports...)
+		out = append(out, service)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	return out
 }
 
 // Presence returns the live state of every connected member.

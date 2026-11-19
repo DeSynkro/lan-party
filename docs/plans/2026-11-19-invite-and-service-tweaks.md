@@ -47,7 +47,9 @@ Make hosting less error-prone and publishing local game servers easier:
   hint filled in.
 - Keep the service ID.
 - Re-check port conflicts against the other services, not the service itself.
-- A live session receives the updated service list immediately.
+- A live session for this group receives the updated service list immediately.
+  Editing a service in a different, non-live group must not touch the running
+  session.
 - A failed save leaves the stored service unchanged.
 
 ## Not in scope

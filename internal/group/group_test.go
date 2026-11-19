@@ -56,6 +56,12 @@ func TestUpdateService(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	renamed := minecraft
+	renamed.Name = "Minecraft Renamed"
+	if err := g.UpdateService(renamed); err != nil {
+		t.Fatalf("an unchanged-port edit was rejected: %v", err)
+	}
+
 	updated := minecraft
 	updated.Name = "Minecraft Modded"
 	updated.Target = "localhost"

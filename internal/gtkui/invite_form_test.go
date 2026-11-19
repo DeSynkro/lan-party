@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	apppkg "github.com/desynkro/lan-party/internal/app"
 	"github.com/desynkro/lan-party/internal/config"
@@ -83,6 +84,41 @@ func TestEnsureInviteSessionStartsThisGroupOnly(t *testing.T) {
 	}
 	if got := state.LiveGroupID(); got != first.ID {
 		t.Fatalf("live group changed to %q", got)
+	}
+}
+
+func TestCreateInviteDoesNotCreateWhenSessionStartFails(t *testing.T) {
+	state := newInviteTestApp(t)
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+
+	settings := state.Settings()
+	settings.PublicAddress = "home.example.net"
+	settings.AppPort = conn.LocalAddr().(*net.UDPAddr).Port
+	if err := state.SaveSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+	g, err := state.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	u := &probeUI{state: state}
+	if _, err := u.createInvite(g, "Ash"); err == nil {
+		t.Fatal("an invite was created without a session")
+	}
+	if got := state.LiveGroupID(); got != "" {
+		t.Fatalf("live group = %q, want no session", got)
+	}
+	saved, ok := state.Group(g.ID)
+	if !ok {
+		t.Fatal("group disappeared")
+	}
+	if len(saved.OpenInvites(time.Now())) != 0 {
+		t.Fatal("an invite was created after the session start failed")
 	}
 }
 

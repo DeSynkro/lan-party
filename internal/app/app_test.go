@@ -1240,6 +1240,7 @@ func TestUpdateServiceRestoresOnSaveFailure(t *testing.T) {
 	}
 	updated := original
 	updated.Name = "Changed"
+	updated.Ports = []int{25566}
 	if err := a.UpdateService(g.ID, updated); err == nil {
 		t.Fatal("a failed save was not reported")
 	}
@@ -1248,7 +1249,69 @@ func TestUpdateServiceRestoresOnSaveFailure(t *testing.T) {
 		t.Fatal("group disappeared")
 	}
 	got, ok := saved.FindService("mc")
-	if !ok || got.Name != "Minecraft" {
+	if !ok || got.Name != "Minecraft" || len(got.Ports) != 1 || got.Ports[0] != 25565 {
 		t.Fatalf("a failed save changed the service: %+v", got)
 	}
+}
+
+func TestServiceChangesOnlyUpdateTheLiveGroup(t *testing.T) {
+	a := newTestApp(t)
+	settings := a.Settings()
+	settings.AppPort = freeUDPPort(t)
+	if err := a.SaveSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+	live, err := a.CreateGroup("Live", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	idle, err := a.CreateGroup("Idle", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	liveService := group.Service{ID: "live", Name: "Live Service", Proto: "tcp", Target: "127.0.0.1", Ports: []int{25565}}
+	idleService := group.Service{ID: "idle", Name: "Idle Service", Proto: "tcp", Target: "127.0.0.1", Ports: []int{25566}}
+	if err := a.AddService(live.ID, liveService); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.AddService(idle.ID, idleService); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.StartSession(live.ID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = a.StopSession() })
+
+	a.mu.Lock()
+	host := a.host
+	a.mu.Unlock()
+	if host == nil {
+		t.Fatal("the live host is missing")
+	}
+	checkLiveServices := func(label string) {
+		t.Helper()
+		services := host.Services()
+		if len(services) != 1 || services[0].ID != "live" {
+			t.Fatalf("%s: live services = %+v", label, services)
+		}
+	}
+	checkLiveServices("before idle changes")
+
+	updated := idleService
+	updated.Name = "Idle Updated"
+	updated.Ports = []int{25567}
+	if err := a.UpdateService(idle.ID, updated); err != nil {
+		t.Fatal(err)
+	}
+	checkLiveServices("after an idle update")
+
+	if err := a.AddService(idle.ID, group.Service{ID: "idle2", Name: "Idle Two", Proto: "tcp", Target: "127.0.0.1", Ports: []int{25568}}); err != nil {
+		t.Fatal(err)
+	}
+	checkLiveServices("after an idle add")
+
+	if err := a.RemoveService(idle.ID, "idle2"); err != nil {
+		t.Fatal(err)
+	}
+	checkLiveServices("after an idle remove")
 }

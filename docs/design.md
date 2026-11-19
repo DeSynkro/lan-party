@@ -141,8 +141,9 @@ administrative ports such as 22, 3389 and 445. The host can still choose them;
 the warning is not a silent block.
 
 A published service can be edited in place. The service keeps its id, the
-updated target and ports are validated against the other services, and a live
-session receives the new list immediately.
+updated target and ports are validated against the other services, and the live
+session for that group receives the new list immediately. Editing a non-live
+group does not change the running session's services.
 
 ### TCP
 

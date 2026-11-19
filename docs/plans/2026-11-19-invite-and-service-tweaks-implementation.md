@@ -140,7 +140,8 @@ Mirror `AddService`:
 - Copy the old services for rollback.
 - Call `g.UpdateService`.
 - Copy the new services, call `saveLocked`, restore the old slice on failure.
-- After unlocking, call `host.UpdateServices(services)` when a host is live.
+- After unlocking, call `host.UpdateServices(services)` only when the live host
+  belongs to `groupID`; a service change in another group must not touch it.
 
 - [ ] **Step 5: Run the tests to verify they pass**
 

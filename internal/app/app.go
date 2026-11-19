@@ -276,6 +276,15 @@ func (a *App) DeleteGroup(id string) error {
 	return nil
 }
 
+// hostForGroupLocked returns the running host only when it belongs to groupID.
+// Callers hold a.mu.
+func (a *App) hostForGroupLocked(groupID string) *session.Host {
+	if a.host != nil && a.liveGroupID == groupID {
+		return a.host
+	}
+	return nil
+}
+
 // AddService publishes another service. A live session gets the update.
 func (a *App) AddService(groupID string, s group.Service) error {
 	a.mu.Lock()
@@ -293,7 +302,7 @@ func (a *App) AddService(groupID string, s group.Service) error {
 		return err
 	}
 	services := append([]group.Service(nil), a.groups[idx].Services...)
-	host := a.host
+	host := a.hostForGroupLocked(groupID)
 	err := a.saveLocked()
 	a.mu.Unlock()
 	if err != nil {
@@ -323,7 +332,7 @@ func (a *App) UpdateService(groupID string, s group.Service) error {
 		return err
 	}
 	services := append([]group.Service(nil), a.groups[idx].Services...)
-	host := a.host
+	host := a.hostForGroupLocked(groupID)
 	if err := a.saveLocked(); err != nil {
 		a.groups[idx].Services = old
 		a.mu.Unlock()
@@ -349,7 +358,7 @@ func (a *App) RemoveService(groupID, serviceID string) error {
 		return errors.New("service not found")
 	}
 	services := append([]group.Service(nil), a.groups[idx].Services...)
-	host := a.host
+	host := a.hostForGroupLocked(groupID)
 	err := a.saveLocked()
 	a.mu.Unlock()
 	if err != nil {
