@@ -357,7 +357,7 @@ func (u *probeUI) friendSessionCard(g group.Group, showError func(error), state 
 	case u.state.FriendNote() != "":
 		detail = u.state.FriendNote()
 	case reconnect.Stopped:
-		detail = "Auto-reconnect stopped. Reconnect when the host is back."
+		detail = reconnectStoppedText(reconnect)
 	}
 	detailLabel := cardText(detail, "desc")
 	state.friendDetail = detailLabel
@@ -373,7 +373,18 @@ func reconnectWaitText(status apppkg.ReconnectStatus) string {
 	if remaining <= 0 {
 		return "Trying now…"
 	}
-	return "Next try in " + strconv.Itoa(int(remaining.Round(time.Second)/time.Second)) + "s."
+	seconds := int(remaining.Round(time.Second) / time.Second)
+	if seconds < 1 {
+		seconds = 1
+	}
+	return "Next try in " + strconv.Itoa(seconds) + "s."
+}
+
+func reconnectStoppedText(status apppkg.ReconnectStatus) string {
+	if strings.TrimSpace(status.Reason) != "" {
+		return status.Reason
+	}
+	return "Auto-reconnect stopped. Reconnect when the host is back."
 }
 
 func (u *probeUI) friendServices(g group.Group) *gtk.Box {
@@ -702,7 +713,7 @@ func (state *groupLive) refresh(u *probeUI, g group.Group) {
 		case u.state.FriendNote() != "":
 			state.friendDetail.SetText(u.state.FriendNote())
 		case reconnect.Stopped:
-			state.friendDetail.SetText("Auto-reconnect stopped. Reconnect when the host is back.")
+			state.friendDetail.SetText(reconnectStoppedText(reconnect))
 		default:
 			state.friendDetail.SetText("Start the session on the host, then reconnect.")
 		}

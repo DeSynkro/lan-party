@@ -52,3 +52,89 @@ func TestAutoReconnectRespectsSetting(t *testing.T) {
 		t.Fatal("auto-reconnect started while the setting was off")
 	}
 }
+
+func TestStopSessionStopsAutoReconnect(t *testing.T) {
+	a := newTestApp(t)
+	cancelled := false
+	a.mu.Lock()
+	a.autoReconnect = &reconnectState{groupID: "group", cancel: func() { cancelled = true }}
+	epoch := a.sessionEpoch
+	a.mu.Unlock()
+
+	if err := a.StopSession(); err != nil {
+		t.Fatal(err)
+	}
+	if !cancelled {
+		t.Fatal("the retry loop was not cancelled")
+	}
+	a.mu.Lock()
+	state := a.autoReconnect
+	after := a.sessionEpoch
+	a.mu.Unlock()
+	if state != nil {
+		t.Fatal("the retry state survived StopSession")
+	}
+	if after != epoch+1 {
+		t.Fatalf("session epoch = %d, want %d", after, epoch+1)
+	}
+}
+
+func TestDeleteGroupStopsAutoReconnect(t *testing.T) {
+	a := newTestApp(t)
+	g := group.CreateFriendGroup("Friends", "Host", "127.0.0.1:1", "pin", "self", "You", nil)
+	cancelled := false
+	a.mu.Lock()
+	a.groups = append(a.groups, g)
+	a.autoReconnect = &reconnectState{groupID: g.ID, cancel: func() { cancelled = true }}
+	a.mu.Unlock()
+
+	if err := a.DeleteGroup(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	if !cancelled {
+		t.Fatal("the retry loop was not cancelled")
+	}
+	a.mu.Lock()
+	state := a.autoReconnect
+	a.mu.Unlock()
+	if state != nil {
+		t.Fatal("the retry state survived DeleteGroup")
+	}
+}
+
+func TestSaveSettingsStopsAutoReconnect(t *testing.T) {
+	a := newTestApp(t)
+	cancelled := false
+	a.mu.Lock()
+	a.autoReconnect = &reconnectState{groupID: "group", cancel: func() { cancelled = true }}
+	a.mu.Unlock()
+
+	settings := a.Settings()
+	settings.AutoReconnect = false
+	if err := a.SaveSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+	if !cancelled {
+		t.Fatal("the retry loop was not cancelled")
+	}
+	a.mu.Lock()
+	state := a.autoReconnect
+	a.mu.Unlock()
+	if state != nil {
+		t.Fatal("the retry state survived disabling the setting")
+	}
+}
+
+func TestReconnectStatusReportsStopReason(t *testing.T) {
+	a := newTestApp(t)
+	a.mu.Lock()
+	state := &reconnectState{groupID: "group", cancel: func() {}}
+	a.autoReconnect = state
+	a.finishAutoReconnectLocked(state, "the host denied the join")
+	a.mu.Unlock()
+
+	status := a.ReconnectStatus("group")
+	if !status.Stopped || status.Reason != "the host denied the join" {
+		t.Fatalf("status = %+v", status)
+	}
+}

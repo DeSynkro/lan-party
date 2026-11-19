@@ -48,10 +48,10 @@ func reconnectDelay(attempt int, elapsed time.Duration) (time.Duration, bool) {
 
 // ReconnectStatus is what the friend screen needs to show the retry state.
 type ReconnectStatus struct {
-	Active   bool
-	Stopped  bool
-	Next     time.Time
-	Attempts int
+	Active  bool
+	Stopped bool
+	Next    time.Time
+	Reason  string
 }
 
 type reconnectState struct {
@@ -60,6 +60,7 @@ type reconnectState struct {
 	next    time.Time
 	attempt int
 	stopped bool
+	reason  string
 	cancel  context.CancelFunc
 }
 
@@ -89,10 +90,10 @@ func (a *App) ReconnectStatus(groupID string) ReconnectStatus {
 		return ReconnectStatus{}
 	}
 	return ReconnectStatus{
-		Active:   state.cancel != nil,
-		Stopped:  state.stopped,
-		Next:     state.next,
-		Attempts: state.attempt,
+		Active:  state.cancel != nil,
+		Stopped: state.stopped,
+		Next:    state.next,
+		Reason:  state.reason,
 	}
 }
 
@@ -157,7 +158,7 @@ func (a *App) runAutoReconnect(ctx context.Context, state *reconnectState) {
 		}
 		delay, ok := reconnectDelay(state.attempt, time.Since(state.started))
 		if !ok {
-			a.finishAutoReconnectLocked(state)
+			a.finishAutoReconnectLocked(state, "Auto-reconnect stopped after 30 minutes.")
 			a.mu.Unlock()
 			return
 		}
@@ -198,7 +199,14 @@ func (a *App) runAutoReconnect(ctx context.Context, state *reconnectState) {
 			return
 		}
 		if isPermanentReconnect(err) || ctx.Err() != nil {
-			a.finishAutoReconnectLocked(state)
+			reason := ""
+			switch {
+			case isPermanentReconnect(err):
+				reason = "Auto-reconnect stopped: " + err.Error()
+			case ctx.Err() != nil:
+				reason = "Auto-reconnect stopped."
+			}
+			a.finishAutoReconnectLocked(state, reason)
 			a.mu.Unlock()
 			return
 		}
@@ -206,10 +214,14 @@ func (a *App) runAutoReconnect(ctx context.Context, state *reconnectState) {
 	}
 }
 
-func (a *App) finishAutoReconnectLocked(state *reconnectState) {
+func (a *App) finishAutoReconnectLocked(state *reconnectState, reason string) {
 	state.stopped = true
+	state.reason = reason
 	state.next = time.Time{}
-	state.cancel = nil
+	if state.cancel != nil {
+		state.cancel()
+		state.cancel = nil
+	}
 }
 
 // watchFriend starts the retry loop if this friend drops unexpectedly.

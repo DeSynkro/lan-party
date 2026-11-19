@@ -302,7 +302,10 @@ func TestFriendAutoReconnectsAfterHostRestart(t *testing.T) {
 	if err := host.StartSession(g.ID); err != nil {
 		t.Fatal(err)
 	}
-	waitFor(t, 8*time.Second, func() bool { return friend.FriendPresence().Live })
+	waitFor(t, 8*time.Second, func() bool {
+		status := friend.ReconnectStatus(fg.ID)
+		return friend.FriendPresence().Live && !status.Active && !status.Stopped
+	})
 
 	if status := friend.ReconnectStatus(fg.ID); status.Active || status.Stopped {
 		t.Fatalf("reconnect status after success = %+v", status)
