@@ -754,7 +754,7 @@ func TestCreateInviteUsesGroupConnection(t *testing.T) {
 	}
 }
 
-func TestExistingInviteKeepsEndpoint(t *testing.T) {
+func TestExistingInviteCodeKeepsEndpointSnapshot(t *testing.T) {
 	a := newTestApp(t)
 	g, err := a.CreateGroup("Friday Night", "Desynkro")
 	if err != nil {
@@ -779,8 +779,15 @@ func TestExistingInviteKeepsEndpoint(t *testing.T) {
 	if err := a.SetGroupConnection(g.ID, "group.example.net:40000", 41000); err != nil {
 		t.Fatal(err)
 	}
-	if got := a.InviteCode(inviteID); got != code {
-		t.Fatal("an existing invite code changed")
+	if got := a.InviteCode(inviteID); got != "" {
+		t.Fatalf("stale invite code is still available: %q", got)
+	}
+	after, ok := a.Group(g.ID)
+	if !ok {
+		t.Fatal("group disappeared")
+	}
+	if len(after.OpenInvites(time.Now())) != 0 {
+		t.Fatal("an invite survived an endpoint change")
 	}
 	oldInvite, err := invite.Decode(code)
 	if err != nil {
@@ -985,9 +992,23 @@ func TestSetGroupConnectionRestoresOnSaveFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	s := a.Settings()
+	s.PublicAddress = "home.example.net"
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
 	if err := a.SetGroupConnection(g.ID, "group.example.net", 41000); err != nil {
 		t.Fatal(err)
 	}
+	code, err := a.CreateInvite(g.ID, "Ash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved, ok := a.Group(g.ID)
+	if !ok || len(saved.Invites) != 1 {
+		t.Fatalf("saved group = %+v", saved)
+	}
+	inviteID := saved.Invites[0].ID
 
 	if err := os.RemoveAll(a.DataDir()); err != nil {
 		t.Fatal(err)
@@ -999,11 +1020,178 @@ func TestSetGroupConnectionRestoresOnSaveFailure(t *testing.T) {
 	if err := a.SetGroupConnection(g.ID, "other.example.net", 42000); err == nil {
 		t.Fatal("a failed save was not reported")
 	}
-	saved, ok := a.Group(g.ID)
+	saved, ok = a.Group(g.ID)
 	if !ok {
 		t.Fatal("group disappeared")
 	}
 	if saved.PublicAddress != "group.example.net" || saved.AppPort != 41000 {
 		t.Fatalf("in-memory group changed after a failed save: %+v", saved)
+	}
+	if len(saved.OpenInvites(time.Now())) != 1 {
+		t.Fatal("the open invite was lost after a failed save")
+	}
+	if got := a.InviteCode(inviteID); got != code {
+		t.Fatalf("invite code = %q, want %q", got, code)
+	}
+}
+
+func TestSetGroupConnectionCancelsInvitesWhenEndpointChanges(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := a.Settings()
+	s.PublicAddress = "home.example.net"
+	s.AppPort = 51820
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	code, err := a.CreateInvite(g.ID, "Ash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved, ok := a.Group(g.ID)
+	if !ok || len(saved.Invites) != 1 {
+		t.Fatalf("saved group = %+v", saved)
+	}
+	inviteID := saved.Invites[0].ID
+
+	if err := a.SetGroupConnection(g.ID, "", 41000); err != nil {
+		t.Fatal(err)
+	}
+	after, ok := a.Group(g.ID)
+	if !ok {
+		t.Fatal("group disappeared")
+	}
+	if len(after.OpenInvites(time.Now())) != 0 {
+		t.Fatal("an invite survived an endpoint change")
+	}
+	if got := a.InviteCode(inviteID); got != "" {
+		t.Fatalf("stale invite code is still available: %q", got)
+	}
+	if code == "" {
+		t.Fatal("the original invite was empty")
+	}
+}
+
+func TestSetGroupConnectionKeepsInvitesWhenEndpointUnchanged(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := a.Settings()
+	s.PublicAddress = "home.example.net:40000"
+	s.AppPort = 51820
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	code, err := a.CreateInvite(g.ID, "Ash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved, ok := a.Group(g.ID)
+	if !ok || len(saved.Invites) != 1 {
+		t.Fatalf("saved group = %+v", saved)
+	}
+	inviteID := saved.Invites[0].ID
+
+	if err := a.SetGroupConnection(g.ID, "", 41000); err != nil {
+		t.Fatal(err)
+	}
+	after, ok := a.Group(g.ID)
+	if !ok {
+		t.Fatal("group disappeared")
+	}
+	if len(after.OpenInvites(time.Now())) != 1 {
+		t.Fatal("the invite was cancelled even though the advertised endpoint stayed the same")
+	}
+	if got := a.InviteCode(inviteID); got != code {
+		t.Fatalf("invite code = %q, want %q", got, code)
+	}
+}
+
+func TestSaveSettingsCancelsInheritedInvites(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := a.Settings()
+	s.PublicAddress = "home.example.net"
+	s.AppPort = 51820
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	code, err := a.CreateInvite(g.ID, "Ash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved, ok := a.Group(g.ID)
+	if !ok || len(saved.Invites) != 1 {
+		t.Fatalf("saved group = %+v", saved)
+	}
+	inviteID := saved.Invites[0].ID
+
+	s = a.Settings()
+	s.AppPort = 41000
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	after, ok := a.Group(g.ID)
+	if !ok {
+		t.Fatal("group disappeared")
+	}
+	if len(after.OpenInvites(time.Now())) != 0 {
+		t.Fatal("an invite survived a default endpoint change")
+	}
+	if got := a.InviteCode(inviteID); got != "" {
+		t.Fatalf("stale invite code is still available: %q", got)
+	}
+	if code == "" {
+		t.Fatal("the original invite was empty")
+	}
+}
+
+func TestSaveSettingsKeepsInvitesForFixedOutsidePort(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := a.Settings()
+	s.PublicAddress = "home.example.net"
+	s.AppPort = 51820
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.SetGroupConnection(g.ID, "fixed.example.net:40000", 0); err != nil {
+		t.Fatal(err)
+	}
+	code, err := a.CreateInvite(g.ID, "Ash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved, ok := a.Group(g.ID)
+	if !ok || len(saved.Invites) != 1 {
+		t.Fatalf("saved group = %+v", saved)
+	}
+	inviteID := saved.Invites[0].ID
+
+	s = a.Settings()
+	s.AppPort = 41000
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	after, ok := a.Group(g.ID)
+	if !ok {
+		t.Fatal("group disappeared")
+	}
+	if len(after.OpenInvites(time.Now())) != 1 {
+		t.Fatal("the invite was cancelled even though the advertised endpoint stayed the same")
+	}
+	if got := a.InviteCode(inviteID); got != code {
+		t.Fatalf("invite code = %q, want %q", got, code)
 	}
 }

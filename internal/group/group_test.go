@@ -177,3 +177,47 @@ func TestAddInviteUsesOneHourDefault(t *testing.T) {
 		t.Fatal("a 61-minute-old invite was open")
 	}
 }
+
+func TestClearOpenInvites(t *testing.T) {
+	g := CreateHostGroup("Friday Night", "Desynkro")
+	now := time.Now().UTC()
+	if err := g.AddInvite(Invite{
+		Name:      "Open",
+		TokenHash: "open",
+		CreatedAt: now.Add(-time.Minute),
+		ExpiresAt: now.Add(time.Hour),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	openID := g.Invites[0].ID
+	if err := g.AddInvite(Invite{
+		Name:      "Expired",
+		TokenHash: "expired",
+		CreatedAt: now.Add(-2 * time.Hour),
+		ExpiresAt: now.Add(-time.Hour),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.AddInvite(Invite{
+		Name:       "Redeemed",
+		TokenHash:  "redeemed",
+		CreatedAt:  now.Add(-time.Minute),
+		ExpiresAt:  now.Add(time.Hour),
+		RedeemedAt: now.Add(-time.Second),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	removed := g.ClearOpenInvites(now)
+	if len(removed) != 1 || removed[0] != openID {
+		t.Fatalf("removed = %v, want [%s]", removed, openID)
+	}
+	if len(g.Invites) != 2 {
+		t.Fatalf("kept %d invites, want 2", len(g.Invites))
+	}
+	for _, inv := range g.Invites {
+		if inv.ID == openID {
+			t.Fatal("the open invite was kept")
+		}
+	}
+}

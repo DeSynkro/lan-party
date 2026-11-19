@@ -151,6 +151,22 @@ func (g Group) OpenInvites(now time.Time) []Invite {
 	return out
 }
 
+// ClearOpenInvites removes every redeemable invite and returns their ids.
+// Redeemed and expired records stay for the host's history.
+func (g *Group) ClearOpenInvites(now time.Time) []string {
+	var removed []string
+	kept := g.Invites[:0]
+	for _, inv := range g.Invites {
+		if inv.Open(now) {
+			removed = append(removed, inv.ID)
+			continue
+		}
+		kept = append(kept, inv)
+	}
+	g.Invites = kept
+	return removed
+}
+
 // AddService validates and appends a service, refusing duplicate ids and
 // overlapping ports.
 func (g *Group) AddService(s Service) error {

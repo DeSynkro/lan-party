@@ -118,15 +118,39 @@ func (a *App) SaveSettings(s config.Settings) error {
 			return errors.New("end the session before changing the app port")
 		}
 	}
+	if err := s.Validate(); err != nil {
+		return err
+	}
+
+	cancelled := a.cancelInheritedInvitesLocked(s)
+	if len(cancelled) > 0 {
+		if err := a.saveLocked(); err != nil {
+			a.restoreInvitesLocked(cancelled)
+			return err
+		}
+	}
+
 	if err := config.SaveSettings(a.paths, s); err != nil {
+		a.rollbackInvitesLocked(cancelled)
 		return err
 	}
 	if err := autostart.Set(filepath.Dir(a.paths.ConfigDir), s.StartOnLogin); err != nil {
 		_ = config.SaveSettings(a.paths, a.settings)
+		a.rollbackInvitesLocked(cancelled)
 		return err
 	}
 	a.settings = s
 	return nil
+}
+
+// rollbackInvitesLocked restores cancelled invites and persists the restore.
+// Callers hold a.mu.
+func (a *App) rollbackInvitesLocked(cancelled []inviteSnapshot) {
+	if len(cancelled) == 0 {
+		return
+	}
+	a.restoreInvitesLocked(cancelled)
+	_ = a.saveLocked()
 }
 
 // SetPublicAddress updates the address friends connect to.
@@ -394,25 +418,125 @@ func (a *App) SetGroupConnection(groupID, publicAddress string, appPort int) err
 	if !g.IsHost() {
 		return errors.New("only a hosted group can change its connection")
 	}
-	if a.host != nil && a.liveGroupID == groupID {
-		_, oldPort := a.effectiveConnectionLocked(*g)
-		newPort := appPort
-		if newPort == 0 {
-			newPort = a.settings.AppPort
-		}
-		if newPort != oldPort {
-			return errors.New("end the session before changing this group's app port")
-		}
+
+	oldPublic, oldPort := a.effectiveConnectionLocked(*g)
+	newPublic := publicAddress
+	if newPublic == "" {
+		newPublic = a.settings.PublicAddress
 	}
-	oldPublic, oldPort := g.PublicAddress, g.AppPort
+	newPort := appPort
+	if newPort == 0 {
+		newPort = a.settings.AppPort
+	}
+	if a.host != nil && a.liveGroupID == groupID && newPort != oldPort {
+		return errors.New("end the session before changing this group's app port")
+	}
+
+	oldEndpoint, oldErr := publicEndpoint(oldPublic, oldPort)
+	newEndpoint, newErr := publicEndpoint(newPublic, newPort)
+	endpointChanged := oldErr == nil && (newErr != nil || oldEndpoint != newEndpoint)
+
+	oldPublicOverride, oldPortOverride := g.PublicAddress, g.AppPort
+	var cancelled []inviteSnapshot
+	if endpointChanged {
+		cancelled = append(cancelled, a.cancelOpenInvitesLocked(g, time.Now().UTC()))
+	}
+
 	g.PublicAddress = publicAddress
 	g.AppPort = appPort
 	if err := a.saveLocked(); err != nil {
-		g.PublicAddress = oldPublic
-		g.AppPort = oldPort
+		g.PublicAddress = oldPublicOverride
+		g.AppPort = oldPortOverride
+		a.restoreInvitesLocked(cancelled)
 		return err
 	}
 	return nil
+}
+
+// inviteSnapshot records a group's invites and the codes that are only kept
+// in memory, so a failed save can restore them.
+type inviteSnapshot struct {
+	groupID string
+	invites []group.Invite
+	codes   map[string]string
+}
+
+// cancelOpenInvitesLocked removes a group's redeemable invites and their
+// in-memory codes. Callers hold a.mu.
+func (a *App) cancelOpenInvitesLocked(g *group.Group, now time.Time) inviteSnapshot {
+	snapshot := inviteSnapshot{
+		groupID: g.ID,
+		invites: append([]group.Invite(nil), g.Invites...),
+		codes:   map[string]string{},
+	}
+	for _, inv := range g.OpenInvites(now) {
+		if code, ok := a.inviteCodes[inv.ID]; ok {
+			snapshot.codes[inv.ID] = code
+			delete(a.inviteCodes, inv.ID)
+		}
+	}
+	g.ClearOpenInvites(now)
+	return snapshot
+}
+
+// restoreInvitesLocked puts back invites and codes captured by a snapshot.
+// Callers hold a.mu.
+func (a *App) restoreInvitesLocked(snapshots []inviteSnapshot) {
+	for _, snapshot := range snapshots {
+		idx := a.groupIndexLocked(snapshot.groupID)
+		if idx < 0 {
+			continue
+		}
+		a.groups[idx].Invites = snapshot.invites
+		for id, code := range snapshot.codes {
+			a.inviteCodes[id] = code
+		}
+	}
+}
+
+// cancelInheritedInvitesLocked removes invites whose endpoint changes because
+// the network defaults change. Groups with a full connection override are
+// unaffected. Callers hold a.mu.
+func (a *App) cancelInheritedInvitesLocked(next config.Settings) []inviteSnapshot {
+	now := time.Now().UTC()
+	var cancelled []inviteSnapshot
+	for i := range a.groups {
+		g := &a.groups[i]
+		if !g.IsHost() {
+			continue
+		}
+		if strings.TrimSpace(g.PublicAddress) != "" && g.AppPort != 0 {
+			continue
+		}
+
+		oldPublic := g.PublicAddress
+		if strings.TrimSpace(oldPublic) == "" {
+			oldPublic = a.settings.PublicAddress
+		}
+		oldPort := g.AppPort
+		if oldPort == 0 {
+			oldPort = a.settings.AppPort
+		}
+		newPublic := g.PublicAddress
+		if strings.TrimSpace(newPublic) == "" {
+			newPublic = next.PublicAddress
+		}
+		newPort := g.AppPort
+		if newPort == 0 {
+			newPort = next.AppPort
+		}
+
+		oldEndpoint, oldErr := publicEndpoint(oldPublic, oldPort)
+		newEndpoint, newErr := publicEndpoint(newPublic, newPort)
+		if oldErr != nil || (newErr == nil && oldEndpoint == newEndpoint) {
+			continue
+		}
+		if len(g.OpenInvites(now)) == 0 {
+			continue
+		}
+		cancelled = append(cancelled, a.cancelOpenInvitesLocked(g, now))
+	}
+	return cancelled
 }
 
 // effectiveConnectionLocked applies the group override or the saved default.
