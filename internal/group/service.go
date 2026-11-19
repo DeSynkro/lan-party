@@ -118,6 +118,9 @@ func ParseTarget(s string) (addr string, loopback bool, err error) {
 		return "", false, errors.New("use an IP address like 192.168.1.50 or 192.168.1.50:25565")
 	}
 
+	if strings.EqualFold(host, "localhost") {
+		host = "127.0.0.1"
+	}
 	ip := net.ParseIP(host)
 	if ip == nil {
 		return "", false, errors.New("the host part must be an IP address, not a name")
@@ -192,6 +195,12 @@ func (s Service) TargetFor(port int) (string, error) {
 		return net.JoinHostPort(host, targetPort), nil
 	}
 	return net.JoinHostPort(host, strconv.Itoa(port)), nil
+}
+
+// GameHost returns the host part of the service target.
+func (s Service) GameHost() (string, error) {
+	host, _, _, err := splitTarget(s.Target)
+	return host, err
 }
 
 // ServiceWarnings are things the host should know but that are not fatal.

@@ -60,6 +60,9 @@ func TestParseTarget(t *testing.T) {
 		{"192.168.1.50", "192.168.1.50", false},
 		{"192.168.1.50:25565", "192.168.1.50:25565", false},
 		{"127.0.0.1:25565", "127.0.0.1:25565", true},
+		{"localhost", "127.0.0.1", true},
+		{"LOCALHOST", "127.0.0.1", true},
+		{"localhost:25565", "127.0.0.1:25565", true},
 		{"::1", "::1", true},
 		{"[::1]:25565", "[::1]:25565", true},
 	}
@@ -151,6 +154,8 @@ func TestParseTargetIP(t *testing.T) {
 	}{
 		{"192.168.1.50", "192.168.1.50"},
 		{"127.0.0.1", "127.0.0.1"},
+		{"localhost", "127.0.0.1"},
+		{"LocalHost", "127.0.0.1"},
 		{"::1", "::1"},
 	}
 	for _, tc := range valid {
@@ -177,6 +182,31 @@ func TestParseTargetIP(t *testing.T) {
 		if _, err := ParseTargetIP(in); err == nil {
 			t.Errorf("ParseTargetIP(%q) accepted an invalid value", in)
 		}
+	}
+}
+
+func TestGameHost(t *testing.T) {
+	cases := []struct {
+		target string
+		want   string
+	}{
+		{"192.168.1.50", "192.168.1.50"},
+		{"192.168.1.50:25565", "192.168.1.50"},
+		{"localhost", "127.0.0.1"},
+		{"localhost:25565", "127.0.0.1"},
+	}
+	for _, tc := range cases {
+		got, err := (Service{Target: tc.target}).GameHost()
+		if err != nil {
+			t.Errorf("GameHost(%q): %v", tc.target, err)
+			continue
+		}
+		if got != tc.want {
+			t.Errorf("GameHost(%q) = %q, want %q", tc.target, got, tc.want)
+		}
+	}
+	if _, err := (Service{Target: "example.com"}).GameHost(); err == nil {
+		t.Fatal("GameHost accepted a hostname")
 	}
 }
 
@@ -225,6 +255,13 @@ func TestComposeServiceTarget(t *testing.T) {
 			friendPorts: []int{25565},
 			wantTarget:  "127.0.0.1:25566",
 			wantPorts:   []int{25565},
+		},
+		{
+			name:       "localhost alias",
+			ip:         "localhost",
+			gamePorts:  []int{25565},
+			wantTarget: "127.0.0.1",
+			wantPorts:  []int{25565},
 		},
 	}
 	for _, tc := range cases {
