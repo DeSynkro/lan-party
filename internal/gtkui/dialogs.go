@@ -546,7 +546,7 @@ func (u *probeUI) showServiceForm(g group.Group, existing *group.Service) {
 	ipEntry.SetTooltipText("The IP of the PC running the game. Use 127.0.0.1 for this PC, including containers.")
 	content.Append(ipEntry)
 	content.Append(gapBox(4))
-	content.Append(textLabel(serviceTargetHelpFor(localIPv4()), "help"))
+	content.Append(textLabel(serviceTargetHelp, "help"))
 	content.Append(gapBox(8))
 
 	portRow := gtk.NewBox(gtk.OrientationHorizontal, 8)

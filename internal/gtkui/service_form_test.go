@@ -140,12 +140,11 @@ func TestServiceFormValues(t *testing.T) {
 	}
 }
 
-func TestServiceTargetHelpFor(t *testing.T) {
-	got := serviceTargetHelpFor("192.168.1.50")
-	if !strings.Contains(got, "Use 127.0.0.1") || !strings.Contains(got, "192.168.1.50") {
-		t.Fatalf("help = %q", got)
+func TestServiceTargetHelp(t *testing.T) {
+	if !strings.Contains(serviceTargetHelp, "Use 127.0.0.1") || !strings.Contains(serviceTargetHelp, "that PC's LAN IP") {
+		t.Fatalf("help = %q", serviceTargetHelp)
 	}
-	if strings.Contains(serviceTargetHelpFor("this PC"), "this PC: this PC") {
-		t.Fatal("the fallback host was repeated")
+	if strings.Contains(serviceTargetHelp, "this PC:") {
+		t.Fatalf("help repeats this PC's LAN IP: %q", serviceTargetHelp)
 	}
 }

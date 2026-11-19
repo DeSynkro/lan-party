@@ -23,13 +23,7 @@ func serviceFormValues(s group.Service) (ip, gamePorts, friendPort, hint string,
 	return host, group.FormatPorts(ports), friendPort, s.Hint, nil
 }
 
-func serviceTargetHelpFor(ip string) string {
-	first := "Use 127.0.0.1 for a server or container on this PC."
-	if strings.TrimSpace(ip) == "" || ip == "this PC" {
-		return first + "\nFor another PC, use that PC's LAN IP."
-	}
-	return first + "\nFor another PC, use that PC's LAN IP (this PC: " + ip + ")."
-}
+const serviceTargetHelp = "Use 127.0.0.1 for a server or container on this PC.\nFor another PC, use that PC's LAN IP."
 
 func serviceWarningText(ip, gamePortsText, friendPortsText, proto string) string {
 	gamePorts, err := group.ParsePorts(gamePortsText)

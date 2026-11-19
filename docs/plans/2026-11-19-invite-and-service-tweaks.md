@@ -34,10 +34,9 @@ Make hosting less error-prone and publishing local game servers easier:
 
   ```text
   Use 127.0.0.1 for a server or container on this PC.
-  For another PC, use that PC’s LAN IP (this PC: 192.168.1.50).
+  For another PC, use that PC’s LAN IP.
   ```
 
-  The IP is detected from the current machine.
 - Keep Docker-specific wording out of the UI; the guide may use Docker as an
   example.
 

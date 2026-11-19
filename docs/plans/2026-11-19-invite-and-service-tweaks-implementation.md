@@ -183,10 +183,10 @@ Add `TestServiceFormValues` with these cases:
 - `localhost` → IP `127.0.0.1`.
 - `example.com` → error.
 
-Add `TestServiceTargetHelpFor`:
+Add `TestServiceTargetHelp`:
 
-- `192.168.1.50` → contains `Use 127.0.0.1` and `192.168.1.50`.
-- `this PC` → does not contain `this PC: this PC`.
+- Contains `Use 127.0.0.1` and `that PC's LAN IP`.
+- Does not contain `this PC:`.
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
@@ -247,7 +247,7 @@ Expected: PASS.
 
 ```sh
 git add internal/gtkui/service_form.go internal/gtkui/service_form_test.go internal/gtkui/dialogs.go internal/gtkui/probe.go docs/guide.md docs/design.md docs/ui.md CHANGELOG.md
-git commit -m "Defaulted services to loopback and allowed edits" -m "New services start at 127.0.0.1, accept localhost, and show the machine's LAN IP in the helper. The publish form opens prefilled for an existing service and saves it in place."
+git commit -m "Defaulted services to loopback and allowed edits" -m "New services start at 127.0.0.1, accept localhost, and explain when to use another PC's LAN IP. The publish form opens prefilled for an existing service and saves it in place."
 ```
 
 ---
