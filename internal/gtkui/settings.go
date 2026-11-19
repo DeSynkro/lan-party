@@ -77,7 +77,7 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	network.SetMarginTop(18)
 	network.SetMarginBottom(8)
 	page.Append(network)
-	networkNote := textLabel("Host groups use these defaults unless they set their own connection.", "help")
+	networkNote := textLabel("Host groups use these defaults unless they set their own connection. Changing them cancels open invites for groups that use these defaults.", "help")
 	networkNote.SetMarginBottom(8)
 	page.Append(networkNote)
 

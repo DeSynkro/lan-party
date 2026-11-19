@@ -108,6 +108,8 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 	listen := textLabel("", "desc")
 	warning := textLabel("", "warning")
 	warning.SetVisible(false)
+	endpointNote := textLabel("", "warning")
+	endpointNote.SetVisible(false)
 	errLabel := textLabel("", "error")
 	errLabel.SetVisible(false)
 	content.Append(preview)
@@ -115,6 +117,8 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 	content.Append(listen)
 	content.Append(gapBox(8))
 	content.Append(warning)
+	content.Append(gapBox(6))
+	content.Append(endpointNote)
 	content.Append(gapBox(6))
 	content.Append(errLabel)
 	content.Append(gapBox(10))
@@ -144,6 +148,7 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 				preview.SetText("Friends connect to: check the app port")
 				listen.SetText("")
 				warning.SetVisible(false)
+				endpointNote.SetVisible(false)
 				action.SetLabel("Save")
 				return
 			}
@@ -154,27 +159,44 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 		if effectivePublic == "" {
 			effectivePublic = settings.PublicAddress
 		}
-		endpoint, err := apppkg.Endpoint(effectivePublic, port)
-		if err != nil {
+		endpoint, endpointErr := apppkg.Endpoint(effectivePublic, port)
+		if endpointErr != nil {
 			preview.SetText("Friends connect to: not set")
 		} else {
 			preview.SetText("Friends connect to: " + endpoint)
 		}
 		listen.SetText("Host listens on UDP " + strconv.Itoa(port))
 
-		portChanges := live() && port != current.AppPort
+		portChanges := port != current.AppPort
+		restartNeeded := live() && portChanges
 		warning.SetVisible(false)
+		endpointNote.SetVisible(false)
 		action.SetLabel("Save")
-		if !portChanges {
-			return
+		if restartNeeded {
+			action.SetLabel("Stop session and apply")
+			warning.SetText("Changing the app port restarts the session. Everyone will disconnect briefly.")
+			warning.SetVisible(true)
 		}
-		action.SetLabel("Stop session and apply")
-		note := "The advertised address stays the same. Update your router forward to the new local port."
-		if endpoint != oldEndpoint {
-			note = "The advertised endpoint changes. Existing invites will stop working; create new invites after the restart."
+
+		endpointChanges := oldErr == nil && (endpointErr != nil || endpoint != oldEndpoint)
+		after := "saving"
+		if restartNeeded {
+			after = "the restart"
 		}
-		warning.SetText("Changing the app port restarts the session. Everyone will disconnect briefly.\n\n" + note)
-		warning.SetVisible(true)
+		switch {
+		case endpointChanges:
+			open := len(g.OpenInvites(time.Now()))
+			if open > 0 {
+				endpointNote.SetText("The advertised endpoint changes. This cancels " +
+					plural(open, "open invite") + ". Create new invites after " + after + ".")
+			} else {
+				endpointNote.SetText("The advertised endpoint changes. Invites sent earlier will stop working. Create new invites after " + after + ".")
+			}
+			endpointNote.SetVisible(true)
+		case portChanges:
+			endpointNote.SetText("The advertised address stays the same. Update your router forward to the new local port.")
+			endpointNote.SetVisible(true)
+		}
 	}
 
 	publicEntry.ConnectChanged(func() { updatePreview() })
