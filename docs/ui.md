@@ -97,9 +97,10 @@ defined in the stylesheet.
 - Published: count, `Add service`, one card per service with the name, protocol,
   `Friends open 127.0.0.1:<ports>`, `Game server <address>` and the hint.
   Tapping a card opens details with Edit and Remove.
-- People: count, `Invite`, a `You (host)` row and one row per member. A live dot
-  and RTT come from the actual session; idle members are grey. Tapping a member
-  opens the host-only details.
+- People: count, `Invite`, a `You (host)` row and one row per member. Member
+  rows show a device-name tag next to the name; the host row stays `[host]`.
+  A live dot and RTT come from the actual session; idle members are grey.
+  Tapping a member opens the host-only details.
 - Invites: open invite rows with name and expiry. A code created in this run
   has a Copy button; a code from a previous run is only a detail, because it is
   not written to disk.
@@ -156,7 +157,8 @@ cannot be reached without a relay, which this version does not have.
 ### Dialogs
 
 - Create group: group name and your name.
-- Join: multi-line invite code and device name, then a waiting card while the
+- Join: invite code, then a preview of the host-assigned name and group/host,
+  followed by a read-only detected device name and the waiting card while the
   host decides.
 - Invite: when the session is off, a warning and `Start session and invite`
   action; otherwise friend's name, then the full code with Copy. Another group's

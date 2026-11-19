@@ -249,7 +249,7 @@ func (u *probeUI) hostPeople(g group.Group, state *groupLive) *gtk.Box {
 			}
 		}
 		box.Append(gapBox(8))
-		card, dot, detailLabel := personCardParts(m.Name, detail, live, "")
+		card, dot, detailLabel := personCardPartsWithDevice(m.Name, detail, m.DeviceName, live, "")
 		state.hostPeople[m.ID] = &livePerson{dot: dot, detail: detailLabel}
 		addClick(card, func() { u.showMemberDialog(g, m) })
 		box.Append(card)
@@ -492,6 +492,10 @@ func (u *probeUI) friendPeople(g group.Group, state *groupLive) *gtk.Box {
 }
 
 func personCardParts(name, detail string, live bool, role string) (*gtk.Box, *gtk.Label, *gtk.Label) {
+	return personCardPartsWithDevice(name, detail, "", live, role)
+}
+
+func personCardPartsWithDevice(name, detail, device string, live bool, role string) (*gtk.Box, *gtk.Label, *gtk.Label) {
 	card := gtk.NewBox(gtk.OrientationHorizontal, 8)
 	card.AddCSSClass("card")
 	dot := statusDot(live)
@@ -501,6 +505,11 @@ func personCardParts(name, detail string, live bool, role string) (*gtk.Box, *gt
 	title.Append(lineLabel(name, "row-title"))
 	if role != "" {
 		title.Append(tagLabel(role))
+	}
+	if device = strings.TrimSpace(device); device != "" {
+		tag := tagLabel(truncateText(device, 18))
+		tag.SetTooltipText(device)
+		title.Append(tag)
 	}
 	text.Append(title)
 	detailLabel := cardText(detail, "desc")

@@ -9,6 +9,8 @@
 - Invites now expire after 1 hour instead of 24 hours.
 - Friend connections retry automatically after a drop for up to 30 minutes;
   this can be turned off in Settings.
+- Joining friends see the host-assigned name and a read-only detected device
+  name; host member rows show the device name as a tag.
 - Creating an invite starts the host session first when it is off; a session
   for another group blocks the invite instead of being ended silently.
 - New services default to `127.0.0.1`, accept `localhost`, and explain when to

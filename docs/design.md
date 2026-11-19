@@ -362,8 +362,8 @@ Screens:
   with a confirmation that ends the session and revokes everyone.
 - **Host group.** Session panel with public address, app port, start/stop and
   connected count. Published services as cards, each showing the LAN target and
-  the address friends open. People with approval state and a device-details
-  view. Invite rows with copy and expiry.
+  the address friends open. People with approval state, a device-name tag next
+  to each member, and a device-details view. Invite rows with copy and expiry.
 - **Friend group.** Host status, then one card per published service with the
   loopback address, a copy button and the game's hint. A dropped connection is
   retried automatically for up to 30 minutes unless the setting is off or the

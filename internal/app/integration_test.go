@@ -95,7 +95,7 @@ func TestHostAndFriendEndToEnd(t *testing.T) {
 
 	joined := make(chan error, 1)
 	go func() {
-		_, err := friend.JoinInvite(ctx, code, "ash-pc")
+		_, err := friend.JoinInvite(ctx, code, "")
 		joined <- err
 	}()
 
@@ -106,6 +106,9 @@ func TestHostAndFriendEndToEnd(t *testing.T) {
 	})
 	if approval.Kind != "join" || approval.PeerName != "Ash" {
 		t.Fatalf("approval = %+v", approval)
+	}
+	if approval.DeviceName != friend.DeviceName() {
+		t.Fatalf("approval device = %q, want %q", approval.DeviceName, friend.DeviceName())
 	}
 	if !host.ResolveApproval(approval.ID, true) {
 		t.Fatal("could not approve the device")

@@ -140,8 +140,9 @@ invite. You can remove a device later from the People section.
 ## Joining
 
 1. Open LAN Party and choose **Join with an invite**.
-2. Paste the code and leave the device name as it is, or change it to something
-   the host will recognise.
+2. Paste the code. The dialog shows the name the host assigned you and the group
+   and host name. Your device name is detected automatically and sent to the
+   host; it is read-only here.
 3. Wait while the host approves the device. The host has to be online and
    running the session.
 4. Open the game and go to the address shown under **Ready to play**, usually

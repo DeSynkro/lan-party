@@ -260,10 +260,20 @@ func (u *probeUI) showJoinDialog() {
 	content.Append(textLabel("Invite code", "form-label"))
 	codeEntry := entry("lp1_…")
 	content.Append(codeEntry)
+	content.Append(gapBox(8))
+
+	preview := gtk.NewBox(gtk.OrientationVertical, 0)
+	namePreview := textLabel("", "body")
+	groupPreview := textLabel("", "desc")
+	preview.Append(namePreview)
+	preview.Append(gapBox(2))
+	preview.Append(groupPreview)
+	preview.SetVisible(false)
+	content.Append(preview)
 	content.Append(gapBox(10))
-	content.Append(textLabel("This device", "form-label"))
-	deviceEntry := entry(u.state.DeviceName())
-	content.Append(deviceEntry)
+
+	content.Append(textLabel("Device Name", "form-label"))
+	content.Append(textLabel(u.state.DeviceName(), "mono"))
 	content.Append(gapBox(10))
 	status := textLabel("", "desc")
 	status.SetVisible(false)
@@ -273,6 +283,22 @@ func (u *probeUI) showJoinDialog() {
 	content.Append(errLabel)
 	content.Append(gapBox(10))
 
+	updatePreview := func() {
+		nameLine, groupLine := joinInvitePreview(codeEntry.Text())
+		if nameLine == "" {
+			preview.SetVisible(false)
+			return
+		}
+		namePreview.SetText(nameLine)
+		groupPreview.SetText(groupLine)
+		preview.SetVisible(true)
+	}
+	codeEntry.ConnectChanged(func() {
+		errLabel.SetVisible(false)
+		updatePreview()
+	})
+	updatePreview()
+
 	buttons := gtk.NewBox(gtk.OrientationHorizontal, 8)
 	cancel := gtk.NewButtonWithLabel("Cancel")
 	cancel.AddCSSClass("quiet")
@@ -281,14 +307,10 @@ func (u *probeUI) showJoinDialog() {
 	cancel.ConnectClicked(func() { win.Close() })
 	join.ConnectClicked(func() {
 		code := strings.TrimSpace(codeEntry.Text())
-		device := strings.TrimSpace(deviceEntry.Text())
 		if code == "" {
 			errLabel.SetText("Paste the invite code first.")
 			errLabel.SetVisible(true)
 			return
-		}
-		if device == "" {
-			device = u.state.DeviceName()
 		}
 		errLabel.SetVisible(false)
 		status.SetText("Waiting for the host to approve this device…")
@@ -296,7 +318,7 @@ func (u *probeUI) showJoinDialog() {
 		join.SetSensitive(false)
 		cancel.SetSensitive(false)
 		go func() {
-			g, err := u.state.JoinInvite(context.Background(), code, device)
+			g, err := u.state.JoinInvite(context.Background(), code, "")
 			glib.IdleAdd(func() {
 				if err != nil {
 					status.SetVisible(false)
