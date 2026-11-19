@@ -305,6 +305,37 @@ func (a *App) AddService(groupID string, s group.Service) error {
 	return nil
 }
 
+// UpdateService edits a published service. A live session gets the update.
+func (a *App) UpdateService(groupID string, s group.Service) error {
+	a.mu.Lock()
+	idx := a.groupIndexLocked(groupID)
+	if idx < 0 {
+		a.mu.Unlock()
+		return errors.New("group not found")
+	}
+	if a.groups[idx].Role != group.RoleHost {
+		a.mu.Unlock()
+		return errors.New("only the host can publish services")
+	}
+	old := append([]group.Service(nil), a.groups[idx].Services...)
+	if err := a.groups[idx].UpdateService(s); err != nil {
+		a.mu.Unlock()
+		return err
+	}
+	services := append([]group.Service(nil), a.groups[idx].Services...)
+	host := a.host
+	if err := a.saveLocked(); err != nil {
+		a.groups[idx].Services = old
+		a.mu.Unlock()
+		return err
+	}
+	a.mu.Unlock()
+	if host != nil {
+		return host.UpdateServices(services)
+	}
+	return nil
+}
+
 // RemoveService unpublishes a service.
 func (a *App) RemoveService(groupID, serviceID string) error {
 	a.mu.Lock()

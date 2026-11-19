@@ -1195,3 +1195,60 @@ func TestSaveSettingsKeepsInvitesForFixedOutsidePort(t *testing.T) {
 		t.Fatalf("invite code = %q, want %q", got, code)
 	}
 }
+
+func TestUpdateService(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := group.Service{ID: "mc", Name: "Minecraft", Proto: "tcp", Target: "127.0.0.1", Ports: []int{25565}}
+	if err := a.AddService(g.ID, original); err != nil {
+		t.Fatal(err)
+	}
+	updated := original
+	updated.Name = "Minecraft Modded"
+	updated.Ports = []int{25566}
+	if err := a.UpdateService(g.ID, updated); err != nil {
+		t.Fatal(err)
+	}
+	saved, ok := a.Group(g.ID)
+	if !ok {
+		t.Fatal("group disappeared")
+	}
+	got, ok := saved.FindService("mc")
+	if !ok || got.Name != "Minecraft Modded" || len(got.Ports) != 1 || got.Ports[0] != 25566 {
+		t.Fatalf("updated service = %+v", got)
+	}
+}
+
+func TestUpdateServiceRestoresOnSaveFailure(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := group.Service{ID: "mc", Name: "Minecraft", Proto: "tcp", Target: "127.0.0.1", Ports: []int{25565}}
+	if err := a.AddService(g.ID, original); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(a.DataDir()); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(a.DataDir(), []byte("not a directory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	updated := original
+	updated.Name = "Changed"
+	if err := a.UpdateService(g.ID, updated); err == nil {
+		t.Fatal("a failed save was not reported")
+	}
+	saved, ok := a.Group(g.ID)
+	if !ok {
+		t.Fatal("group disappeared")
+	}
+	got, ok := saved.FindService("mc")
+	if !ok || got.Name != "Minecraft" {
+		t.Fatalf("a failed save changed the service: %+v", got)
+	}
+}

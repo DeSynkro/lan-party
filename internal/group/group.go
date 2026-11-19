@@ -179,6 +179,10 @@ func (g *Group) AddService(s Service) error {
 	if _, ok := g.FindService(s.ID); ok {
 		return errors.New("that service already exists")
 	}
+	s, err := normalizeServiceTarget(s)
+	if err != nil {
+		return err
+	}
 	if err := ValidateService(s); err != nil {
 		return err
 	}
@@ -188,6 +192,47 @@ func (g *Group) AddService(s Service) error {
 		}
 	}
 	g.Services = append(g.Services, s)
+	return nil
+}
+
+// normalizeServiceTarget stores the canonical target form.
+func normalizeServiceTarget(s Service) (Service, error) {
+	target, _, err := ParseTarget(s.Target)
+	if err != nil {
+		return s, err
+	}
+	s.Target = target
+	return s, nil
+}
+
+// UpdateService validates and replaces a service with the same id.
+func (g *Group) UpdateService(s Service) error {
+	idx := -1
+	for i := range g.Services {
+		if g.Services[i].ID == s.ID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return errors.New("service not found")
+	}
+	s, err := normalizeServiceTarget(s)
+	if err != nil {
+		return err
+	}
+	if err := ValidateService(s); err != nil {
+		return err
+	}
+	for i, other := range g.Services {
+		if i == idx {
+			continue
+		}
+		if err := portConflict(s, other); err != nil {
+			return err
+		}
+	}
+	g.Services[idx] = s
 	return nil
 }
 

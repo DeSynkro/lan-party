@@ -45,6 +45,52 @@ func TestAddServiceAndConflict(t *testing.T) {
 	}
 }
 
+func TestUpdateService(t *testing.T) {
+	g := CreateHostGroup("Friday Night", "Desynkro")
+	minecraft := Service{ID: "mc", Name: "Minecraft", Proto: "tcp", Target: "192.168.1.50", Ports: []int{25565}}
+	voice := Service{ID: "voice", Name: "Voice", Proto: "udp", Target: "192.168.1.50", Ports: []int{25565}}
+	if err := g.AddService(minecraft); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.AddService(voice); err != nil {
+		t.Fatal(err)
+	}
+
+	updated := minecraft
+	updated.Name = "Minecraft Modded"
+	updated.Target = "localhost"
+	updated.Ports = []int{25566}
+	if err := g.UpdateService(updated); err != nil {
+		t.Fatal(err)
+	}
+	got, ok := g.FindService("mc")
+	if !ok {
+		t.Fatal("the service disappeared")
+	}
+	if got.Name != "Minecraft Modded" || got.Target != "127.0.0.1" ||
+		len(got.Ports) != 1 || got.Ports[0] != 25566 {
+		t.Fatalf("updated service = %+v", got)
+	}
+
+	web := Service{ID: "web", Name: "Web", Proto: "tcp", Target: "192.168.1.50", Ports: []int{25565}}
+	if err := g.AddService(web); err != nil {
+		t.Fatal(err)
+	}
+	conflict := minecraft
+	conflict.Ports = []int{25565}
+	if err := g.UpdateService(conflict); err == nil {
+		t.Fatal("a conflict with another service was accepted")
+	}
+	got, _ = g.FindService("mc")
+	if len(got.Ports) != 1 || got.Ports[0] != 25566 {
+		t.Fatalf("a failed update changed the service: %+v", got)
+	}
+
+	if err := g.UpdateService(Service{ID: "missing", Name: "Missing", Proto: "tcp", Target: "192.168.1.50", Ports: []int{25567}}); err == nil {
+		t.Fatal("an unknown service was updated")
+	}
+}
+
 func TestServiceLimit(t *testing.T) {
 	g := CreateHostGroup("Friday Night", "Desynkro")
 	for i := 0; i < MaxServices; i++ {
