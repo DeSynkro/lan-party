@@ -20,6 +20,60 @@ export PKG_CONFIG_PATH="${PKG_CONFIG_PATH:-${prefix}/lib/pkgconfig}"
 rm -rf "${work}"
 mkdir -p "${app}/share/lan-party" "${out}"
 
+# Windows icon, version info and manifest are compiled into both executables.
+resource="${root}/cmd/lan-party/resource_windows_amd64.syso"
+rm -f "${resource}"
+trap 'rm -f "${resource}"' EXIT
+
+if ! command -v windres >/dev/null 2>&1; then
+    echo "windres is required; install mingw-w64-ucrt-x86_64-binutils" >&2
+    exit 1
+fi
+
+cp "${root}/brand/ico/app-icon.ico" "${work}/app-icon.ico"
+cp "${root}/build/windows.manifest" "${work}/windows.manifest"
+
+numeric_version="1,1,0,0"
+if [[ "${version}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+    numeric_version="${BASH_REMATCH[1]},${BASH_REMATCH[2]},${BASH_REMATCH[3]},0"
+fi
+
+cat > "${work}/lan-party.rc" <<RC
+1 ICON "app-icon.ico"
+1 24 "windows.manifest"
+
+1 VERSIONINFO
+FILEVERSION ${numeric_version}
+PRODUCTVERSION ${numeric_version}
+FILEFLAGSMASK 0x3fL
+FILEFLAGS 0x0L
+FILEOS 0x40004L
+FILETYPE 0x1L
+FILESUBTYPE 0x0L
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904b0"
+    BEGIN
+      VALUE "CompanyName", "DeSynkro"
+      VALUE "FileDescription", "LAN Party"
+      VALUE "FileVersion", "${version}"
+      VALUE "InternalName", "lan-party"
+      VALUE "OriginalFilename", "lan-party.exe"
+      VALUE "ProductName", "LAN Party"
+      VALUE "ProductVersion", "${version}"
+      VALUE "LegalCopyright", "Copyright (C) 2026 DeSynkro. GPLv3."
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1200
+  END
+END
+RC
+
+(cd "${work}" && windres -i lan-party.rc -o "${resource}" -O coff)
+
 "${go_bin}" build -trimpath \
     -ldflags "-s -w -H=windowsgui -X github.com/desynkro/lan-party/internal/buildinfo.Version=${version}" \
     -o "${app}/lan-party.exe" ./cmd/lan-party
@@ -29,6 +83,10 @@ mkdir -p "${app}/share/lan-party" "${out}"
 "${go_bin}" build -trimpath \
     -ldflags "-s -w -X github.com/desynkro/lan-party/internal/buildinfo.Version=${version}" \
     -o "${app}/lan-party-console.exe" ./cmd/lan-party
+
+# Authenticode signing, when a certificate is available, belongs here: sign
+# both executables before the zip is created. Unsigned builds can be flagged
+# by Defender or SmartScreen.
 
 # App assets are found from <exe dir>/share/lan-party by assetRoot.
 mkdir -p "${app}/share/lan-party/internal/gtkui"

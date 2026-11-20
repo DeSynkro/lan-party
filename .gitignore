@@ -3,6 +3,9 @@ bin/
 dist/
 build/bin/
 
+# generated Windows resources
+cmd/lan-party/*.syso
+
 # local toolchain and caches
 .tools/
 .cache/

@@ -152,10 +152,12 @@ packaging decision.
 
 CI runs vet, race tests, `govulncheck` and a binary build on every push. The
 Linux AppImage is built on every push to main, on tags and by hand, then smoke
-tested under Xvfb. A tag also creates a draft release with the AppImage and
-`SHA256SUMS`. If `docs/releases/<tag>.md` exists, it becomes the release body;
-otherwise the notes are generated. The AppImage installs the GPLv3 license,
-font licenses and third-party notices under `usr/share/licenses/lan-party/`.
+tested under Xvfb. The Windows portable zip is built in the same workflow on
+Windows and is uploaded as the `windows-portable` artifact. A tag also creates
+a draft release with the AppImage, Windows zip and `SHA256SUMS`. If
+`docs/releases/<tag>.md` exists, it becomes the release body; otherwise the
+notes are generated. The AppImage installs the GPLv3 license, font licenses and
+third-party notices under `usr/share/licenses/lan-party/`.
 
 Version strings come from `git describe` and are passed to
 `internal/buildinfo.Version` with `-ldflags`. Untagged builds say `dev`.
@@ -172,9 +174,27 @@ Version strings come from `git describe` and are passed to
 
 ## Windows
 
-The code is written so the UI and group logic are not tied to Linux. The
-remaining work is a Windows autostart entry, a MinGW build and a tray check.
-It is not part of this version.
+The Windows build is a portable zip, not an installer. It is built on the
+Windows runner with MSYS2 UCRT64:
+
+```sh
+# Inside an MSYS2 UCRT64 shell
+export CC=gcc
+export CGO_ENABLED=1
+export PKG_CONFIG_PATH=/ucrt64/lib/pkgconfig
+export VERSION=dev
+bash build/windows.sh
+```
+
+`build/windows.sh` needs GTK4, `gcc`, `binutils` (`windres`), `pkg-config` and
+`zip`. It embeds the app icon, version information and manifest into both
+executables, then writes
+`dist/lan-party_<version>_windows_amd64.zip`. The archive is uploaded as the
+`windows-portable` CI artifact and attached to tag releases.
+
+Code signing is not configured yet. Unsigned builds can trigger SmartScreen or
+a Defender false positive; a certificate or Azure Trusted Signing is the
+long-term fix.
 
 ## Design and plan
 
