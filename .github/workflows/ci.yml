@@ -262,9 +262,9 @@ jobs:
           set -euo pipefail
           notes="docs/releases/${GITHUB_REF_NAME}.md"
           if [ -f "${notes}" ]; then
-            gh release create "${GITHUB_REF_NAME}" dist/*.AppImage dist/*.zip SHA256SUMS --draft \
+            gh release create "${GITHUB_REF_NAME}" dist/*.AppImage dist/*.zip dist/SHA256SUMS --draft \
               --title "LAN Party ${GITHUB_REF_NAME#v}" \
               --notes-file "${notes}"
           else
-            gh release create "${GITHUB_REF_NAME}" dist/*.AppImage dist/*.zip SHA256SUMS --draft --generate-notes
+            gh release create "${GITHUB_REF_NAME}" dist/*.AppImage dist/*.zip dist/SHA256SUMS --draft --generate-notes
           fi
