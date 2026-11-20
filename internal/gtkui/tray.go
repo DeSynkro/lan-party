@@ -20,38 +20,49 @@ func startTray(u *probeUI) bool {
 		return false
 	}
 
-	go systray.Run(func() {
-		log.Println("lan-party: tray ready")
-		systray.SetIcon(icon)
-		systray.SetTitle("LAN Party")
-		systray.SetTooltip("LAN Party")
-		systray.SetOnTapped(func() {
-			glib.IdleAdd(u.reveal)
-		})
-
-		show := systray.AddMenuItem("Show LAN Party", "")
-		settings := systray.AddMenuItem("Settings", "")
-		systray.AddSeparator()
-		quit := systray.AddMenuItem("Quit", "")
-
-		go func() {
-			for range show.ClickedCh {
+	// The Windows tray creates a hidden Win32 window and pumps its message
+	// loop. Win32 windows are thread-affine, so keep this goroutine on one OS
+	// thread; otherwise Go can move it and the tray stops receiving clicks.
+	go func() {
+		unlock := lockTrayThread()
+		defer unlock()
+		systray.Run(func() {
+			log.Println("lan-party: tray ready")
+			systray.SetIcon(icon)
+			systray.SetTitle("LAN Party")
+			systray.SetTooltip("LAN Party")
+			systray.SetOnTapped(func() {
+				log.Println("lan-party: tray tapped")
 				glib.IdleAdd(u.reveal)
-			}
-		}()
-		go func() {
-			for range settings.ClickedCh {
-				glib.IdleAdd(u.openSettings)
-			}
-		}()
-		go func() {
-			for range quit.ClickedCh {
-				glib.IdleAdd(u.quit)
-			}
-		}()
-	}, func() {
-		log.Println("lan-party: tray stopped")
-	})
+			})
+
+			show := systray.AddMenuItem("Show LAN Party", "")
+			settings := systray.AddMenuItem("Settings", "")
+			systray.AddSeparator()
+			quit := systray.AddMenuItem("Quit", "")
+
+			go func() {
+				for range show.ClickedCh {
+					log.Println("lan-party: tray show clicked")
+					glib.IdleAdd(u.reveal)
+				}
+			}()
+			go func() {
+				for range settings.ClickedCh {
+					log.Println("lan-party: tray settings clicked")
+					glib.IdleAdd(u.openSettings)
+				}
+			}()
+			go func() {
+				for range quit.ClickedCh {
+					log.Println("lan-party: tray quit clicked")
+					glib.IdleAdd(u.quit)
+				}
+			}()
+		}, func() {
+			log.Println("lan-party: tray stopped")
+		})
+	}()
 
 	return true
 }
