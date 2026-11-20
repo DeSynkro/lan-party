@@ -1,25 +1,29 @@
 # Changelog
 
-## 1.1.0 — Unreleased
+## 1.1.0 — 2026-11-20
 
-- Host groups can use their own public address and UDP app port; blank values
+- Windows 10/11 x86-64 portable build with a GUI executable, bundled GTK4
+  runtime, tray, start on login and start minimised.
+- Host groups can use their own public address and UDP app port. Blank values
   use the Settings defaults.
 - Changing a live group's app port stops the session, saves, and restarts on
   the new port. The dialog warns that everyone disconnects briefly.
 - Invites now expire after 1 hour instead of 24 hours.
-- Friend connections retry automatically after a drop for up to 30 minutes;
-  this can be turned off in Settings.
+- Friend connections retry automatically after a drop for up to 30 minutes.
+  This can be turned off in Settings.
 - The app writes a rotating log under its data directory for support.
-- The portable Windows zip contains one GUI executable; the console debug build
+- The portable Windows zip contains one GUI executable. The console debug build
   is a separate manual CI artifact.
 - Joining friends see the host-assigned name and a read-only detected device
-  name; host member rows show the device name as a tag.
-- Creating an invite starts the host session first when it is off; a session
+  name. Host member rows show the device name as a tag.
+- Creating an invite starts the host session first when it is off. A session
   for another group blocks the invite instead of being ended silently.
 - New services default to `127.0.0.1`, accept `localhost`, and explain when to
   use a LAN IP instead.
 - Published services can be edited without removing and recreating them.
 - The endpoint-change warning only appears when an invite is open.
+
+See [docs/releases/v1.1.0.md](docs/releases/v1.1.0.md) for the release notes.
 
 ## 1.0.0 — 2026-11-18
 

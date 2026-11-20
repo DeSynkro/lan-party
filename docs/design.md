@@ -49,14 +49,15 @@ virtual network, no route and no peer-to-peer path.
 - Keys stay out of plain JSON and out of the invite string.
 - A connection can be followed from the game to the LAN target by reading the
   documentation, without knowing how a VPN works.
-- Linux first. Windows later, once the Linux version is solid.
+- Linux and Windows x86-64. Linux ships an AppImage. Windows ships a portable
+  zip with the GTK4 runtime.
 
 ## Non-goals
 
 - A public relay for hosts behind CGNAT. Direct hosting needs a reachable
   address or a port forward.
 - Peer-to-peer connections between friends. The host is the star.
-- More than one publishing host per session.
+- More than one live host session at once.
 - Per-friend service grants in v1. Every member of a group sees every published
   service. This can be added later without changing the tunnel.
 - Launching games or writing into their server lists.
@@ -81,7 +82,8 @@ These would count as failures even if the app technically works:
 - Go and GTK4 only. No webview, no npm, no bundled browser.
 - Fixed 400×640 window. No maximise, no resize.
 - Linux runtime data in `~/.config/lan-party` and `~/.local/share/lan-party`.
-  Development runs redirect those into `.tmp`.
+  Windows settings in `%AppData%\lan-party` and data in
+  `%LocalAppData%\lan-party`. Development runs redirect those into `.tmp`.
 - No artifact, cache or build tool outside this directory. CI is the only
   exception, because it runs on a machine we do not own.
 - Commits are small and say what happened in the past tense.
@@ -91,7 +93,7 @@ These would count as failures even if the app technically works:
 
 **A. One encrypted port tunnel.** Replace WireGuard and gVisor with one QUIC
 connection. TCP travels as streams, UDP as datagrams. The friend app opens
-loopback listeners; the host app dials fixed LAN targets. TLS 1.3 does the
+loopback listeners. The host app dials fixed LAN targets. TLS 1.3 does the
 crypto. Chosen.
 
 **B. Keep WireGuard and gVisor, rebuild around them.** Lowest risk to the
@@ -102,7 +104,7 @@ part the owner cannot explain stays the core. Rejected.
 recreation asked for, and it leaves the core untouched. Rejected.
 
 A is smaller, fits "lightweight and simple", and gives us a data path that can
-be explained in one page. The risk is replacing working code; end-to-end tests
+be explained in one page. The risk is replacing working code. End-to-end tests
 with real TCP and UDP echo through a real QUIC connection are the mitigation.
 
 ## How it works
@@ -122,7 +124,7 @@ certificate does not change the pin.
 ### Publishing a service
 
 A service has a name, a protocol (TCP, UDP or both), a LAN target and one or
-more ports friends see. The target is an IP literal; hostnames are not resolved
+more ports friends see. The target is an IP literal. Hostnames are not resolved
 on the host's behalf. `localhost` is accepted as an alias for `127.0.0.1` and
 stored in that form.
 
@@ -137,8 +139,8 @@ stored in that form.
 
 Validation rejects wildcard, multicast and broadcast targets, warns about
 loopback targets (a game server on the same PC is fine) and warns about
-administrative ports such as 22, 3389 and 445. The host can still choose them;
-the warning is not a silent block.
+administrative ports such as 22, 3389 and 445. The host can still choose them.
+The warning is not a silent block.
 
 A published service can be edited in place. The service keeps its id, the
 updated target and ports are validated against the other services, and the live
@@ -174,8 +176,8 @@ are out of scope for v1.
 The first stream on a connection is a control stream carrying newline-delimited
 JSON. It handles hello, enrollment, the service list, ping/pong, presence and
 revocation. The host pushes a new service list when the host adds or removes a
-service; the friend opens or closes listeners to match. A service that is
-removed stops accepting new connections; streams already open are allowed to
+service. The friend opens or closes listeners to match. A service that is
+removed stops accepting new connections. Streams already open are allowed to
 finish.
 
 Presence is real: the host counts a peer as live while its QUIC connection is
@@ -197,7 +199,7 @@ There are two kinds of long-lived key, and neither is ever sent anywhere.
 
 Both sides present a self-signed certificate built from their key. The TLS
 handshake proves possession of the private key. The host compares the client
-certificate's public key with the member list; a mismatch is a new device and
+certificate's public key with the member list. A mismatch is a new device and
 needs approval.
 
 ### Invites
@@ -266,7 +268,7 @@ are 0700. Nothing writes a private key or an invite token to JSON or logs.
 
 There is no keyring daemon, session bus or unlock prompt. A key file that other
 users can read is refused. The key files are not passphrase-encrypted, so
-full-disk encryption is what protects a stolen disk; this is the same trade-off
+full-disk encryption is what protects a stolen disk. This is the same trade-off
 as an SSH private key.
 
 ### Limits
@@ -278,7 +280,7 @@ as an SSH private key.
 - 64 UDP flows per peer.
 - 60-second UDP idle timeout.
 - Enrollment rate limit per source address.
-- QUIC idle timeout with keepalive; the connection drops if the peer vanishes.
+- QUIC idle timeout with keepalive. The connection drops if the peer vanishes.
 
 ### Threat model
 
@@ -288,7 +290,7 @@ as an SSH private key.
 | Leaked invite | Single use, 1-hour expiry, host approval, rate limiting, revocable member. |
 | Curious friend | Only published services exist. No routing, no peer-to-peer, no access to the host's other devices. |
 | Malicious friend | Cannot reach anything else. Stream, flow and connection limits cap resource use. |
-| Stolen device key | Can impersonate that member until revoked. A changed source address is visible; the host can revoke and issue a new invite. |
+| Stolen device key | Can impersonate that member until revoked. A changed source address is visible. The host can revoke and issue a new invite. |
 | Stolen host key | Can impersonate the host to friends who already have the pin. Owner-only file permissions and full-disk encryption are the protection. |
 | Malicious host | The host is the gateway and can see what they publish. Documented, not hidden. |
 | Same-user malware | Can read the key files, groups and settings as your user. Out of scope for a desktop app. |
@@ -302,7 +304,7 @@ Minecraft server is still an offline-mode Minecraft server.
 ```
 Group {
   id, name, role (host|friend), createdAt, hostName
-  publicAddress, appPort // host groups: optional overrides; empty/0 uses Settings
+  publicAddress, appPort // host groups: optional overrides, empty/0 uses Settings
   endpoint              // friend groups: public host:port
   services[]
   members[]
@@ -347,11 +349,11 @@ knows public keys and hashes.
 ## Interface
 
 One window, 400×640, fixed. Content scrolls under a 48px app bar. The native
-title bar stays; the app does not pretend to be frameless.
+title bar stays. The app does not pretend to be frameless.
 
 The working palette comes from the mockup: near-black background, slightly
 raised cards, a cool cyan accent, green for a live link, amber for a warning,
-red for danger. The final palette and logo are still being decided; the theme
+red for danger. The final palette and logo are still being decided. The theme
 is kept in one place so changing it does not touch screen code.
 
 Screens:
@@ -369,11 +371,12 @@ Screens:
   retried automatically for up to 30 minutes unless the setting is off or the
   host revoked the device. People shows the host and you. Leave asks for
   confirmation.
-- **Settings.** Startup (close to tray on by default; unticking makes closing
+- **Settings.** Startup (close to tray on by default. Unticking makes closing
   the window quit, start on login, start minimised),
   Network (public hostname or IP, optional outside port in the address, app
   port, live endpoint preview), Connection (reconnect automatically),
-  Security (approve new devices), About (version, data location, key location).
+  Security (approve new devices), About (version, data location, key location,
+  log path).
 - **How to Use.** Offline guide with Hosting, Joining, Problems and Security
   sections. It reads the real app port and the host's local address, so the
   port-forward line is concrete, e.g. “Forward UDP 51820 to 192.168.1.20”, with a
@@ -385,7 +388,7 @@ Truthfulness rules:
 
 - “Live” means a real connection and a recent ping.
 - No invented reachability counts.
-- Roster never shows the friend's local LAN IP; the host sees the connection
+- Roster never shows the friend's local LAN IP. The host sees the connection
   address it actually has.
 - An expired or redeemed invite is never offered for copy.
 
@@ -393,7 +396,7 @@ Truthfulness rules:
 
 The rewrite started on an orphan branch and its history now sits on the local
 `main` branch. Its first commit is **Project Reset**. The old `main` and
-`ui-redesign` branches remain as `legacy` and `ui-redesign`; nothing is
+`ui-redesign` branches remain as `legacy` and `ui-redesign`. Nothing is
 force-pushed to GitHub.
 
 Layout:
@@ -416,7 +419,7 @@ docs/                   design, architecture, security, UI, guide, development
 build/                  AppImage and icon helpers
 ```
 
-Build and run use the pinned toolchain in `.tools`; Go's cache, module cache,
+Build and run use the pinned toolchain in `.tools`. Go's cache, module cache,
 GOPATH and XDG directories point into `.cache` and `.tmp` for development, so
 nothing lands in the home directory. `make test`, `make run`, `make build`,
 `make appimage`.
@@ -433,34 +436,36 @@ nothing lands in the home directory. `make test`, `make run`, `make build`,
 8. TCP forwarding and loopback listeners.
 9. UDP forwarding and flow table.
 10. Interface shell, theme and components.
-11. Home, host and friend screens; settings; in-app guide.
+11. Home, host and friend screens. Settings. In-app guide.
 12. Tray, autostart and settings persistence.
 13. AppImage packaging, CI, final documentation.
 
 Each step ends with tests and at least one commit. The first vertical slice that
-can be tried end to end is step 9 plus a minimal host/friend screen; the polish
+can be tried end to end is step 9 plus a minimal host/friend screen. The polish
 comes after.
 
 ## Where it is now
 
-Working on Linux: groups, services and presets; one-time invites; host approval
-of new devices; QUIC/TLS sessions; TCP and UDP forwarding; presence, service
-updates and revocation; the 400×640 interface; the in-app setup guide; tray,
-start on login and start minimised; AppImage packaging; CI.
+Working on Linux and Windows: groups, services and presets, one-time invites,
+host approval of new devices, QUIC/TLS sessions, TCP and UDP forwarding,
+presence, service updates and revocation. The 400×640 interface, in-app setup
+guide, tray, start on login, start minimised, AppImage, portable Windows
+packaging and CI are all in place.
 
 The end-to-end tests start a host and a friend app on loopback, create an
 invite, approve the device, forward a TCP echo, and revoke the member.
 
 Not in this version: a relay for CGNAT hosts, per-friend service grants,
-Windows packaging, automatic public-address detection, MAC addresses in device
-details, and auto-update.
+multiple live host sessions, automatic public-address detection, MAC addresses
+in device details, and auto-update.
 
 ## Open items
 
 - Final logo and palette. The mockup palette is the working baseline.
 - Whether to show a reported MAC in device details later.
-- Public-address detection. v1 is manual, with the local address shown to help
-  with the router rule.
+- Public-address detection. Detection is manual in v1, with the local address
+  shown to help with the router rule.
 - Per-friend service grants.
 - A self-hosted relay for CGNAT hosts.
-- Windows packaging.
+- Multiple live host sessions, each on a different local UDP port.
+- Windows code signing and an optional installer.

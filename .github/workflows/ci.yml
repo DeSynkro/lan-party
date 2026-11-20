@@ -253,7 +253,7 @@ jobs:
       - name: Checksums
         run: |
           cd dist
-          sha256sum * > SHA256SUMS
+          sha256sum *.AppImage *.zip > SHA256SUMS
           cat SHA256SUMS
       - name: Draft release
         env:
@@ -262,9 +262,9 @@ jobs:
           set -euo pipefail
           notes="docs/releases/${GITHUB_REF_NAME}.md"
           if [ -f "${notes}" ]; then
-            gh release create "${GITHUB_REF_NAME}" dist/* --draft \
+            gh release create "${GITHUB_REF_NAME}" dist/*.AppImage dist/*.zip SHA256SUMS --draft \
               --title "LAN Party ${GITHUB_REF_NAME#v}" \
               --notes-file "${notes}"
           else
-            gh release create "${GITHUB_REF_NAME}" dist/* --draft --generate-notes
+            gh release create "${GITHUB_REF_NAME}" dist/*.AppImage dist/*.zip SHA256SUMS --draft --generate-notes
           fi

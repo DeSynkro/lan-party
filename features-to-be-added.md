@@ -12,7 +12,7 @@ address. That does not work behind CGNAT or on networks where the router
 cannot be configured.
 
 Add an optional **self-hosted** relay mode. The project does not run a
-public relay; the user runs one on their own VPS or spare machine, similar
+public relay. The user runs one on their own VPS or spare machine, similar
 to self-hosting RustDesk.
 
 - A **Use relay** checkbox when hosting.
@@ -20,7 +20,7 @@ to self-hosting RustDesk.
 - The relay has an SSH-style keypair: the private key stays on the relay,
   and the app pins the public key so it can recognise that relay.
 - An optional relay password on top of the key, for people who want it.
-- The host and friends connect out to the relay; the relay passes the
+- The host and friends connect out to the relay. The relay passes the
   encrypted traffic between them. No inbound port on the host.
 - Friends get the relay details and pinned key from the invite instead of
   typing them in.
@@ -71,7 +71,7 @@ Caveats:
 - Binding a LAN IP exposes the tunneled game port to the friend's network.
 - This does not forward LAN discovery broadcasts or multicast. Games that only
   list servers through LAN discovery still need a direct-connect option.
-- A virtual LAN interface is out of scope; it needs privileges and
+- A virtual LAN interface is out of scope. It needs privileges and
   platform-specific setup.
 
 Done when a friend can set a different local address for a service or for all
@@ -90,9 +90,9 @@ GTK data, pixbuf and working-directory environment.
 
 - One file to download and run.
 - The runtime still exists under AppData, but the user only sees one exe.
-- Reuse the extracted runtime on later runs; remove old versions when the
+- Reuse the extracted runtime on later runs. Remove old versions when the
   launcher version changes.
-- A 7-Zip SFX is an alternative; the Go launcher is preferred for versioning,
+- A 7-Zip SFX is an alternative. The Go launcher is preferred for versioning,
   cleanup, error dialogs and signing.
 
 Trade-offs:
@@ -107,7 +107,48 @@ Trade-offs:
 Done when a signed single exe runs the portable app, reuses the extracted
 runtime, and cleans up old versions.
 
+## Multiple live host sessions
+
+**Status:** idea, not scheduled. Revisit if users need to host two groups at
+once.
+
+Today the app has one live session slot, either one host group or one friend
+group. Per-group connection settings let each group advertise a different
+address and port, but they do not allow concurrent sessions.
+
+Allow more than one host group to run at the same time, each on a different
+local UDP app port. The public IP can stay the same if the router forwards each
+outside port to the matching local port.
+
+This is a structural change:
+
+- replace the single host pointer and live group id with a collection
+- add per-group start, stop, presence and approvals
+- show multiple live groups in the UI and tray
+- decide whether a host and a friend session may coexist
+- add firewall/router guidance for each port
+
+Done when two host groups can be live with independent invites and friends, and
+stopping one leaves the other running.
+
+## Windows code signing
+
+**Status:** post-1.1, not scheduled
+
+The 1.1 Windows build is unsigned. SmartScreen and Defender can warn about a
+new portable executable with no reputation.
+
+- Use an OV/EV code-signing certificate or Azure Trusted Signing.
+- Sign the GUI executable, and the debug console executable when it is built,
+  before the zip is created.
+- Keep the certificate in CI secrets and timestamp the signature.
+
+Done when a signed release shows the publisher in Windows and a clean machine
+does not show a SmartScreen warning.
+
 ## Done
 
 - Per-group public address and app port (1.1).
 - One-hour invite lifetime (1.1).
+- Windows portable build with tray, autostart and logging (1.1).
+- Automatic friend reconnect and service editing (1.1).

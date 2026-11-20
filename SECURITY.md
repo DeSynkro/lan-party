@@ -49,7 +49,7 @@ Out of scope:
 - physical access to either machine
 - social engineering
 - vulnerabilities in third-party software that do not affect LAN Party's use
-  of it; report those upstream
+  of it. Report those upstream
 
 Please only test on machines and networks you own or have explicit permission
 to test.

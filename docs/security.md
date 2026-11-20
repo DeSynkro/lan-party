@@ -11,8 +11,9 @@ This document is honest about what that does and does not prove.
 ### Host identity
 
 One Ed25519 key per group, created when the group is created. The private half
-is an owner-only file under `~/.local/share/lan-party/keys/` (mode `0600`). The
-public half is used to build a self-signed TLS certificate.
+is an owner-only file in the keys directory (`~/.local/share/lan-party/keys/`
+on Linux, `%LocalAppData%\lan-party\keys\` on Windows). The public half is used
+to build a self-signed TLS certificate.
 
 Friends store a SHA-256 pin of the host's public key. The pin travels in the
 invite and is saved in the friend's group entry. Certificate renewal does not
@@ -25,8 +26,9 @@ new key for a saved group.
 ### Device identity
 
 One Ed25519 key per group on each friend's machine, created when the friend
-redeems an invite. The private half is an owner-only file under
-`~/.local/share/lan-party/keys/` (mode `0600`). The host stores only the public
+redeems an invite. The private half is an owner-only file in the same keys
+directory (`~/.local/share/lan-party/keys/` on Linux,
+`%LocalAppData%\lan-party\keys\` on Windows). The host stores only the public
 half.
 
 The TLS handshake proves the client owns that private key. The host compares
@@ -47,7 +49,7 @@ The device name is self-reported. The source address is observed, but it can
 change with DHCP, mobile networks, VPNs and CGNAT. The key fingerprint is the
 only part that is cryptographic.
 
-The app does not collect MAC addresses. A MAC never crosses the internet; an
+The app does not collect MAC addresses. A MAC never crosses the internet. An
 app can only read its own and send it, and a modified client can send anything.
 Showing it would look like verification without being verification.
 
@@ -56,14 +58,14 @@ Showing it would look like verification without being verification.
 An invite is a random 160-bit token, formatted as
 `LP1-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX`. The full pasteable code wraps the
 group details, endpoint, host pin, token, peer name and expiry. The token is
-inside the code; there is no private key in it.
+inside the code. There is no private key in it.
 
 The host:
 
-1. generates the token and a SHA-256 hash
-2. stores only the hash in the group file
-3. keeps the full code in memory for the current run so it can be copied
-4. marks the invite redeemed and deletes it after a successful join
+1. Generates the token and a SHA-256 hash
+2. Stores only the hash in the group file
+3. Keeps the full code in memory for the current run so it can be copied
+4. Marks the invite redeemed and deletes it after a successful join
 
 Rules:
 
@@ -100,7 +102,7 @@ addresses and device names change for ordinary reasons. A changed key is the
 signal that matters.
 
 Revoking a member sends a `revoked` control message, closes the connection and
-deletes the member record. The green light goes out; they cannot reconnect
+deletes the member record. The green light goes out. They cannot reconnect
 without a new invite.
 
 ## Transport
@@ -109,7 +111,7 @@ without a new invite.
 - ALPN is `lanparty/1`.
 - The host presents a self-signed certificate built from its identity key.
 - The friend verifies the host key against the pin in the invite. There is no
-  certificate authority and no hostname check; the pin is the identity.
+  certificate authority and no hostname check. The pin is the identity.
 - The host requires a client certificate. The client certificate is
   self-signed and built from the device key. The host checks the public key
   against the member list after the handshake.
@@ -153,12 +155,15 @@ Target validation:
 - Group data is JSON at `~/.local/share/lan-party/groups.json`, mode `0600`,
   directory `0700`.
 - Settings are JSON at `~/.config/lan-party/settings.json`, mode `0600`.
-- Private keys are separate files in `~/.local/share/lan-party/keys/`, mode
-  `0600`, in a `0700` directory. They are never written to the JSON, the
-  invite, a log or the clipboard.
+- Private keys are separate files in `~/.local/share/lan-party/keys/` on Linux
+  or `%LocalAppData%\lan-party\keys\` on Windows, mode `0600` where the OS
+  supports it, in an owner-only directory. They are never written to the JSON,
+  the invite, a log or the clipboard.
 - On Windows, settings live under `%AppData%\lan-party` and group data, keys and
-  the log under `%LocalAppData%\lan-party`; the per-user profile ACLs protect
+  the log under `%LocalAppData%\lan-party`. The per-user profile ACLs protect
   them.
+- Start on login uses the user's `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
+  key on Windows and `~/.config/autostart` on Linux. It never needs admin rights.
 - `lan-party.log` contains startup and connection errors for support. It never
   contains invite codes, tokens or private keys.
 - Invite tokens are hashed with SHA-256 before storage.

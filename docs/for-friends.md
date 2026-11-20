@@ -10,8 +10,15 @@ that one game.
 ## What you need to do
 
 1. Install LAN Party.
+   - **Windows:** download the portable zip, extract it and keep the folder
+     together, then run `lan-party.cmd`. Windows may show a SmartScreen warning
+     because the build is not signed. Allow it on private networks when the
+     firewall asks. If Defender flags it, don't disable Defender. Tell me and
+     send the log.
+   - **Linux:** download the AppImage, make it executable and run it.
 2. I send you an invite code.
-3. Paste the code into LAN Party and wait for me to approve your device.
+3. Paste the code into LAN Party. It shows the name I assigned you, then waits
+   for me to approve your device. Your device name is detected automatically.
 4. Open the game.
 5. In the game, connect to the address LAN Party shows you. It usually looks
    like `127.0.0.1:25565`.

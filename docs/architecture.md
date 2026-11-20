@@ -8,7 +8,7 @@ go, and which package owns which part.
 The host listens on one UDP port. A friend connects over QUIC, verifies the
 host's public key against the pin in the invite, and presents a device key. The
 host approves that key once. For every published service, the friend app opens
-a listener on `127.0.0.1`; a game connection becomes a QUIC stream, and the
+a listener on `127.0.0.1`. A game connection becomes a QUIC stream, and the
 host dials the LAN target and copies bytes. UDP game packets travel as QUIC
 datagrams.
 
@@ -31,7 +31,7 @@ game -> 127.0.0.1:25565 -> friend app -> [QUIC stream] -> host app
    public endpoint, the host key pin, a one-time token and an expiry.
 5. The friend pasted the invite. The friend app connected, checked the host
    pin, and sent a `hello` with the token and its device name. The host showed
-   an approval card; the host allowed it.
+   an approval card. The host allowed it.
 6. The host sent `welcome` with the service list. The friend app bound one
    loopback listener per published port.
 7. The game connected to `127.0.0.1:25565`. The friend app opened a QUIC stream
@@ -39,7 +39,7 @@ game -> 127.0.0.1:25565 -> friend app -> [QUIC stream] -> host app
 8. The host checked the service against its list, dialled `192.168.1.50:25565`,
    and copied bytes both ways.
 9. For UDP, the friend app kept a flow table keyed by the game's source
-   address. Each flow got an id; packets carried the published port and flow
+   address. Each flow got an id. Packets carried the published port and flow
    id. The host kept one UDP socket per flow towards the target.
 
 ## Why there is no virtual network
@@ -57,11 +57,11 @@ party, and it says so.
 
 | Package | Job |
 | --- | --- |
-| `cmd/lan-party` | entry point; calls `ui.Run` |
+| `cmd/lan-party` | entry point. Calls `ui.Run` |
 | `internal/app` | groups, settings, invites, approval, live sessions |
 | `internal/config` | XDG paths and `settings.json` |
 | `internal/secure` | owner-only key files, Ed25519 identities, certs, pins, fingerprints |
-| `internal/group` | group, service, member and invite records; validation; store |
+| `internal/group` | group, service, member and invite records. Validation. Store |
 | `internal/invite` | one-time token and pasteable invite code |
 | `internal/tunnel` | QUIC listener/dialer, TLS pinning, control stream, data streams, datagrams |
 | `internal/forward` | TCP pipes and UDP flow forwarding |
@@ -81,7 +81,7 @@ ui -> app -> session -> tunnel -> secure
 ```
 
 `app` is the only package that decides whether a device is allowed. `session`
-does not know about invites or members; it forwards what `app` approved.
+does not know about invites or members. It forwards what `app` approved.
 
 ## The control stream
 
@@ -95,7 +95,7 @@ for:
 
 The host app can push a new service list while a session is live. The friend
 app closes the old listeners and opens the current ones. A TCP stream that is
-already open keeps going; the listener only stops accepting new games.
+already open keeps going. The listener only stops accepting new games.
 
 ## UDP details
 
@@ -152,7 +152,7 @@ These are guards against a broken or malicious client, not billing limits.
   address, and this version cannot provide one.
 - It does not resolve hostnames for LAN targets. The host dials exactly the IP
   it configured.
-- It does not update itself. Download a new AppImage.
+- It does not update itself. Download a new AppImage or replace the Windows folder.
 
 ## Where to read next
 

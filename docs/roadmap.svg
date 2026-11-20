@@ -12,10 +12,15 @@
     <clipPath id="clip-path-2">
       <path d="M0 0 L34 0 L34 34 L0 34 Z"/>
     </clipPath>
+    <clipPath id="clip-path-3">
+      <path d="M0 0 L34 0 L34 34 L0 34 Z"/>
+    </clipPath>
     <pattern id="pattern-1" patternUnits="userSpaceOnUse" width="34" height="34" patternTransform="matrix(1 0 0 1 0 0)">
       <g clip-path="url(#clip-path-1)">
         <g clip-path="url(#clip-path-2)">
-          <circle cx="1" cy="1" r="1" fill="#ffffff" opacity="0.045"/>
+          <g clip-path="url(#clip-path-3)">
+            <circle cx="1" cy="1" r="1" fill="#ffffff" opacity="0.045"/>
+          </g>
         </g>
       </g>
     </pattern>
@@ -47,7 +52,17 @@
       <stop offset="0.8571" stop-color="#40b1f0"/>
       <stop offset="1" stop-color="#22d3ee"/>
     </linearGradient>
-    <linearGradient id="linear-gradient-4" x1="767" y1="646.75" x2="767" y2="469.25" gradientUnits="userSpaceOnUse">
+    <linearGradient id="linear-gradient-4" x1="767" y1="646.88" x2="767" y2="469.12" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff3dbe"/>
+      <stop offset="0.1429" stop-color="#de46ce"/>
+      <stop offset="0.2857" stop-color="#bd4fde"/>
+      <stop offset="0.4286" stop-color="#9c58ee"/>
+      <stop offset="0.5714" stop-color="#7c6df5"/>
+      <stop offset="0.7143" stop-color="#5e8ff3"/>
+      <stop offset="0.8571" stop-color="#40b1f0"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="linear-gradient-5" x1="767" y1="646.75" x2="767" y2="469.25" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#ff3dbe"/>
       <stop offset="0.1429" stop-color="#de46ce"/>
       <stop offset="0.2857" stop-color="#bd4fde"/>
@@ -73,6 +88,7 @@
     <circle cx="120" cy="328" r="14" fill="#08040f" stroke="#22d3ee" stroke-opacity="0.35" stroke-width="2"/>
     <circle cx="120" cy="328" r="7" fill="#22d3ee"/>
     <path d="M224 250 L1310 250 C1321.046 250 1330 258.954 1330 270 L1330 430 C1330 441.046 1321.046 450 1310 450 L224 450 C212.954 450 204 441.046 204 430 L204 270 C204 258.954 212.954 250 224 250 Z" fill="#120a2e" fill-opacity="0.88" stroke="url(#linear-gradient-3)" stroke-opacity="0.85" stroke-width="2"/>
+    <path d="M224 470 L1310 470 C1321.046 470 1330 477.88 1330 487.6 L1330 628.4 C1330 638.12 1321.046 646 1310 646 L224 646 C212.954 646 204 638.12 204 628.4 L204 487.6 C204 477.88 212.954 470 224 470 Z" fill="#120a2e" fill-opacity="0.88" stroke="url(#linear-gradient-4)" stroke-opacity="0.85" stroke-width="2"/>
     <path d="M74 306 L166 306 C178.15 306 188 315.85 188 328 L188 328 C188 340.15 178.15 350 166 350 L74 350 C61.85 350 52 340.15 52 328 L52 328 C52 315.85 61.85 306 74 306 Z" fill="#120a2e" stroke="#22d3ee" stroke-opacity="0.55"/>
     <text transform="matrix(1 0 0 1 120 334)" x="0" y="0" xml:space="preserve" font-family="&apos;JetBrains Mono&apos;, monospace" font-size="20" fill="#22d3ee" text-anchor="middle"><tspan x="0" y="0">1.0</tspan></text>
     <text transform="matrix(1 0 0 1 236 302)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans SmBld&apos;, sans-serif" font-size="29" font-weight="600" fill="#fdf4ff"><tspan x="0" y="0">Linux release</tspan></text>
@@ -104,13 +120,13 @@
     <text transform="matrix(1 0 0 1 578.584 426.6)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="16" fill="#e9ddf9"><tspan x="0" y="0">16 game presets</tspan></text>
     <circle cx="120" cy="548" r="14" fill="#08040f" stroke="#ff3dbe" stroke-opacity="0.35" stroke-width="2"/>
     <circle cx="120" cy="548" r="7" fill="#ff3dbe"/>
-    <path d="M224 470 L1310 470 C1321.046 470 1330 478.954 1330 490 L1330 626 C1330 637.046 1321.046 646 1310 646 L224 646 C212.954 646 204 637.046 204 626 L204 490 C204 478.954 212.954 470 224 470 Z" fill="#120a2e" fill-opacity="0.88" stroke="url(#linear-gradient-4)" stroke-opacity="0.1" stroke-width="1.5"/>
+    <path d="M224 470 L1310 470 C1321.046 470 1330 478.954 1330 490 L1330 626 C1330 637.046 1321.046 646 1310 646 L224 646 C212.954 646 204 637.046 204 626 L204 490 C204 478.954 212.954 470 224 470 Z" fill="#120a2e" fill-opacity="0.88" stroke="url(#linear-gradient-5)" stroke-opacity="0.1" stroke-width="1.5"/>
     <path d="M74 526 L166 526 C178.15 526 188 535.85 188 548 L188 548 C188 560.15 178.15 570 166 570 L74 570 C61.85 570 52 560.15 52 548 L52 548 C52 535.85 61.85 526 74 526 Z" fill="#120a2e" stroke="#ff3dbe" stroke-opacity="0.55"/>
     <text transform="matrix(1 0 0 1 120 554)" x="0" y="0" xml:space="preserve" font-family="&apos;JetBrains Mono&apos;, monospace" font-size="20" fill="#ff3dbe" text-anchor="middle"><tspan x="0" y="0">1.1</tspan></text>
     <text transform="matrix(1 0 0 1 236 522)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans SmBld&apos;, sans-serif" font-size="29" font-weight="600" fill="#fdf4ff"><tspan x="0" y="0">Windows + group overrides</tspan></text>
     <g>
-      <path d="M1257.8 497 L1292 497 C1299.732 497 1306 503.268 1306 511 L1306 511 C1306 518.732 1299.732 525 1292 525 L1257.8 525 C1250.068 525 1243.8 518.732 1243.8 511 L1243.8 511 C1243.8 503.268 1250.068 497 1257.8 497 Z" fill="#ff3dbe" fill-opacity="0.1" stroke="#ff3dbe" stroke-opacity="0.45"/>
-      <text transform="matrix(1 0 0 1 1274.224 515.32)" x="0.7" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans SmBld&apos;, sans-serif" font-size="12" font-weight="600" fill="#ff3dbe" letter-spacing="1.4" text-anchor="middle"><tspan x="0.7" y="0">NEXT</tspan></text>
+      <path d="M1229 497 L1292 497 C1299.732 497 1306 503.268 1306 511 L1306 511 C1306 518.732 1299.732 525 1292 525 L1229 525 C1221.268 525 1215 518.732 1215 511 L1215 511 C1215 503.268 1221.268 497 1229 497 Z" fill="#ff3dbe" fill-opacity="0.1" stroke="#ff3dbe" stroke-opacity="0.45"/>
+      <text transform="matrix(1 0 0 1 1261.87 515.32)" x="0.7" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans SmBld&apos;, sans-serif" font-size="12" font-weight="600" fill="#ff3dbe" letter-spacing="1.4" text-anchor="middle"><tspan x="0.7" y="0">OUT NOW</tspan></text>
     </g>
     <text transform="matrix(1 0 0 1 236 556)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="18" fill="#b9a8d9"><tspan x="0" y="0">The next release: bring LAN Party to Windows.</tspan></text>
     <path d="M253 578 L416.3 578 C425.689 578 433.3 585.611 433.3 595 L433.3 595 C433.3 604.389 425.689 612 416.3 612 L253 612 C243.611 612 236 604.389 236 595 L236 595 C236 585.611 243.611 578 253 578 Z" fill="#1a0e3d" stroke="#ff3dbe" stroke-opacity="0.22"/>
@@ -119,7 +135,7 @@
     <path d="M460.344 578 L650.244 578 C659.633 578 667.244 585.611 667.244 595 L667.244 595 C667.244 604.389 659.633 612 650.244 612 L460.344 612 C450.955 612 443.344 604.389 443.344 595 L443.344 595 C443.344 585.611 450.955 578 460.344 578 Z" fill="#1a0e3d" stroke="#ff3dbe" stroke-opacity="0.22"/>
     <circle cx="458.344" cy="595" r="3" fill="#ff3dbe"/>
     <text transform="matrix(1 0 0 1 468.344 600.6)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="16" fill="#e9ddf9"><tspan x="0" y="0">Per-group address &amp; port</tspan></text>
-    <path d="M694.232 578 L881.032 578 C890.421 578 898.032 585.611 898.032 595 L898.032 595 C898.032 604.389 890.421 612 881.032 612 L694.232 612 C684.843 612 677.232 604.389 677.232 595 L677.232 595 C677.232 585.611 684.843 578 694.232 578 Z" fill="#1a0e3d" stroke="#ff3dbe" stroke-opacity="0.22"/>
+    <path d="M694.232 578 L815.016 578 C824.405 578 832.016 585.611 832.016 595 L832.016 595 C832.016 604.389 824.405 612 815.016 612 L694.232 612 C684.843 612 677.232 604.389 677.232 595 L677.232 595 C677.232 585.611 684.843 578 694.232 578 Z" fill="#1a0e3d" stroke="#ff3dbe" stroke-opacity="0.22"/>
     <circle cx="692.232" cy="595" r="3" fill="#ff3dbe"/>
     <text transform="matrix(1 0 0 1 702.232 600.6)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="16" fill="#e9ddf9"><tspan x="0" y="0">One-hour invites</tspan></text>
     <circle cx="120" cy="744" r="14" fill="#08040f" stroke="#8b5cf6" stroke-opacity="0.35" stroke-width="2"/>

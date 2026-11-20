@@ -99,13 +99,13 @@ normal app.
 ## Styling
 
 `internal/gtkui/style.css` is the source of truth for colours, spacing, type
-sizes and component styling. Brand fonts and PNGs live in `brand/`; interface
+sizes and component styling. Brand fonts and PNGs live in `brand/`. Interface
 fonts and icons live in `internal/gtkui/assets/`.
 
 The app loads `style.css` at startup and finds the asset root from
 `LANPARTY_ASSET_ROOT`, the current directory, or the executable directory. The
 AppImage uses the executable-relative lookup. `docs/tuner.html` is retained as
-a historical design reference; it is not connected to the GTK renderer.
+a historical design reference. It is not connected to the GTK renderer.
 
 ## Runtime data
 
@@ -131,7 +131,7 @@ and start fresh. The old code and design are kept in the `legacy` branch.
 
 The earlier build of this rewrite kept keys in the OS keyring. This build stores
 them in `keys/` and does not import keyring entries. Delete a group created by
-that build and create it again; the app will not silently replace a missing
+that build and create it again. The app will not silently replace a missing
 identity.
 
 ## Packaging
@@ -142,7 +142,7 @@ verifies its checksum and writes
 `dist/lan-party_<version>_linux_amd64.AppImage`.
 
 The AppImage currently uses the system GTK4 runtime. It builds on every push
-to main and on tags; the artifact is retained for 14 days. Builds use the
+to main and on tags. The artifact is retained for 14 days. Builds use the
 Ubuntu 22.04 runner and gotk4 v0.2.2, which sets the runtime floor at GTK 4.6,
 GLib 2.72, GLIBC_2.34 and the x86-64 baseline ISA. Each build is launched under
 Xvfb on that floor before it is uploaded. Bundling GTK remains a separate
@@ -155,17 +155,42 @@ Linux AppImage is built on every push to main, on tags and by hand, then smoke
 tested under Xvfb. The Windows portable zip is built in the same workflow on
 Windows and is uploaded as the `windows-portable` artifact. A tag also creates
 a draft release with the AppImage, Windows zip and `SHA256SUMS`. If
-`docs/releases/<tag>.md` exists, it becomes the release body; otherwise the
+`docs/releases/<tag>.md` exists, it becomes the release body. Otherwise the
 notes are generated. The AppImage installs the GPLv3 license, font licenses and
 third-party notices under `usr/share/licenses/lan-party/`.
 
 Version strings come from `git describe` and are passed to
-`internal/buildinfo.Version` with `-ldflags`. Untagged builds say `dev`.
+`internal/buildinfo.Version` with `-ldflags`. Untagged local builds say `dev`.
+CI uses `dev-<sha>` for branches.
+
+### Tagging a release
+
+1. Make sure `main` is clean and the tests pass.
+2. Add or update `docs/releases/<tag>.md`. CI uses it as the release body.
+3. Create an annotated tag:
+
+   ```sh
+   git tag -a v1.1.0 -m "LAN Party 1.1.0"
+   ```
+
+4. Push `main` first, then the tag:
+
+   ```sh
+   git push github main
+   git push github v1.1.0
+   ```
+
+5. CI builds the AppImage and Windows zip, writes `SHA256SUMS`, and creates a
+   **draft** release.
+6. Open the draft on GitHub, check the notes and all assets, then publish it.
+
+Never move or delete an existing release tag. If a build is wrong, fix it and
+publish a new patch version instead.
 
 ## Style
 
 - Small commits with past-tense messages: “Added…”, “Fixed…”, “Removed…”.
-- Keep packages focused; avoid a package that only wraps another.
+- Keep packages focused. Avoid a package that only wraps another.
 - No silent fallbacks for secrets. A key file error is an error.
 - No invented state in the interface. A live light means a real connection.
 - Prefer standard library crypto and the QUIC/TLS stack. Do not hand-roll a
@@ -204,7 +229,7 @@ The app writes `lan-party.log` under its data directory:
 keeping one previous file.
 
 Code signing is not configured yet. Unsigned builds can trigger SmartScreen or
-a Defender false positive; a certificate or Azure Trusted Signing is the
+a Defender false positive. A certificate or Azure Trusted Signing is the
 long-term fix.
 
 ## Design and plan

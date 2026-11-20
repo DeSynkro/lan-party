@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-blue.svg" alt="License: GPLv3"></a>
-  <a href="https://github.com/DeSynkro/lan-party/releases"><img src="https://img.shields.io/badge/version-1.0.0-orange.svg" alt="Version 1.0.0"></a>
+  <a href="https://github.com/DeSynkro/lan-party/releases"><img src="https://img.shields.io/badge/version-1.1.0-orange.svg" alt="Version 1.1.0"></a>
   <a href="https://ko-fi.com/desynkro"><img src="https://img.shields.io/badge/Ko--fi-support%20me-ff5e5b?logo=kofi&amp;logoColor=white" alt="Support me on Ko-fi"></a>
 </p>
 
@@ -35,24 +35,29 @@ The traffic crosses one encrypted QUIC connection to your PC, where the app dial
 
 Most ways to play a LAN game over the internet put both machines on a virtual network. Which is fine, but it exposes far more than the one port you wanted to share, and it usually brings accounts, a daemon, or a Windows-only client.
 
-LAN Party does one thing. it carries your selected game service from your LAN to a friend's loopback address over one encrypted connection. No virtual LAN, no routes, no accounts, no telemetry.
+LAN Party does one thing. It carries your selected game service from your LAN to a friend's loopback address over one encrypted connection. No virtual LAN, no routes, no accounts, no telemetry.
 
 It is deliberately lightweight and to the point. If you need a whole virtual network, use Tailscale or ZeroTier. If you need one game port for a friend, this is for you :)
 
 ## Requirements
 
 - **Linux on x86-64** with X11 or Wayland. The AppImage is built on Ubuntu 22.04 against a deliberately low baseline: **GTK 4.6**, **GLib 2.72** and **glibc 2.34** so it supports older LTS releases, not just current distros. Any distro shipping GTK 4.6, GLib 2.72 and glibc 2.34 or newer should work. Officially tested with **CachyOS** and **SteamOS** please provide me feedback on your personal experience.
+- **Windows 10 or 11 on x86-64.** The portable zip includes the GTK4 runtime. No installer, admin rights or account is needed.
 - **One UDP port forwarded** on the host's router. Friends do not need a forward.
 - **A public address** that reaches the host: a hostname, a static IP, or a dynamic DNS name.
 - No keyring daemon, no account and no telemetry.
 
 ### For the AppImage
 
-The AppImage uses the system GTK4 runtime. You need FUSE, or run it with `--appimage-extract-and-run`. On Ubuntu 24.04+ install `libfuse2t64`; on Arch install `fuse2`.
+The AppImage uses the system GTK4 runtime. You need FUSE, or run it with `--appimage-extract-and-run`. On Ubuntu 24.04+ install `libfuse2t64`. On Arch install `fuse2`.
+
+### For the Windows zip
+
+Extract the zip and keep the folder together. Run `lan-party.cmd`. The first launch may show a Windows Defender SmartScreen warning because this build is not signed. Choose **More info** and **Run anyway** only if you trust the download. Allow LAN Party on private networks when Windows Firewall asks. The app keeps its settings in `%AppData%\lan-party`, and its groups, keys and log in `%LocalAppData%\lan-party`.
 
 # Build requirements
 
-Building needs GTK4 and GLib 2.72+ development headers, a C compiler and `pkg-config`. The pinned Go toolchain is downloaded into `.tools` on the first build; nothing is installed system-wide.
+Building needs GTK4 and GLib 2.72+ development headers, a C compiler and `pkg-config`. The pinned Go toolchain is downloaded into `.tools` on the first build. Nothing is installed system-wide.
 
 **On Debian/Ubuntu:**
 
@@ -75,24 +80,47 @@ sudo dnf install gcc pkgconf-pkg-config gtk4-devel glib2-devel \
 sudo pacman -S --needed base-devel gtk4 glib2 libgirepository
 ```
 
+Windows builds use MSYS2 UCRT64. See [docs/development.md](docs/development.md#windows).
+
 ## Install
 
-Download the AppImage and `SHA256SUMS` from [Releases](https://github.com/DeSynkro/lan-party/releases), then:
+Download the artifact for your platform and `SHA256SUMS` from [Releases](https://github.com/DeSynkro/lan-party/releases).
 
-```sh
-chmod +x lan-party_1.0.0_linux_amd64.AppImage
-./lan-party_1.0.0_linux_amd64.AppImage
-```
+### Linux AppImage
 
-Verify the download first:
+1. Verify the download. `--ignore-missing` lets Linux users verify only the files they downloaded:
 
-```sh
-sha256sum -c SHA256SUMS
-```
+   ```sh
+   sha256sum -c --ignore-missing SHA256SUMS
+   ```
 
-The AppImage runs as a single file. To add it to your application menu, use AppImageLauncher or create a desktop entry for it.
+2. Make it executable and run it:
+
+   ```sh
+   chmod +x lan-party_1.1.0_linux_amd64.AppImage
+   ./lan-party_1.1.0_linux_amd64.AppImage
+   ```
+
+The AppImage uses the system GTK4 runtime and needs FUSE. On Ubuntu 24.04+ install `libfuse2t64`. On Arch install `fuse2`. Without FUSE, run it with `--appimage-extract-and-run`.
 
 The app keeps its data in `~/.config/lan-party` and `~/.local/share/lan-party`. To update, replace the AppImage. To uninstall, turn off **Start on login**, delete the AppImage and remove those two folders.
+
+### Windows portable zip
+
+1. Download `lan-party_1.1.0_windows_amd64.zip` and `SHA256SUMS`.
+2. Verify the zip in PowerShell. Compare the hash to the Windows zip line in `SHA256SUMS`:
+
+   ```powershell
+   Get-FileHash .\lan-party_1.1.0_windows_amd64.zip -Algorithm SHA256
+   ```
+
+3. Extract the zip and keep the folder together. Run `lan-party.cmd`.
+
+Windows may show a SmartScreen warning because this build is not code-signed. Choose **More info** and **Run anyway** only if you trust the download. Windows Defender can occasionally false-positive an unsigned new release. See [Sending a log](#sending-a-log) and the release notes if that happens.
+
+Allow LAN Party on **private networks** when Windows Firewall asks. The app keeps settings in `%AppData%\lan-party`, and groups, keys and the log in `%LocalAppData%\lan-party`. To update, replace the folder. To uninstall, delete the folder and turn off **Start on login** in Settings first.
+
+There is no Windows installer in 1.1. The console debug build is a separate manual CI artifact, not part of the release zip.
 
 ## Build and run from source
 
@@ -108,11 +136,15 @@ make appimage  # Linux AppImage in dist/
 ## Features
 
 - **One port, one friend:** each service publishes a loopback address such as `127.0.0.1:25565`.
+- **Windows and Linux:** a portable Windows zip with the GTK runtime included, and a Linux AppImage.
 - **TCP and UDP:** forward either or both, with an optional port remap.
-- **Per-group connection:** a host group can use its own public address and UDP port; blank fields use the Settings defaults.
-- **One-time invites:** hashed at rest, 1-hour expiry, and host approval for every new device or changed device key.
+- **Per-group connection:** a host group can use its own public address and UDP port. Blank fields use the Settings defaults.
+- **One-time invites:** hashed at rest, 1-hour expiry, and host approval for every new device or changed device key. Changing a group's advertised endpoint cancels its open invites.
+- **Automatic reconnect:** a dropped friend connection retries on a 30-minute backoff window. The setting can turn it off.
 - **Live presence:** see who is connected, their RTT, and revoke a device immediately.
-- **Live service updates:** add, remove or change a service while friends are connected.
+- **Live service updates:** add, edit or remove a service while friends are connected. New services default to `127.0.0.1` and accept `localhost`.
+- **Join preview:** the joining friend sees the name the host assigned and a read-only detected device name. Host rows show each member's device tag.
+- **Readable logs:** a rotating log in the data directory, with the path shown in Settings → About.
 - **Saved groups:** keep your regular groups and friends, and reconnect after a host restart.
 - **Presets:** Minecraft Java and Bedrock, Terraria, Valheim, Factorio, Palworld, rAthena Ragnarok Online, Stardew Valley, Project Zomboid, 7 Days to Die, Rust, Source engine, ARK, Don't Starve Together, Jellyfin and Plex.
 - **Fixed 400×640 interface:** a small GTK4 window that stays out of the way.
@@ -132,7 +164,7 @@ make appimage  # Linux AppImage in dist/
 4. **A loopback port on the friend's PC.** The friend's app opens `127.0.0.1:<port>` for each published service.
 5. **The host dials the LAN.** Game traffic crosses the encrypted tunnel, and the host connects to the real server on the LAN.
 
-The host is the only peer a friend connects to. Friends never see or connect to each other; the host sees the full member list. Nothing else on the host's LAN is reachable.
+The host is the only peer a friend connects to. Friends never see or connect to each other. The host sees the full member list. Nothing else on the host's LAN is reachable.
 
 ## Setup
 
@@ -160,9 +192,11 @@ The in-app guide has the full walkthrough with your current ports and addresses 
 | `~/.local/share/lan-party/groups.json` | Groups, services, members, invite hashes |
 | `~/.local/share/lan-party/keys/` | Long-lived private keys (`0600`) |
 | `~/.config/autostart/lan-party.desktop` | Autostart entry when enabled |
-| `~/.local/share/lan-party/lan-party.log` | Application log; `%LocalAppData%\lan-party\lan-party.log` on Windows |
+| `~/.local/share/lan-party/lan-party.log` | Application log. `%LocalAppData%\lan-party\lan-party.log` on Windows |
 
-The JSON files and key files are owner-only (`0600`); the data and key directories are `0700`. Invites contain no private keys. No traffic or telemetry leaves your machine except the encrypted tunnel between the host and an approved friend.
+On Windows, settings live under `%AppData%\lan-party`. Groups, keys and the log live under `%LocalAppData%\lan-party`. Start on login uses the per-user `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` key, not Task Scheduler or an admin service.
+
+The JSON files and key files are owner-only (`0600`). The data and key directories are `0700`. Invites contain no private keys. No traffic or telemetry leaves your machine except the encrypted tunnel between the host and an approved friend.
 
 ## Tech stack
 
@@ -172,7 +206,7 @@ The JSON files and key files are owner-only (`0600`); the data and key directori
 | UI | GTK4 through gotk4 |
 | Transport | QUIC through quic-go |
 | Tray | fyne.io/systray |
-| Packaging | AppImage and GitHub Actions |
+| Packaging | AppImage, portable Windows zip and GitHub Actions |
 
 ## Troubleshooting
 
@@ -181,6 +215,12 @@ The JSON files and key files are owner-only (`0600`); the data and key directori
 If it reports a FUSE error, install FUSE or run it with `--appimage-extract-and-run`.
 
 If it reports a missing GTK library, install GTK4 (for example `libgtk-4-1` on Debian/Ubuntu). The AppImage uses the system GTK runtime.
+
+### Windows shows a SmartScreen or Defender warning
+
+The 1.1 Windows build is not code-signed. SmartScreen may ask you to confirm the app. Use **More info** and **Run anyway** only if the SHA-256 matches the release's `SHA256SUMS`.
+
+Windows Defender can occasionally false-positive an unsigned new build. Do not disable Defender. Submit the zip through Microsoft's [false-positive form](https://www.microsoft.com/en-us/wdsi/filesubmission), and send the log so the cause can be checked. Code signing is planned after 1.1.
 
 ### Sending a log
 
@@ -195,7 +235,7 @@ problem.
 
 ### The friend cannot connect
 
-Check the router's UDP forward, the public address and the host's firewall. The host must allow inbound UDP on the app port (51820 by default). Friends do not need a forward.
+Check the router's UDP forward, the public address and the host's firewall. The host must allow inbound UDP on the app port (51820 by default). On Windows, allow LAN Party on private networks in the Windows Firewall prompt. Friends do not need a forward.
 Make sure you've clicked "Start Session".
 
 ### The invite says it is expired
@@ -208,11 +248,11 @@ That is intentional. Friends are not connected to each other. The host sees the 
 
 ### Closing the window quits the app
 
-The tray needs a StatusNotifier host. On GNOME, install the AppIndicator extension to get a tray icon. Without it, closing the window quits and Settings explains this.
+On Linux the tray needs a StatusNotifier host. On GNOME, install the AppIndicator extension to get a tray icon. On Windows the tray lives in the notification area. If you do not see it, check the overflow menu. Without a working tray, closing the window quits and Settings explains this.
 
-### Start on login stopped working after moving the AppImage
+### Start on login stopped working after moving the app
 
-Turn **Start on login** off and on again so the autostart entry points at the new location.
+Turn **Start on login** off and on again so the autostart entry points at the new AppImage or Windows folder.
 
 ## Docs
 
@@ -231,7 +271,7 @@ Turn **Start on login** off and on again so the autostart entry points at the ne
   <a href="docs/roadmap.svg"><img src="docs/roadmap.svg" alt="LAN Party roadmap: 1.0 Linux, 1.1 Windows and group overrides, 1.2 relay and packaging, 2.0 beyond" width="900"></a>
 </p>
 
-The short version: **1.0** is the Linux release. **1.1** is the Windows release; the per-group connection overrides and one-hour invites are already in. **1.2** adds the self-hosted relay. **2.0** is the long shelf for Flatpak, auto-update and the next big idea.
+The short version: **1.0** is the Linux release. **1.1** adds the Windows portable build, per-group connection overrides, one-hour invites, automatic reconnect and service editing. **1.2** adds the self-hosted relay. **2.0** is the long shelf for Flatpak, auto-update and the next big idea.
 
 The full notes live in [features-to-be-added.md](features-to-be-added.md). Versions and scope are a direction, not a promise.
 
@@ -241,7 +281,7 @@ If this is useful to you, you can support me on [Ko-fi](https://ko-fi.com/desynk
 
 ## License
 
-GPLv3. See [LICENSE](LICENSE) and [NOTICE](NOTICE). The AppImage ships the license, font licenses and third-party notices under `usr/share/licenses/lan-party/`.
+GPLv3. See [LICENSE](LICENSE) and [NOTICE](NOTICE). The AppImage and Windows zip ship the license, font licenses and third-party notices.
 
 ## Credits
 

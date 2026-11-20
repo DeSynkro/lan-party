@@ -5,14 +5,22 @@ with your current port and local address filled in.
 
 ## What you need
 
-- The host: a Linux PC running the game server, with LAN Party installed.
-- The friend: a Linux PC with LAN Party installed.
+- The host: a Linux or Windows PC running the game server, with LAN Party
+  installed.
+- The friend: a Linux or Windows PC with LAN Party installed. Windows 10 or 11
+  on x86-64, or Linux on x86-64 with X11 or Wayland.
 - One UDP port forwarded on the host's router.
 - A public address that reaches the host. A hostname is better than an IP
   address because it survives a changing home IP.
 
 The host is the only person who needs a router change. Friends do not forward
 anything.
+
+On Windows, extract the portable zip and run `lan-party.cmd`. The first launch
+may show a SmartScreen warning because the build is not signed. Allow LAN Party
+on private networks when Windows Firewall asks. Settings live in
+`%AppData%\lan-party`. Groups, keys and the log live in
+`%LocalAppData%\lan-party`.
 
 ## Hosting
 
@@ -21,11 +29,11 @@ anything.
 Open the app, create a group, then choose **Add service**.
 
 - **Name:** what the game is called, for example `Minecraft: Java Edition`.
-- **Protocol:** TCP, UDP or both. Check the game's own documentation; most
+- **Protocol:** TCP, UDP or both. Check the game's own documentation. Most
   survival games use UDP, Minecraft Java and Terraria use TCP.
 - **Game server IP:** the IP of the machine running the server. New services
   default to `127.0.0.1`, which is right for a server or container on the same
-  PC; `localhost` is accepted as an alias. For a server on another PC, use that
+  PC. `localhost` is accepted as an alias. For a server on another PC, use that
   PC's LAN IP. Names other than `localhost` are not accepted.
 - **Game server port(s):** the port or ports the game listens on, for example
   `25565`, `2456-2458` or `2456,2600,2610`.
@@ -36,13 +44,13 @@ Open the app, create a group, then choose **Add service**.
 - **Hint:** what to paste the address into, for example
   `Direct Connect in Minecraft`.
 
-Published services can be edited from their details; **Edit** reopens this form
+Published services can be edited from their details. **Edit** reopens this form
 with the current values.
 
 A blank friend port maps every game port to the same number on the friend's PC.
 That covers a range such as Valheim's `2456-2458` and a non-adjacent list such
-as `2456,2600`. A different friend port only works with a single game port;
-multiple game ports with one friend port are rejected because the mapping would
+as `2456,2600`. A different friend port only works with a single game port.
+Multiple game ports with one friend port are rejected because the mapping would
 be ambiguous. A service can publish up to eight ports.
 
 ### 2. Forward one UDP port
@@ -112,7 +120,7 @@ this PC.
 
 Changing the app port while the session is live restarts it. Everyone
 disconnects briefly. If the advertised endpoint changes, open invites are
-cancelled; create new invites after the restart. If it stays the same, update
+cancelled. Create new invites after the restart. If it stays the same, update
 your router forward to the new local port.
 
 ### 4. Send an invite
@@ -142,7 +150,7 @@ invite. You can remove a device later from the People section.
 1. Open LAN Party and choose **Join with an invite**.
 2. Paste the code. The dialog shows the name the host assigned you and the group
    and host name. Your device name is detected automatically and sent to the
-   host; it is read-only here.
+   host. It is read-only here.
 3. Wait while the host approves the device. The host has to be online and
    running the session.
 4. Open the game and go to the address shown under **Ready to play**, usually
@@ -162,11 +170,13 @@ and its device key from your PC.
 
 By default, closing the window keeps LAN Party and a live session running in
 the system tray. The tray menu can show the window, open the guide or settings,
-and quit.
+and quit. On Windows the icon lives in the notification area. Check the overflow
+menu if it is hidden. On Linux the desktop needs a StatusNotifier host. GNOME
+users can install the AppIndicator extension.
 
 If you untick **Close to tray** in Settings, closing the window quits the app
 and ends any live session. If your desktop does not report a system tray, that
-is what closing does anyway; the setting says so.
+is what closing does anyway. The setting says so.
 
 ## Invites
 
@@ -183,13 +193,24 @@ is what closing does anyway; the setting says so.
 
 The device key is the membership. If a friend reinstalls the app or uses a new
 PC, the key changes. The host sees a **new device** request and must allow it.
-The old key is replaced; the old connection is closed.
+The old key is replaced. The old connection is closed.
 
 Changing a device name or a public IP is shown as information, not used to
 kick anyone. IP addresses change for ordinary reasons. The key is the strong
 signal.
 
 ## Problems
+
+### Windows shows a SmartScreen or Defender warning
+
+The Windows build is not code-signed. SmartScreen may ask you to confirm it.
+Choose **More info** and **Run anyway** only after checking the SHA-256 against
+the release's `SHA256SUMS`.
+
+Windows Defender can occasionally false-positive an unsigned new build. Do not
+disable Defender. Submit the zip through Microsoft's
+[false-positive form](https://www.microsoft.com/en-us/wdsi/filesubmission) and
+send the log. Code signing is planned after 1.1.
 
 ### A friend cannot reach the host
 
@@ -198,7 +219,8 @@ Check, in this order:
 1. The public address in Settings matches what your router shows.
 2. The router forwards UDP **app port** to the host PC's current LAN IP.
 3. The host PC's firewall allows the app to receive UDP. On Linux, a firewall
-   may be blocking the port even when the router is correct.
+   may be blocking the port even when the router is correct. On Windows, allow
+   LAN Party on private networks when the firewall prompt appears.
 4. A VPN on the host is not hiding the public address. Try excluding LAN Party
    from the VPN if the client supports per-app exclusions.
 5. The host is behind carrier-grade NAT. Compare the router's WAN address with
@@ -208,7 +230,7 @@ Check, in this order:
 ### The public address changed
 
 Update it in **Settings → Network defaults**, or in the group's own connection
-dialog. Open invites that used the old endpoint are cancelled; create new
+dialog. Open invites that used the old endpoint are cancelled. Create new
 invites after the change.
 
 ### A friend's port is already in use
@@ -234,8 +256,9 @@ problem.
 
 ### Where are my keys stored?
 
-The app keeps private keys in `~/.local/share/lan-party/keys/`. Each key is a
-`0600` file in a `0700` directory, so only your user account can read it. There
+On Linux the app keeps private keys in `~/.local/share/lan-party/keys/`. On
+Windows they live in `%LocalAppData%\lan-party\keys\`. Each key is an owner-only
+file in an owner-only directory, so only your user account can read it. There
 is no keyring, session bus or unlock prompt.
 
 The keys are not passphrase-protected. Keep the folder private and use full-disk
@@ -253,7 +276,7 @@ That is allowed. Set **App port** in **Settings → Network defaults**, or set a
 group-specific app port on the group screen. Forward that UDP port on the
 router. If the app port changes while a host session is live, the group dialog
 stops the session, saves, and restarts it after confirmation. Everyone
-disconnects briefly; update the router forward and, if the advertised endpoint
+disconnects briefly. Update the router forward and, if the advertised endpoint
 changed, send new invites.
 
 ## Security notes
