@@ -217,11 +217,17 @@ jobs:
       - name: Check release archive
         shell: msys2 {0}
         run: |
-          unzip -l dist/*.zip | grep -q 'lan-party/lan-party.exe'
-          if unzip -l dist/*.zip | grep -q 'lan-party/lan-party-console.exe'; then
-            echo "release archive contains lan-party-console.exe" >&2
-            exit 1
-          fi
+          listing="$(unzip -l dist/*.zip)"
+          case "${listing}" in
+            *"lan-party/lan-party.exe"*) ;;
+            *) echo "release archive is missing lan-party.exe" >&2; exit 1 ;;
+          esac
+          case "${listing}" in
+            *"lan-party/lan-party-console.exe"*)
+              echo "release archive contains lan-party-console.exe" >&2
+              exit 1
+              ;;
+          esac
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-portable
