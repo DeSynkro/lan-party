@@ -156,6 +156,11 @@ Target validation:
 - Private keys are separate files in `~/.local/share/lan-party/keys/`, mode
   `0600`, in a `0700` directory. They are never written to the JSON, the
   invite, a log or the clipboard.
+- On Windows, settings live under `%AppData%\lan-party` and group data, keys and
+  the log under `%LocalAppData%\lan-party`; the per-user profile ACLs protect
+  them.
+- `lan-party.log` contains startup and connection errors for support. It never
+  contains invite codes, tokens or private keys.
 - Invite tokens are hashed with SHA-256 before storage.
 - There is no keyring daemon, session bus or unlock prompt. A key file that is
   readable by another user is refused instead of used.

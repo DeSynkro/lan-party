@@ -221,6 +221,17 @@ service card shows the error.
 
 Create a new invite. Codes work once and expire after 1 hour.
 
+### Sending a log
+
+LAN Party keeps a log in its data directory:
+
+- Linux: `~/.local/share/lan-party/lan-party.log`
+- Windows: `%LocalAppData%\lan-party\lan-party.log`
+
+The log rotates at 5 MB and keeps one previous file. It never contains invite
+codes, tokens or private keys. Send it when reporting a startup or connection
+problem.
+
 ### Where are my keys stored?
 
 The app keeps private keys in `~/.local/share/lan-party/keys/`. Each key is a

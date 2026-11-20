@@ -11,7 +11,12 @@ version="${VERSION:-dev}"
 out="${root}/dist"
 work="${root}/.cache/windows"
 app="${work}/lan-party"
-archive="${out}/lan-party_${version}_windows_amd64.zip"
+include_console="${INCLUDE_CONSOLE:-0}"
+archive_suffix=""
+if [ "${include_console}" = "1" ]; then
+    archive_suffix="_debug"
+fi
+archive="${out}/lan-party_${version}_windows${archive_suffix}_amd64.zip"
 
 export CC="${CC:-gcc}"
 export CGO_ENABLED=1
@@ -78,15 +83,17 @@ RC
     -ldflags "-s -w -H=windowsgui -X github.com/desynkro/lan-party/internal/buildinfo.Version=${version}" \
     -o "${app}/lan-party.exe" ./cmd/lan-party
 
-# A console build for diagnosing startup problems. The release exe above is a
-# GUI subsystem binary and does not open a terminal.
-"${go_bin}" build -trimpath \
-    -ldflags "-s -w -X github.com/desynkro/lan-party/internal/buildinfo.Version=${version}" \
-    -o "${app}/lan-party-console.exe" ./cmd/lan-party
+# A full console build is only included in the manual debug archive. The release
+# archive contains the GUI executable only.
+if [ "${include_console}" = "1" ]; then
+    "${go_bin}" build -trimpath \
+        -ldflags "-s -w -X github.com/desynkro/lan-party/internal/buildinfo.Version=${version}" \
+        -o "${app}/lan-party-console.exe" ./cmd/lan-party
+fi
 
 # Authenticode signing, when a certificate is available, belongs here: sign
-# both executables before the zip is created. Unsigned builds can be flagged
-# by Defender or SmartScreen.
+# both executables when present before the zip is created. Unsigned builds can
+# be flagged by Defender or SmartScreen.
 
 # App assets are found from <exe dir>/share/lan-party by assetRoot.
 mkdir -p "${app}/share/lan-party/internal/gtkui"
@@ -174,14 +181,20 @@ set "GDK_PIXBUF_MODULE_FILE=%~dp0lib\gdk-pixbuf-2.0\2.10.0\loaders.cache"
 start "" "%~dp0lan-party.exe"
 CMD
 
+build_label="Windows"
+diagnostics="If it does not start, send the log from %LocalAppData%\\lan-party\\lan-party.log."
+if [ "${include_console}" = "1" ]; then
+    build_label="Windows debug build"
+    diagnostics="If it does not start, run lan-party-console.exe from a Command Prompt. The log is also at %LocalAppData%\\lan-party\\lan-party.log."
+fi
+
 cat > "${app}/README.txt" <<README
-LAN Party ${version} (Windows test build)
+LAN Party ${version} (${build_label})
 
 Run lan-party.cmd. The first launch may show a Windows Defender SmartScreen
 warning because this build is not signed.
 
-If it does not start, run lan-party-console.exe from a Command Prompt to see
-the log.
+${diagnostics}
 
 The host needs one UDP port forwarded and a public address. The first host run
 may ask for Windows Firewall access; allow it on private networks.

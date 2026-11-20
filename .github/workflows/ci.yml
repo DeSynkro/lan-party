@@ -205,6 +205,7 @@ jobs:
           bash build/windows.sh
 
           "$go_bin" test -count=1 \
+            ./internal/applog \
             ./internal/config \
             ./internal/autostart \
             ./internal/group \
@@ -213,11 +214,14 @@ jobs:
             ./internal/session \
             ./internal/tunnel \
             ./internal/app
-      - name: Check archive
+      - name: Check release archive
         shell: msys2 {0}
         run: |
           unzip -l dist/*.zip | grep -q 'lan-party/lan-party.exe'
-          unzip -l dist/*.zip | grep -q 'lan-party/lan-party-console.exe'
+          if unzip -l dist/*.zip | grep -q 'lan-party/lan-party-console.exe'; then
+            echo "release archive contains lan-party-console.exe" >&2
+            exit 1
+          fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-portable

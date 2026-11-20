@@ -8,6 +8,7 @@ import (
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
 	apppkg "github.com/desynkro/lan-party/internal/app"
+	"github.com/desynkro/lan-party/internal/applog"
 	"github.com/desynkro/lan-party/internal/buildinfo"
 	"github.com/desynkro/lan-party/internal/config"
 )
@@ -194,6 +195,9 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	about.Append(gapBox(4))
 	about.Append(textLabel("Data: "+u.state.DataDir(), "desc"))
 	about.Append(textLabel("Keys: owner-only files in keys/", "desc"))
+	logLabel := textLabel("Log: "+applog.Path(u.state.DataDir()), "desc")
+	logLabel.SetSelectable(true)
+	about.Append(logLabel)
 	page.Append(about)
 
 	scroll := gtk.NewScrolledWindow()

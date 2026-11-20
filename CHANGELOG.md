@@ -9,6 +9,9 @@
 - Invites now expire after 1 hour instead of 24 hours.
 - Friend connections retry automatically after a drop for up to 30 minutes;
   this can be turned off in Settings.
+- The app writes a rotating log under its data directory for support.
+- The portable Windows zip contains one GUI executable; the console debug build
+  is a separate manual CI artifact.
 - Joining friends see the host-assigned name and a read-only detected device
   name; host member rows show the device name as a tag.
 - Creating an invite starts the host session first when it is off; a session

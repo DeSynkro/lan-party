@@ -141,7 +141,7 @@ defined in the stylesheet.
 - Connection: Reconnect automatically, on by default. It retries a dropped
   friend connection for up to 30 minutes.
 - Security: Approve new devices.
-- About: version, data directory, key location.
+- About: version, data directory, key location, log path.
 - Links to the setup guide.
 
 ### How to Use

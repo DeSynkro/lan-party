@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"path/filepath"
@@ -715,6 +716,7 @@ func (a *App) RemoveInvite(groupID, inviteID string) error {
 
 // StartSession opens the tunnel for a host group.
 func (a *App) StartSession(groupID string) error {
+	log.Printf("session: starting host group %s", groupID)
 	a.stopAutoReconnect()
 	a.reconnectMu.Lock()
 	defer a.reconnectMu.Unlock()
@@ -773,6 +775,7 @@ func (a *App) StartSession(groupID string) error {
 			break
 		}
 		if !isAddrInUse(err) || time.Now().After(deadline) {
+			log.Printf("session: start failed: %v", err)
 			return err
 		}
 		time.Sleep(100 * time.Millisecond)
@@ -792,11 +795,13 @@ func (a *App) StartSession(groupID string) error {
 	a.host = host
 	a.liveGroupID = groupID
 	a.mu.Unlock()
+	log.Printf("session: host live group %s", groupID)
 	return nil
 }
 
 // StopSession closes whatever is running.
 func (a *App) StopSession() error {
+	log.Printf("session: stopping")
 	a.mu.Lock()
 	a.sessionEpoch++
 	a.stopAutoReconnectLocked()
@@ -869,6 +874,7 @@ func (a *App) JoinInvite(ctx context.Context, code, deviceName string) (group.Gr
 		return group.Group{}, err
 	}
 
+	log.Printf("join: connecting")
 	friend, err := session.Join(ctx, session.JoinConfig{
 		Identity:   identity,
 		Invite:     inv,
@@ -876,6 +882,7 @@ func (a *App) JoinInvite(ctx context.Context, code, deviceName string) (group.Gr
 		Token:      inv.Token,
 	})
 	if err != nil {
+		log.Printf("join: failed: %v", err)
 		return group.Group{}, err
 	}
 
@@ -911,6 +918,7 @@ func (a *App) JoinInvite(ctx context.Context, code, deviceName string) (group.Gr
 	a.friend = friend
 	a.liveGroupID = g.ID
 	a.mu.Unlock()
+	log.Printf("join: joined group %s", g.ID)
 	go a.watchFriend(friend, g.ID)
 	return cloneGroup(g), nil
 }
@@ -971,6 +979,7 @@ func (a *App) reconnect(ctx context.Context, groupID string) error {
 		return permanentReconnect(errors.New("the device key for this group is missing. If this group came from an older build, delete it and join again"))
 	}
 
+	log.Printf("reconnect: dialing group %s", groupID)
 	friend, err := session.Join(ctx, session.JoinConfig{
 		Identity:   identity,
 		Invite:     invite.Invite{Version: invite.CurrentVersion, GroupID: g.HostGroupID, GroupName: g.Name, HostName: g.HostName, Endpoint: g.Endpoint, HostPin: g.HostPin, PeerName: g.SelfName},
@@ -978,6 +987,7 @@ func (a *App) reconnect(ctx context.Context, groupID string) error {
 		MemberID:   g.SelfID,
 	})
 	if err != nil {
+		log.Printf("reconnect: failed: %v", err)
 		if errors.Is(err, tunnel.ErrDenied) {
 			return permanentReconnect(err)
 		}
@@ -1020,6 +1030,7 @@ func (a *App) reconnect(ctx context.Context, groupID string) error {
 	a.friend = friend
 	a.liveGroupID = groupID
 	a.mu.Unlock()
+	log.Printf("reconnect: live group %s", groupID)
 	go a.watchFriend(friend, groupID)
 	return nil
 }

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/desynkro/lan-party/internal/group"
@@ -146,6 +147,7 @@ func (a *App) startAutoReconnectLocked(groupID string, started time.Time) {
 		cancel:  cancel,
 	}
 	a.autoReconnect = state
+	log.Printf("reconnect: scheduling group %s", groupID)
 	go a.runAutoReconnect(ctx, state)
 }
 
@@ -215,6 +217,10 @@ func (a *App) runAutoReconnect(ctx context.Context, state *reconnectState) {
 }
 
 func (a *App) finishAutoReconnectLocked(state *reconnectState, reason string) {
+	if reason == "" {
+		reason = "stopped"
+	}
+	log.Printf("reconnect: %s", reason)
 	state.stopped = true
 	state.reason = reason
 	state.next = time.Time{}

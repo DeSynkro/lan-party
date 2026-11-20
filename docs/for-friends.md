@@ -49,6 +49,8 @@ If I close LAN Party or end the session, the game disconnects.
 - Use the address LAN Party shows, not my home LAN address.
 - If the app says the port is in use, it will show the address it actually
   used. Use that one.
+- If it still fails, send me `%LocalAppData%\lan-party\lan-party.log` on Windows
+  or `~/.local/share/lan-party/lan-party.log` on Linux.
 
 ## A short message you can send
 

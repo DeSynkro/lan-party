@@ -187,10 +187,21 @@ bash build/windows.sh
 ```
 
 `build/windows.sh` needs GTK4, `gcc`, `binutils` (`windres`), `pkg-config` and
-`zip`. It embeds the app icon, version information and manifest into both
-executables, then writes
-`dist/lan-party_<version>_windows_amd64.zip`. The archive is uploaded as the
-`windows-portable` CI artifact and attached to tag releases.
+`zip`. It embeds the app icon, version information and manifest into the
+executable, then writes
+`dist/lan-party_<version>_windows_amd64.zip`. The release archive contains the
+GUI executable only and is uploaded as the `windows-portable` CI artifact.
+
+The **Windows debug build** workflow is manual-only. It sets
+`INCLUDE_CONSOLE=1`, adds `lan-party-console.exe`, writes
+`dist/lan-party_<version>_windows_debug_amd64.zip`, and uploads it as
+`windows-debug`. Use it when a user needs startup logs beyond the normal log
+file.
+
+The app writes `lan-party.log` under its data directory:
+`%LocalAppData%\lan-party\lan-party.log` on Windows and
+`~/.local/share/lan-party/lan-party.log` on Linux. Logs rotate at 5 MB,
+keeping one previous file.
 
 Code signing is not configured yet. Unsigned builds can trigger SmartScreen or
 a Defender false positive; a certificate or Azure Trusted Signing is the

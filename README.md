@@ -160,6 +160,7 @@ The in-app guide has the full walkthrough with your current ports and addresses 
 | `~/.local/share/lan-party/groups.json` | Groups, services, members, invite hashes |
 | `~/.local/share/lan-party/keys/` | Long-lived private keys (`0600`) |
 | `~/.config/autostart/lan-party.desktop` | Autostart entry when enabled |
+| `~/.local/share/lan-party/lan-party.log` | Application log; `%LocalAppData%\lan-party\lan-party.log` on Windows |
 
 The JSON files and key files are owner-only (`0600`); the data and key directories are `0700`. Invites contain no private keys. No traffic or telemetry leaves your machine except the encrypted tunnel between the host and an approved friend.
 
@@ -180,6 +181,17 @@ The JSON files and key files are owner-only (`0600`); the data and key directori
 If it reports a FUSE error, install FUSE or run it with `--appimage-extract-and-run`.
 
 If it reports a missing GTK library, install GTK4 (for example `libgtk-4-1` on Debian/Ubuntu). The AppImage uses the system GTK runtime.
+
+### Sending a log
+
+LAN Party writes a log next to its data:
+
+- Linux: `~/.local/share/lan-party/lan-party.log`
+- Windows: `%LocalAppData%\lan-party\lan-party.log`
+
+The log rotates at 5 MB and keeps one previous file. It does not contain invite
+codes, tokens or private keys. Send the log when reporting a startup or session
+problem.
 
 ### The friend cannot connect
 
