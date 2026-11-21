@@ -1570,7 +1570,6 @@ func (a *App) RemoveInvite(groupID, inviteID string) error {
 // StartSession opens the tunnel for a host group.
 func (a *App) StartSession(groupID string) error {
 	a.stopHostRecovery()
-	log.Printf("session: starting host group %s", groupID)
 	return a.startSession(groupID, false)
 }
 
