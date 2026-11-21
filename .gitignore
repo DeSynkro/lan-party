@@ -19,6 +19,7 @@ cmd/lan-party/*.syso
 *.key
 .env
 lan-party-data/
+relay-profile.json
 
 # editors and os
 .vscode/

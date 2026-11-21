@@ -197,6 +197,48 @@ func SaveProfile(path string, profile HostProfile) error {
 	return os.Chmod(path, 0o600)
 }
 
+// SetPassword changes the relay password without rotating the identity. The
+// relay must be restarted and the host profile re-imported.
+func SetPassword(dir, password string) error {
+	password = strings.TrimSpace(password)
+	if password == "" {
+		return errors.New("a relay password is required")
+	}
+	configPath := ConfigPath(dir)
+	cfg, err := LoadConfig(configPath)
+	if err != nil {
+		return err
+	}
+	salt, hash, err := HashPassword(password)
+	if err != nil {
+		return err
+	}
+	cfg.PasswordSalt = salt
+	cfg.PasswordHash = hash
+	if err := SaveConfig(configPath, cfg); err != nil {
+		return err
+	}
+
+	profilePath := ProfilePath(dir)
+	data, err := os.ReadFile(profilePath)
+	switch {
+	case err == nil:
+		var profile HostProfile
+		if err := json.Unmarshal(data, &profile); err != nil {
+			return fmt.Errorf("parse host profile: %w", err)
+		}
+		profile.Password = password
+		if err := SaveProfile(profilePath, profile); err != nil {
+			return err
+		}
+	case errors.Is(err, os.ErrNotExist):
+		// The profile is optional; the config hash is still updated.
+	default:
+		return fmt.Errorf("read host profile: %w", err)
+	}
+	return nil
+}
+
 // KeyPath resolves the relay key path relative to its config file.
 func KeyPath(configPath string, cfg Config) string {
 	if filepath.IsAbs(cfg.KeyFile) {

@@ -132,6 +132,40 @@ password manager or create a new relay setup.
 sudo shred -u /etc/lan-party-relay/relay-profile.json
 ```
 
+## Password and key rotation
+
+To choose your own password before the first setup, pass it explicitly:
+
+```sh
+sudo lan-party-relay setup --dir /etc/lan-party-relay --password 'your password'
+```
+
+Change the password later without rotating the key:
+
+```sh
+sudo LANPARTY_RELAY_PASSWORD='new password' \
+  lan-party-relay passwd --dir /etc/lan-party-relay
+sudo systemctl restart lan-party-relay
+sudo lan-party-relay show-profile --dir /etc/lan-party-relay
+```
+
+The fingerprint stays the same. Re-import the profile in the app so it gets the
+new password.
+
+The fingerprint is public and safe to share. A leaked fingerprint does not
+require a reset. If the private `relay.key` is compromised, or you want a new
+relay identity, rotate it with the service stopped:
+
+```sh
+sudo systemctl stop lan-party-relay
+sudo lan-party-relay rotate-key --dir /etc/lan-party-relay
+sudo systemctl start lan-party-relay
+sudo lan-party-relay show-profile --dir /etc/lan-party-relay
+```
+
+This changes the fingerprint. Re-import the profile and issue new invites; old
+pins and invites that carry the old fingerprint stop working.
+
 ## Updating
 
 The config, key and fingerprint survive an update. Replace the binary and

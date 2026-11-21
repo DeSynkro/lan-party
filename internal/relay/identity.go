@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/hex"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -84,6 +85,46 @@ func LoadIdentity(keyPath string) (tls.Certificate, string, error) {
 		return tls.Certificate{}, "", err
 	}
 	return cert, publicKeyFingerprint(cert.Certificate[0]), nil
+}
+
+// RotateIdentity replaces the relay key and updates the host profile
+// fingerprint. The relay must be restarted and the host profile re-imported.
+func RotateIdentity(dir string) (string, error) {
+	configPath := ConfigPath(dir)
+	cfg, err := LoadConfig(configPath)
+	if err != nil {
+		return "", err
+	}
+	keyPath := KeyPath(configPath, cfg)
+	tempPath := keyPath + ".new"
+	_ = os.Remove(tempPath)
+	_, fingerprint, err := GenerateIdentity(tempPath)
+	if err != nil {
+		return "", err
+	}
+	if err := os.Rename(tempPath, keyPath); err != nil {
+		_ = os.Remove(tempPath)
+		return "", fmt.Errorf("replace relay key: %w", err)
+	}
+
+	profilePath := ProfilePath(dir)
+	data, err := os.ReadFile(profilePath)
+	switch {
+	case err == nil:
+		var profile HostProfile
+		if err := json.Unmarshal(data, &profile); err != nil {
+			return "", fmt.Errorf("parse host profile: %w", err)
+		}
+		profile.Fingerprint = fingerprint
+		if err := SaveProfile(profilePath, profile); err != nil {
+			return "", err
+		}
+	case errors.Is(err, os.ErrNotExist):
+		// The profile is optional; the new key is already in place.
+	default:
+		return "", fmt.Errorf("read host profile: %w", err)
+	}
+	return fingerprint, nil
 }
 
 func certificateFor(pub ed25519.PublicKey, priv ed25519.PrivateKey) (tls.Certificate, error) {

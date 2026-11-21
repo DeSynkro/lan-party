@@ -28,6 +28,10 @@ func main() {
 		runRelay(os.Args[2:])
 	case "fingerprint":
 		runFingerprint(os.Args[2:])
+	case "passwd":
+		runPasswd(os.Args[2:])
+	case "rotate-key":
+		runRotateKey(os.Args[2:])
 	case "show-profile":
 		runShowProfile(os.Args[2:])
 	case "version", "--version":
@@ -47,6 +51,8 @@ Commands:
   setup          Create the relay key, config and host profile
   run            Run the relay
   fingerprint    Print the relay public-key fingerprint
+  passwd         Change the relay password without rotating the key
+  rotate-key     Replace the relay key and update the host profile fingerprint
   show-profile   Print the host profile created by setup
   version        Print the relay version
 
@@ -177,6 +183,36 @@ func runFingerprint(args []string) {
 		log.Fatal(err)
 	}
 	fmt.Println(fingerprint)
+}
+
+func runPasswd(args []string) {
+	flags := flag.NewFlagSet("passwd", flag.ExitOnError)
+	dir := flags.String("dir", workingDir(), "relay data directory")
+	password := flags.String("password", "", "new relay password (or LANPARTY_RELAY_PASSWORD)")
+	flags.Parse(args)
+
+	if *password == "" {
+		*password = os.Getenv("LANPARTY_RELAY_PASSWORD")
+	}
+	if strings.TrimSpace(*password) == "" {
+		log.Fatal("passwd: set --password or LANPARTY_RELAY_PASSWORD")
+	}
+	if err := relay.SetPassword(*dir, *password); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Relay password updated. Restart the relay and re-import the host profile.")
+}
+
+func runRotateKey(args []string) {
+	flags := flag.NewFlagSet("rotate-key", flag.ExitOnError)
+	dir := flags.String("dir", workingDir(), "relay data directory")
+	flags.Parse(args)
+
+	fingerprint, err := relay.RotateIdentity(*dir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Relay identity rotated. New fingerprint: %s\n\nRestart the relay and re-import the updated host profile.\n", fingerprint)
 }
 
 func runShowProfile(args []string) {

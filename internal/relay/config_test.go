@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -158,6 +159,130 @@ func TestLoadIdentityRejectsInsecurePermissions(t *testing.T) {
 	}
 	if _, _, err := LoadIdentity(keyPath); err == nil {
 		t.Fatal("world-readable relay key was accepted")
+	}
+}
+
+func TestSetPasswordUpdatesConfigAndProfile(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := Setup(SetupOptions{Dir: dir, PublicAddress: "relay.example.net:7443", Password: "old password"}); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := LoadConfig(ConfigPath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, fingerprint, err := LoadIdentity(KeyPath(ConfigPath(dir), cfg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := SetPassword(dir, "new password"); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err = LoadConfig(ConfigPath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !VerifyPassword("new password", cfg.PasswordSalt, cfg.PasswordHash) {
+		t.Fatal("the new password does not verify")
+	}
+	if VerifyPassword("old password", cfg.PasswordSalt, cfg.PasswordHash) {
+		t.Fatal("the old password still verifies")
+	}
+
+	data, err := os.ReadFile(ProfilePath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var profile HostProfile
+	if err := json.Unmarshal(data, &profile); err != nil {
+		t.Fatal(err)
+	}
+	if profile.Password != "new password" {
+		t.Fatalf("profile password = %q", profile.Password)
+	}
+	if profile.Fingerprint != fingerprint {
+		t.Fatalf("profile fingerprint changed from %q to %q", fingerprint, profile.Fingerprint)
+	}
+	_, loadedFingerprint, err := LoadIdentity(KeyPath(ConfigPath(dir), cfg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loadedFingerprint != fingerprint {
+		t.Fatalf("rotation changed the fingerprint from %q to %q", fingerprint, loadedFingerprint)
+	}
+}
+
+func TestSetPasswordRequiresPassword(t *testing.T) {
+	if err := SetPassword(t.TempDir(), "   "); err == nil {
+		t.Fatal("an empty password was accepted")
+	}
+}
+
+func TestRotateIdentityUpdatesFingerprint(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := Setup(SetupOptions{Dir: dir, PublicAddress: "relay.example.net:7443", Password: "secret"}); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := LoadConfig(ConfigPath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyPath := KeyPath(ConfigPath(dir), cfg)
+	_, oldFingerprint, err := LoadIdentity(keyPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newFingerprint, err := RotateIdentity(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if newFingerprint == oldFingerprint {
+		t.Fatal("rotation kept the old fingerprint")
+	}
+	_, loadedFingerprint, err := LoadIdentity(keyPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loadedFingerprint != newFingerprint {
+		t.Fatalf("loaded fingerprint = %q, want %q", loadedFingerprint, newFingerprint)
+	}
+
+	data, err := os.ReadFile(ProfilePath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var profile HostProfile
+	if err := json.Unmarshal(data, &profile); err != nil {
+		t.Fatal(err)
+	}
+	if profile.Fingerprint != newFingerprint {
+		t.Fatalf("profile fingerprint = %q, want %q", profile.Fingerprint, newFingerprint)
+	}
+	if profile.Password != "secret" {
+		t.Fatalf("rotation changed the password to %q", profile.Password)
+	}
+	cfg, err = LoadConfig(ConfigPath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !VerifyPassword("secret", cfg.PasswordSalt, cfg.PasswordHash) {
+		t.Fatal("rotation changed the password hash")
+	}
+	if _, err := os.Stat(keyPath + ".new"); !os.IsNotExist(err) {
+		t.Fatalf("temporary key still exists: %v", err)
+	}
+	if runtime.GOOS != "windows" {
+		for _, path := range []string{keyPath, ConfigPath(dir), ProfilePath(dir)} {
+			info, err := os.Stat(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if mode := info.Mode().Perm(); mode != 0o600 {
+				t.Fatalf("%s mode = %o, want 600", filepath.Base(path), mode)
+			}
+		}
 	}
 }
 

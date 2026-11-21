@@ -65,6 +65,44 @@ app pins the relay fingerprint from the profile.
 `show-profile` prints the relay password. Keep the file private. The password
 cannot be recovered from `relay.json`; keep a copy in your password manager.
 
+## Password and key rotation
+
+To choose your own password before the first start, set it in `.env`:
+
+```text
+LANPARTY_RELAY_PASSWORD=your password
+```
+
+Then start normally. If the relay is already configured, use `passwd` instead.
+
+Change the password without rotating the key:
+
+```sh
+sudo docker compose run --rm -e LANPARTY_RELAY_PASSWORD='new password' \
+  relay passwd --dir /data
+sudo docker compose restart relay
+sudo docker compose run --rm relay show-profile > relay-profile.json
+chmod 600 relay-profile.json
+```
+
+The fingerprint stays the same. Re-import the profile in the app so it gets the
+new password.
+
+The fingerprint is public and safe to share. Leaking it does not require a
+reset. If the **private** `relay.key` is compromised, or you want a new relay
+identity, rotate the key with the relay stopped:
+
+```sh
+sudo docker compose stop relay
+sudo docker compose run --rm relay rotate-key --dir /data
+sudo docker compose start relay
+sudo docker compose run --rm relay show-profile > relay-profile.json
+chmod 600 relay-profile.json
+```
+
+This changes the fingerprint. Re-import the profile and issue new invites; old
+pins and invites that carry the old fingerprint stop working.
+
 ## Firewall
 
 Allow both protocols. The control channel is TCP; friend traffic is UDP. Only

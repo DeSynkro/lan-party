@@ -93,6 +93,17 @@ The relay key never leaves the relay machine. The relay password is host-only
 and never goes into an invite. Friends receive a short-lived friend token in
 the invite.
 
+## Password and key rotation
+
+- `LANPARTY_RELAY_PASSWORD` or `setup --password` chooses the initial relay
+  password. If omitted, setup generates one.
+- `passwd` changes the password later without rotating the key. Restart the
+  relay and re-import the host profile; the fingerprint stays the same.
+- The fingerprint is public. A leaked fingerprint does not require a reset.
+- `rotate-key` replaces the private key and updates the profile fingerprint.
+  Use it if the private key is compromised. Restart the relay, re-import the
+  profile and issue new invites; the old fingerprint stops working.
+
 ## Security model
 
 - The host and friends connect **out** to the relay. No inbound port is needed
@@ -223,9 +234,15 @@ A friend that sends no data for five minutes is removed and the host receives a
 lan-party-relay setup --dir /etc/lan-party-relay
 lan-party-relay run --config /etc/lan-party-relay/relay.json
 lan-party-relay fingerprint --config /etc/lan-party-relay/relay.json
+lan-party-relay passwd --dir /etc/lan-party-relay
+lan-party-relay rotate-key --dir /etc/lan-party-relay
 lan-party-relay show-profile --dir /etc/lan-party-relay
 lan-party-relay version
 ```
+
+`passwd` changes the relay password without rotating the key. `rotate-key`
+generates a new relay identity and updates the host profile fingerprint. Both
+require a relay restart and a profile re-import.
 
 `setup` is also available as `init`.
 

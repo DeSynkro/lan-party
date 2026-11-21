@@ -33,6 +33,8 @@ services:
       LANPARTY_RELAY_CONFIG: /data/relay.json
       # Written into the host profile. Change this in .env for a VPS.
       LANPARTY_RELAY_PUBLIC_ADDRESS: "${LANPARTY_RELAY_PUBLIC_ADDRESS:-127.0.0.1:7443}"
+      # Optional. If empty, the first start generates a strong password.
+      LANPARTY_RELAY_PASSWORD: "${LANPARTY_RELAY_PASSWORD:-}"
     ports:
       - "${LANPARTY_RELAY_PORT:-7443}:7443/tcp"
       - "${LANPARTY_RELAY_PORT:-7443}:7443/udp"
