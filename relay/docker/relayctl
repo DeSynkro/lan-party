@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# Friendly, safer entry points for the relay container.
+set -euo pipefail
+
+cd "$(dirname "$0")"
+
+usage() {
+    cat >&2 <<'EOF'
+Usage: sudo ./relayctl <command>
+
+Commands:
+  setpass     Set a new relay password (prompted, not echoed)
+  relayreset  Replace the relay key and fingerprint (asks for confirmation)
+  showinfo    Show the address, fingerprint and password for the host app
+
+A password can also be chosen before the first start with
+LANPARTY_RELAY_PASSWORD in .env. showinfo prints the password; keep the
+terminal private and clear it after copying.
+EOF
+}
+
+require_docker() {
+    if ! docker info >/dev/null 2>&1; then
+        echo "Docker is not accessible. Run: sudo ./relayctl ${1:-<command>}" >&2
+        exit 1
+    fi
+}
+
+relay_running() {
+    [ -n "$(docker compose ps --status running --services 2>/dev/null | grep '^relay$' || true)" ]
+}
+
+setpass() {
+    local first second
+    printf 'New relay password: ' >&2
+    IFS= read -r -s first || true
+    printf '\n' >&2
+    printf 'Repeat new relay password: ' >&2
+    IFS= read -r -s second || true
+    printf '\n' >&2
+
+    if [ -z "$first" ]; then
+        echo "The password is empty. Nothing changed." >&2
+        exit 1
+    fi
+    if [ "$first" != "$second" ]; then
+        echo "The passwords do not match. Nothing changed." >&2
+        exit 1
+    fi
+
+    printf '%s\n' "$first" | docker compose run --rm -T relay passwd --password-stdin --dir /data
+    unset first second
+
+    if relay_running; then
+        docker compose restart relay
+    else
+        docker compose up -d relay
+    fi
+    echo
+    echo "Password changed. The fingerprint is unchanged."
+    echo "Run: sudo ./relayctl showinfo"
+}
+
+relayreset() {
+    echo "This replaces the relay key and fingerprint." >&2
+    echo "Old pins and invites stop working. The relay password does not change." >&2
+    printf 'Type RESET to continue: ' >&2
+    read -r answer || true
+    if [ "$answer" != "RESET" ]; then
+        echo "Cancelled." >&2
+        exit 1
+    fi
+
+    docker compose stop relay
+    docker compose run --rm relay rotate-key --dir /data
+    docker compose start relay
+    echo
+    echo "Relay identity rotated. Run: sudo ./relayctl showinfo"
+}
+
+showinfo() {
+    echo "Keep this terminal private. Clear it after copying the password." >&2
+    docker compose run --rm relay show-info --dir /data
+}
+
+case "${1:-help}" in
+    setpass)
+        require_docker setpass
+        setpass
+        ;;
+    relayreset | reset)
+        require_docker relayreset
+        relayreset
+        ;;
+    showinfo | show-info)
+        require_docker showinfo
+        showinfo
+        ;;
+    help | -h | --help)
+        usage
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+esac

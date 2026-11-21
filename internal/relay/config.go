@@ -232,7 +232,19 @@ func SetPassword(dir, password string) error {
 			return err
 		}
 	case errors.Is(err, os.ErrNotExist):
-		// The profile is optional; the config hash is still updated.
+		_, fingerprint, idErr := LoadIdentity(KeyPath(configPath, cfg))
+		if idErr != nil {
+			return idErr
+		}
+		profile := HostProfile{
+			Version:     Version,
+			Address:     cfg.PublicAddress,
+			Fingerprint: fingerprint,
+			Password:    password,
+		}
+		if err := SaveProfile(profilePath, profile); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("read host profile: %w", err)
 	}

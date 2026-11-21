@@ -32,6 +32,12 @@ sudo docker compose logs -f
 The first start creates `relay.json`, `relay.key` and `relay-profile.json` in
 the `relay-data` volume. No separate setup command is needed.
 
+Then show the values for the host app:
+
+```sh
+sudo ./relayctl showinfo
+```
+
 Set `LANPARTY_RELAY_PUBLIC_ADDRESS` to the hostname or IP that friends and the
 host app use, with the public port:
 
@@ -50,20 +56,33 @@ afterwards does not update the existing profile; recreate the relay with
 `sudo docker compose down -v` if you need to change it (this rotates the relay
 identity).
 
-## Host profile
+## Show the app values
 
-Print the profile and save it on the host:
+The relay ships with `relayctl` in this directory. On a source checkout it is
+`relay/docker/relayctl`; in the release zip it is `docker/relayctl`.
 
 ```sh
-sudo docker compose run --rm relay show-profile > relay-profile.json
-chmod 600 relay-profile.json
+sudo ./relayctl showinfo
 ```
 
-Import it in LAN Party under **Settings > Relay**, then use **Test relay**. The
-app pins the relay fingerprint from the profile.
+It prints the three values the host app needs:
 
-`show-profile` prints the relay password. Keep the file private. The password
-cannot be recovered from `relay.json`; keep a copy in your password manager.
+```text
+Relay address:     relay.example.com:7443
+Relay fingerprint: 774e2e…
+Relay password:    …
+```
+
+Enter them in LAN Party under **Settings > Relay**. The app pins the
+fingerprint.
+
+The password is printed only to the terminal, not written to a file. Keep the
+terminal private and clear it after copying. The host profile stays inside the
+`relay-data` volume; it is not exported.
+
+If you need the machine-readable profile for a future file import, the
+`show-profile` command still exists, but `showinfo` is the safer path for normal
+use.
 
 ## Password and key rotation
 
@@ -73,35 +92,29 @@ To choose your own password before the first start, set it in `.env`:
 LANPARTY_RELAY_PASSWORD=your password
 ```
 
-Then start normally. If the relay is already configured, use `passwd` instead.
+Then start normally.
 
-Change the password without rotating the key:
+Change the password later without rotating the key:
 
 ```sh
-sudo docker compose run --rm -e LANPARTY_RELAY_PASSWORD='new password' \
-  relay passwd --dir /data
-sudo docker compose restart relay
-sudo docker compose run --rm relay show-profile > relay-profile.json
-chmod 600 relay-profile.json
+sudo ./relayctl setpass
 ```
 
-The fingerprint stays the same. Re-import the profile in the app so it gets the
-new password.
+It prompts twice without echoing, updates the config and the host profile,
+restarts the relay, and leaves the fingerprint unchanged. Run `showinfo` to copy
+the new password into the app.
 
 The fingerprint is public and safe to share. Leaking it does not require a
 reset. If the **private** `relay.key` is compromised, or you want a new relay
-identity, rotate the key with the relay stopped:
+identity:
 
 ```sh
-sudo docker compose stop relay
-sudo docker compose run --rm relay rotate-key --dir /data
-sudo docker compose start relay
-sudo docker compose run --rm relay show-profile > relay-profile.json
-chmod 600 relay-profile.json
+sudo ./relayctl relayreset
 ```
 
-This changes the fingerprint. Re-import the profile and issue new invites; old
-pins and invites that carry the old fingerprint stop working.
+It asks for confirmation, replaces the key, updates the profile fingerprint and
+restarts the relay. The password stays the same. Old pins and invites that carry
+the old fingerprint stop working.
 
 ## Firewall
 
@@ -139,11 +152,13 @@ it unless you intend to change the relay identity and re-import the profile.
 ## Common commands
 
 ```sh
+sudo ./relayctl setpass
+sudo ./relayctl relayreset
+sudo ./relayctl showinfo
 sudo docker compose ps
 sudo docker compose logs -f
 sudo docker compose restart relay
 sudo docker compose run --rm relay fingerprint
-sudo docker compose run --rm relay show-profile
 sudo docker compose run --rm relay version
 ```
 

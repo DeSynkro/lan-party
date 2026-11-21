@@ -213,6 +213,38 @@ func TestSetPasswordUpdatesConfigAndProfile(t *testing.T) {
 	}
 }
 
+func TestSetPasswordRecreatesMissingProfile(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := Setup(SetupOptions{Dir: dir, PublicAddress: "relay.example.net:7443", Password: "old password"}); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := LoadConfig(ConfigPath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, fingerprint, err := LoadIdentity(KeyPath(ConfigPath(dir), cfg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(ProfilePath(dir)); err != nil {
+		t.Fatal(err)
+	}
+	if err := SetPassword(dir, "new password"); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(ProfilePath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var profile HostProfile
+	if err := json.Unmarshal(data, &profile); err != nil {
+		t.Fatal(err)
+	}
+	if profile.Password != "new password" || profile.Fingerprint != fingerprint || profile.Address != "relay.example.net:7443" {
+		t.Fatalf("recreated profile = %+v", profile)
+	}
+}
+
 func TestSetPasswordRequiresPassword(t *testing.T) {
 	if err := SetPassword(t.TempDir(), "   "); err == nil {
 		t.Fatal("an empty password was accepted")

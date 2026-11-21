@@ -21,6 +21,7 @@ lan-party-relay_1.2.0_linux_amd64/
     compose.yaml
     Dockerfile
     .env.example
+    relayctl
     README.md
   native/
     lan-party-relay.service
@@ -59,6 +60,7 @@ cd docker
 cp .env.example .env
 # edit LANPARTY_RELAY_PUBLIC_ADDRESS for your public address
 sudo docker compose up -d
+sudo ./relayctl showinfo
 ```
 
 From a source checkout, use `sudo docker compose up --build -d`; the local
@@ -85,9 +87,11 @@ Then install the binary and unit from `native/`. See
 - the host profile (`relay-profile.json`)
 
 The host profile contains the relay address, fingerprint and relay password. It
-is a secret. Copy it to the desktop that runs LAN Party, import it under
-**Settings > Relay**, and use **Test relay**. The app pins the relay fingerprint,
-like an SSH host key.
+stays in the relay data directory or volume. Run
+`lan-party-relay show-info --dir <relay-dir>` (or `sudo ./relayctl showinfo` for
+Docker) to display the three values, enter them in LAN Party under **Settings >
+Relay**, and use **Test relay**. The app pins the relay fingerprint, like an SSH
+host key. The password is printed to the terminal, not exported to a file.
 
 The relay key never leaves the relay machine. The relay password is host-only
 and never goes into an invite. Friends receive a short-lived friend token in
@@ -103,6 +107,9 @@ the invite.
 - `rotate-key` replaces the private key and updates the profile fingerprint.
   Use it if the private key is compromised. Restart the relay, re-import the
   profile and issue new invites; the old fingerprint stops working.
+- Docker users get `relayctl setpass`, `relayctl relayreset` and
+  `relayctl showinfo`; the commands prompt without echoing and never write the
+  password to a file.
 
 ## Security model
 
@@ -112,8 +119,9 @@ the invite.
 - The relay password authorizes a host session.
 - Friend tokens are short-lived, single-use and validated by hash.
 - The relay service stores only token hashes and a password hash. The setup
-  profile is the one file with the plaintext password; move it off the relay
-  after import.
+  profile is the one file with the plaintext password and stays in the relay
+  data directory or volume. Use `show-info` to view the values; keep that
+  terminal private.
 - Control connections are capped globally and per IP; friend traffic has a
   per-friend packet-rate cap.
 - Unknown and malformed packets are dropped without a response.
@@ -236,13 +244,24 @@ lan-party-relay run --config /etc/lan-party-relay/relay.json
 lan-party-relay fingerprint --config /etc/lan-party-relay/relay.json
 lan-party-relay passwd --dir /etc/lan-party-relay
 lan-party-relay rotate-key --dir /etc/lan-party-relay
+lan-party-relay show-info --dir /etc/lan-party-relay
 lan-party-relay show-profile --dir /etc/lan-party-relay
 lan-party-relay version
 ```
 
 `passwd` changes the relay password without rotating the key. `rotate-key`
 generates a new relay identity and updates the host profile fingerprint. Both
-require a relay restart and a profile re-import.
+require a relay restart and a profile re-import. `show-info` is the human
+copy/paste view; `show-profile` is the machine-readable JSON and is not needed
+for normal setup.
+
+Docker has friendlier wrappers for the same operations:
+
+```sh
+sudo ./relayctl setpass
+sudo ./relayctl relayreset
+sudo ./relayctl showinfo
+```
 
 `setup` is also available as `init`.
 

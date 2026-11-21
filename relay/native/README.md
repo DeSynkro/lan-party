@@ -105,32 +105,21 @@ sudo ufw allow 7443/udp
 Use the same TCP and UDP port. The control channel uses TCP; friend traffic uses
 UDP.
 
-## Copy the host profile to the desktop
+## Show the values for the host app
 
-From the desktop that runs LAN Party, pull the profile over SSH:
-
-```sh
-scp root@relay.example.com:/etc/lan-party-relay/relay-profile.json ./relay-profile.json
-chmod 600 ./relay-profile.json
-```
-
-If root SSH is disabled:
+The profile stays root-only on the relay. Display the values instead of copying
+the file:
 
 ```sh
-ssh relay.example.com 'sudo cat /etc/lan-party-relay/relay-profile.json' > relay-profile.json
-chmod 600 relay-profile.json
+sudo lan-party-relay show-info --dir /etc/lan-party-relay
 ```
 
-Import the file in LAN Party under **Settings > Relay**, then use **Test relay**.
-The app pins the relay fingerprint from the profile.
+Enter the address, fingerprint and password in LAN Party under
+**Settings > Relay**, then use **Test relay**. The app pins the fingerprint.
 
-After importing, you can remove the profile from the relay. The password cannot
-be recovered from `relay.json`; if you delete the profile, keep a copy in your
-password manager or create a new relay setup.
-
-```sh
-sudo shred -u /etc/lan-party-relay/relay-profile.json
-```
+The password is printed to the terminal only. Keep that terminal private and
+clear it after copying. If the profile is ever deleted, `passwd` recreates it
+with the new password; the password cannot be recovered from `relay.json`.
 
 ## Password and key rotation
 
@@ -140,17 +129,18 @@ To choose your own password before the first setup, pass it explicitly:
 sudo lan-party-relay setup --dir /etc/lan-party-relay --password 'your password'
 ```
 
-Change the password later without rotating the key:
+Change the password later without rotating the key. The prompt does not echo,
+and the password is passed on stdin rather than in the command line:
 
 ```sh
-sudo LANPARTY_RELAY_PASSWORD='new password' \
-  lan-party-relay passwd --dir /etc/lan-party-relay
+read -r -s -p 'New relay password: ' pw; echo
+printf '%s\n' "$pw" | sudo lan-party-relay passwd --password-stdin --dir /etc/lan-party-relay
+unset pw
 sudo systemctl restart lan-party-relay
-sudo lan-party-relay show-profile --dir /etc/lan-party-relay
+sudo lan-party-relay show-info --dir /etc/lan-party-relay
 ```
 
-The fingerprint stays the same. Re-import the profile in the app so it gets the
-new password.
+The fingerprint stays the same. Enter the new password in the app.
 
 The fingerprint is public and safe to share. A leaked fingerprint does not
 require a reset. If the private `relay.key` is compromised, or you want a new
@@ -160,11 +150,11 @@ relay identity, rotate it with the service stopped:
 sudo systemctl stop lan-party-relay
 sudo lan-party-relay rotate-key --dir /etc/lan-party-relay
 sudo systemctl start lan-party-relay
-sudo lan-party-relay show-profile --dir /etc/lan-party-relay
+sudo lan-party-relay show-info --dir /etc/lan-party-relay
 ```
 
-This changes the fingerprint. Re-import the profile and issue new invites; old
-pins and invites that carry the old fingerprint stop working.
+This changes the fingerprint. Enter the new fingerprint in the app and issue new
+invites; old pins and invites that carry the old fingerprint stop working.
 
 ## Updating
 

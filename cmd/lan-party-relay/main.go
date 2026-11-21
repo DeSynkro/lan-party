@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -34,6 +35,8 @@ func main() {
 		runRotateKey(os.Args[2:])
 	case "show-profile":
 		runShowProfile(os.Args[2:])
+	case "show-info":
+		runShowInfo(os.Args[2:])
 	case "version", "--version":
 		fmt.Println(buildinfo.Version)
 	case "help", "--help", "-h":
@@ -53,7 +56,8 @@ Commands:
   fingerprint    Print the relay public-key fingerprint
   passwd         Change the relay password without rotating the key
   rotate-key     Replace the relay key and update the host profile fingerprint
-  show-profile   Print the host profile created by setup
+  show-info      Print the address, fingerprint and password for the host app
+  show-profile   Print the host profile as JSON
   version        Print the relay version
 
 The relay reads LANPARTY_RELAY_CONFIG when --config is not given.`)
@@ -107,12 +111,12 @@ Public address: %s
 Fingerprint:    %s
 Host profile:   %s
 
-The host profile contains the relay password. Keep it private and copy it to
-the computer running LAN Party with scp, then import it under Settings > Relay.
+The host profile contains the relay password. Keep it private.
+Run "lan-party-relay show-info --dir %s" to display the values for the host app.
 
 Start the relay with:
   lan-party-relay run --config %s
-`, *dir, profile.Address, profile.Fingerprint, profilePath, configPath)
+`, *dir, profile.Address, profile.Fingerprint, profilePath, *dir, configPath)
 }
 
 func runRelay(args []string) {
@@ -189,13 +193,23 @@ func runPasswd(args []string) {
 	flags := flag.NewFlagSet("passwd", flag.ExitOnError)
 	dir := flags.String("dir", workingDir(), "relay data directory")
 	password := flags.String("password", "", "new relay password (or LANPARTY_RELAY_PASSWORD)")
+	passwordStdin := flags.Bool("password-stdin", false, "read the new password from stdin")
 	flags.Parse(args)
 
-	if *password == "" {
+	if *passwordStdin && *password != "" {
+		log.Fatal("passwd: use --password-stdin or --password, not both")
+	}
+	if *passwordStdin {
+		line, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		if err != nil && line == "" {
+			log.Fatal(err)
+		}
+		*password = strings.TrimRight(line, "\r\n")
+	} else if *password == "" {
 		*password = os.Getenv("LANPARTY_RELAY_PASSWORD")
 	}
 	if strings.TrimSpace(*password) == "" {
-		log.Fatal("passwd: set --password or LANPARTY_RELAY_PASSWORD")
+		log.Fatal("passwd: set --password, --password-stdin or LANPARTY_RELAY_PASSWORD")
 	}
 	if err := relay.SetPassword(*dir, *password); err != nil {
 		log.Fatal(err)
@@ -235,6 +249,25 @@ func workingDir() string {
 		return "."
 	}
 	return dir
+}
+
+func runShowInfo(args []string) {
+	flags := flag.NewFlagSet("show-info", flag.ExitOnError)
+	dir := flags.String("dir", workingDir(), "relay data directory")
+	flags.Parse(args)
+
+	data, err := os.ReadFile(relay.ProfilePath(*dir))
+	if err != nil {
+		log.Fatal(err)
+	}
+	var profile relay.HostProfile
+	if err := json.Unmarshal(data, &profile); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Relay address:     %s\n", profile.Address)
+	fmt.Printf("Relay fingerprint: %s\n", profile.Fingerprint)
+	fmt.Printf("Relay password:    %s\n", profile.Password)
+	fmt.Println("\nEnter these in LAN Party under Settings > Relay. Keep this terminal private.")
 }
 
 func prompt(label string) (string, error) {

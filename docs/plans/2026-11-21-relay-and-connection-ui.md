@@ -289,7 +289,8 @@ Relay binary: Go, no GTK, separate `cmd/lan-party-relay`. See
   step. The release zip does not include the override.
 - Container runs non-root, read-only root, `cap_drop: [ALL]`,
   `no-new-privileges`, resource limits and a named `relay-data` volume.
-- The host profile is read with `docker compose run --rm relay show-profile`.
+- The host values are displayed with `sudo ./relayctl showinfo` (or
+  `lan-party-relay show-info`). The profile stays in the relay volume.
 
 Actual Compose shape:
 
@@ -409,21 +410,20 @@ sudo docker compose up --build -d
 ```
 
 The first start auto-creates the config, key and host profile in the
-`relay-data` volume. The host profile is read with:
+`relay-data` volume. The values for the host app are shown with:
 
 ```sh
-sudo docker compose run --rm relay show-profile > relay-profile.json
+sudo ./relayctl showinfo
 ```
 
-The container is the same relay binary.
+The container is the same relay binary. The profile stays in the protected
+volume; the admin copies the address, fingerprint and password from the
+terminal instead of exporting a plaintext profile file. The relay private key
+never leaves the relay machine and is never in the profile or an invite.
 
-The host profile is an owner-only JSON file. It is copied to the host desktop
-with `scp` and imported into the main app's Relay settings. The relay private
-key never leaves the relay machine and is never in the profile or an invite.
-
-The main app does not generate relay bundles. It imports the host profile or
-accepts the relay address, key and password manually, pins the key and offers
-**Test relay**.
+The main app does not generate relay bundles. It accepts the relay address,
+fingerprint and password manually (and may import a profile file later), pins
+the fingerprint and offers **Test relay**.
 
 Advanced/manual commands:
 
@@ -431,8 +431,9 @@ Advanced/manual commands:
 lan-party-relay setup --dir /etc/lan-party-relay
 lan-party-relay run --config /etc/lan-party-relay/relay.json
 lan-party-relay fingerprint --config /etc/lan-party-relay/relay.json
-lan-party-relay passwd --dir /etc/lan-party-relay
+lan-party-relay passwd --password-stdin --dir /etc/lan-party-relay
 lan-party-relay rotate-key --dir /etc/lan-party-relay
+lan-party-relay show-info --dir /etc/lan-party-relay
 lan-party-relay show-profile --dir /etc/lan-party-relay
 lan-party-relay version
 ```
