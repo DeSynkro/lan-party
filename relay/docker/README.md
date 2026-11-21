@@ -92,7 +92,8 @@ To choose your own password before the first start, set it in `.env`:
 LANPARTY_RELAY_PASSWORD=your password
 ```
 
-Then start normally.
+Then start normally. The safer path is to start with the generated password and
+run `sudo ./relayctl setpass`; the password is not stored in `.env` or a file.
 
 Change the password later without rotating the key:
 
