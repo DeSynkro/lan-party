@@ -128,7 +128,7 @@ func (a *App) SaveSettings(s config.Settings) error {
 // saveSettingsLocked is SaveSettings for callers that take several changes
 // under one lock. Callers hold a.mu.
 func (a *App) saveSettingsLocked(s config.Settings) error {
-	s.RelayHost = strings.TrimSpace(s.RelayHost)
+	s.RelayHost = normalizeRelayHost(s.RelayHost)
 	s.RelayID = strings.ToLower(strings.TrimSpace(s.RelayID))
 
 	if a.host != nil {
@@ -239,6 +239,45 @@ func (a *App) SetRelayPassword(password string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.storeRelayPasswordLocked(defaultRelaySecret, password)
+}
+
+// SaveSettingsWithRelayPassword saves the network settings and, when password
+// is not empty, replaces the stored relay password in the same operation.
+func (a *App) SaveSettingsWithRelayPassword(s config.Settings, password string) error {
+	password = strings.TrimSpace(password)
+	s.RelayHost = normalizeRelayHost(s.RelayHost)
+	s.RelayID = strings.ToLower(strings.TrimSpace(s.RelayID))
+	if err := s.Validate(); err != nil {
+		return err
+	}
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	oldPassword, hadPassword, err := a.relayPasswordLocked(defaultRelaySecret)
+	if err != nil {
+		return err
+	}
+	changed := false
+	if password != "" {
+		if err := a.storeRelayPasswordLocked(defaultRelaySecret, password); err != nil {
+			return err
+		}
+		changed = true
+	} else if s.UseRelay && !hadPassword {
+		return errors.New("enter the relay password")
+	}
+	if err := a.saveSettingsLocked(s); err != nil {
+		if changed {
+			if hadPassword {
+				_ = a.storeRelayPasswordLocked(defaultRelaySecret, oldPassword)
+			} else {
+				_ = a.clearRelayPasswordLocked(defaultRelaySecret)
+			}
+		}
+		return err
+	}
+	return nil
 }
 
 // ClearRelayPassword removes the Settings relay password.
@@ -681,6 +720,19 @@ func ValidateConnection(publicAddress string, appPort int) error {
 	return nil
 }
 
+// normalizeRelayHost removes the brackets around a pasted IPv6 literal so the
+// host can be passed to net.JoinHostPort.
+func normalizeRelayHost(host string) string {
+	host = strings.TrimSpace(host)
+	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		inner := host[1 : len(host)-1]
+		if net.ParseIP(inner) != nil {
+			return inner
+		}
+	}
+	return host
+}
+
 // resolveGroupConnection applies one group's overrides to the saved defaults.
 func resolveGroupConnection(settings config.Settings, g group.Group) GroupConnection {
 	c := GroupConnection{
@@ -736,6 +788,9 @@ func (a *App) GroupEndpoint(groupID string) (string, error) {
 		return "", err
 	}
 	if connection.UseRelay {
+		if strings.TrimSpace(connection.RelayHost) == "" {
+			return "", errors.New("the relay host is not set")
+		}
 		return net.JoinHostPort(connection.RelayHost, strconv.Itoa(connection.RelayPort)), nil
 	}
 	return publicEndpoint(connection.PublicAddress, connection.AppPort)
@@ -748,6 +803,32 @@ func (a *App) GroupAppPort(groupID string) (int, error) {
 		return 0, err
 	}
 	return connection.AppPort, nil
+}
+
+// PreviewGroupConnection resolves what the connection form would mean without
+// saving it.
+func (a *App) PreviewGroupConnection(groupID string, in GroupConnectionInput) (GroupConnection, error) {
+	in.PublicAddress = strings.TrimSpace(in.PublicAddress)
+	in.RelayHost = normalizeRelayHost(in.RelayHost)
+	in.RelayID = strings.ToLower(strings.TrimSpace(in.RelayID))
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	idx := a.groupIndexLocked(groupID)
+	if idx < 0 {
+		return GroupConnection{}, errors.New("group not found")
+	}
+	g := a.groups[idx]
+	g.OverrideSettings = in.Override
+	g.UseRelay = in.UseRelay
+	g.PublicAddress = in.PublicAddress
+	g.AppPort = in.AppPort
+	g.RelayCustom = in.RelayCustom
+	g.RelayHost = in.RelayHost
+	g.RelayPort = in.RelayPort
+	g.RelayID = in.RelayID
+	return resolveGroupConnection(a.settings, g), nil
 }
 
 // SetGroupConnection saves a host group's direct connection override. Empty
@@ -765,10 +846,24 @@ func (a *App) SetGroupConnection(groupID, publicAddress string, appPort int) err
 
 // SetGroupConnectionOptions saves the group's Override Settings form. Values
 // that are inactive stay stored so the user can switch back without retyping.
+// It does not require a custom relay password; SaveGroupConnectionOptions is
+// the user-facing form path that does.
 func (a *App) SetGroupConnectionOptions(groupID string, in GroupConnectionInput) error {
+	return a.applyGroupConnectionOptions(groupID, in, "", false)
+}
+
+// SaveGroupConnectionOptions saves the group connection form and stores a new
+// custom relay password when one is supplied. A custom relay must have a
+// password, either supplied here or saved earlier.
+func (a *App) SaveGroupConnectionOptions(groupID string, in GroupConnectionInput, password string) error {
+	return a.applyGroupConnectionOptions(groupID, in, password, true)
+}
+
+func (a *App) applyGroupConnectionOptions(groupID string, in GroupConnectionInput, password string, requirePassword bool) error {
 	in.PublicAddress = strings.TrimSpace(in.PublicAddress)
-	in.RelayHost = strings.TrimSpace(in.RelayHost)
+	in.RelayHost = normalizeRelayHost(in.RelayHost)
 	in.RelayID = strings.ToLower(strings.TrimSpace(in.RelayID))
+	password = strings.TrimSpace(password)
 	if in.Override {
 		if in.UseRelay {
 			if in.RelayCustom {
@@ -796,6 +891,32 @@ func (a *App) SetGroupConnectionOptions(groupID string, in GroupConnectionInput)
 		return errors.New("only a hosted group can change its connection")
 	}
 
+	customRelay := in.Override && in.UseRelay && in.RelayCustom
+	oldPassword, hadPassword, err := a.relayPasswordLocked(groupRelaySecret(groupID))
+	if err != nil {
+		return err
+	}
+	if customRelay && requirePassword && password == "" && !hadPassword {
+		return errors.New("enter the relay password for this relay")
+	}
+	passwordChanged := false
+	if customRelay && password != "" {
+		if err := a.storeRelayPasswordLocked(groupRelaySecret(groupID), password); err != nil {
+			return err
+		}
+		passwordChanged = true
+	}
+	restorePassword := func() {
+		if !passwordChanged {
+			return
+		}
+		if hadPassword {
+			_ = a.storeRelayPasswordLocked(groupRelaySecret(groupID), oldPassword)
+		} else {
+			_ = a.clearRelayPasswordLocked(groupRelaySecret(groupID))
+		}
+	}
+
 	oldGroup := *g
 	oldConnection := resolveGroupConnection(a.settings, oldGroup)
 	g.OverrideSettings = in.Override
@@ -812,10 +933,12 @@ func (a *App) SetGroupConnectionOptions(groupID string, in GroupConnectionInput)
 		if oldConnection.UseRelay || newConnection.UseRelay {
 			if !sameInviteConnection(oldConnection, newConnection) {
 				*g = oldGroup
+				restorePassword()
 				return errors.New("end the session before changing the relay")
 			}
 		} else if oldConnection.AppPort != newConnection.AppPort {
 			*g = oldGroup
+			restorePassword()
 			return errors.New("end the session before changing this group's app port")
 		}
 	}
@@ -827,6 +950,7 @@ func (a *App) SetGroupConnectionOptions(groupID string, in GroupConnectionInput)
 	if err := a.saveLocked(); err != nil {
 		*g = oldGroup
 		a.restoreInvitesLocked(cancelled)
+		restorePassword()
 		return err
 	}
 	return nil

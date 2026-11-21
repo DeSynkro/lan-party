@@ -1962,3 +1962,135 @@ func TestRelaySettingsChangeCancelsInvitesAfterStop(t *testing.T) {
 		t.Fatalf("invites survived the relay change: %+v", saved.Invites)
 	}
 }
+
+func TestSaveSettingsWithRelayPassword(t *testing.T) {
+	a := newTestApp(t)
+	s := a.Settings()
+	s.UseRelay = true
+	s.RelayHost = "relay.example.net"
+	s.RelayPort = 7443
+	s.RelayID = strings.Repeat("ab", 32)
+
+	if err := a.SaveSettingsWithRelayPassword(s, ""); err == nil {
+		t.Fatal("relay settings saved without a password")
+	}
+	if err := a.SaveSettingsWithRelayPassword(s, "relay secret"); err != nil {
+		t.Fatal(err)
+	}
+	if got := a.Settings(); got != s {
+		t.Fatalf("settings = %+v", got)
+	}
+	if err := a.SaveSettingsWithRelayPassword(s, ""); err != nil {
+		t.Fatalf("a saved password was not reused: %v", err)
+	}
+
+	bad := s
+	bad.RelayPort = 70000
+	if err := a.SaveSettingsWithRelayPassword(bad, "new secret"); err == nil {
+		t.Fatal("invalid settings were accepted")
+	}
+	a.mu.Lock()
+	password, ok, err := a.relayPasswordLocked(defaultRelaySecret)
+	a.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok || password != "relay secret" {
+		t.Fatalf("password after a failed save = %q, ok = %v", password, ok)
+	}
+}
+
+func TestSaveGroupConnectionOptionsPassword(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := GroupConnectionInput{
+		Override:    true,
+		UseRelay:    true,
+		RelayCustom: true,
+		RelayHost:   "relay.example.net",
+		RelayPort:   7443,
+		RelayID:     strings.Repeat("ab", 32),
+	}
+	if err := a.SaveGroupConnectionOptions(g.ID, in, ""); err == nil {
+		t.Fatal("a custom relay saved without a password")
+	}
+	if err := a.SaveGroupConnectionOptions(g.ID, in, "group secret"); err != nil {
+		t.Fatal(err)
+	}
+	if !a.GroupRelayPasswordSet(g.ID) {
+		t.Fatal("the group password was not stored")
+	}
+	if err := a.SaveGroupConnectionOptions(g.ID, in, ""); err != nil {
+		t.Fatalf("a saved group password was not reused: %v", err)
+	}
+
+	bad := in
+	bad.RelayID = "short"
+	if err := a.SaveGroupConnectionOptions(g.ID, bad, "new secret"); err == nil {
+		t.Fatal("invalid relay settings were accepted")
+	}
+	a.mu.Lock()
+	password, ok, err := a.relayPasswordLocked(groupRelaySecret(g.ID))
+	a.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok || password != "group secret" {
+		t.Fatalf("password after a failed save = %q, ok = %v", password, ok)
+	}
+
+	// Switching to the Settings relay keeps the custom password for later.
+	inherited := in
+	inherited.RelayCustom = false
+	if err := a.SaveGroupConnectionOptions(g.ID, inherited, ""); err != nil {
+		t.Fatal(err)
+	}
+	if !a.GroupRelayPasswordSet(g.ID) {
+		t.Fatal("the custom password was cleared while the values were kept")
+	}
+}
+
+func TestPreviewGroupConnection(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := a.Settings()
+	s.UseRelay = true
+	s.RelayHost = "relay.example.net"
+	s.RelayPort = 7443
+	s.RelayID = strings.Repeat("ab", 32)
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	custom := GroupConnectionInput{
+		Override:    true,
+		UseRelay:    true,
+		RelayCustom: true,
+		RelayHost:   "private.example.net",
+		RelayPort:   9443,
+		RelayID:     strings.Repeat("cd", 32),
+	}
+	preview, err := a.PreviewGroupConnection(g.ID, custom)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !preview.Custom || !preview.RelayCustom || preview.RelayHost != "private.example.net" {
+		t.Fatalf("custom preview = %+v", preview)
+	}
+	saved, ok := a.Group(g.ID)
+	if !ok || saved.OverrideSettings || saved.RelayHost != "" {
+		t.Fatalf("preview changed the group: %+v", saved)
+	}
+	inherited, err := a.PreviewGroupConnection(g.ID, GroupConnectionInput{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inherited.Custom || !inherited.UseRelay || inherited.RelayHost != "relay.example.net" {
+		t.Fatalf("inherited preview = %+v", inherited)
+	}
+}

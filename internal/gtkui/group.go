@@ -144,6 +144,7 @@ func (u *probeUI) hostSessionCard(g group.Group, showError func(error), state *g
 	card.Append(gapBox(8))
 
 	endpoint, endpointErr := u.state.GroupEndpoint(g.ID)
+	connection, connectionErr := u.state.EffectiveConnection(g.ID)
 	row := gtk.NewBox(gtk.OrientationHorizontal, 8)
 	if endpointErr != nil {
 		addr := lineLabel("not set", "mono")
@@ -154,10 +155,15 @@ func (u *probeUI) hostSessionCard(g group.Group, showError func(error), state *g
 		addr.SetHExpand(true)
 		row.Append(addr)
 	}
-	if g.PublicAddress != "" || g.AppPort != 0 {
-		row.Append(tagLabel("Custom"))
-	} else {
-		row.Append(tagLabel("Default"))
+	if connectionErr == nil {
+		if connection.Custom {
+			row.Append(tagLabel("Custom"))
+		} else {
+			row.Append(tagLabel("Default"))
+		}
+		if connection.UseRelay {
+			row.Append(tagLabel("Relay"))
+		}
 	}
 	change := gtk.NewButtonWithLabel("Change")
 	change.AddCSSClass("quiet")
@@ -168,13 +174,21 @@ func (u *probeUI) hostSessionCard(g group.Group, showError func(error), state *g
 	card.Append(row)
 	if endpointErr != nil {
 		card.Append(gapBox(4))
-		card.Append(cardText("No public address — friends can't join.", "warning"))
+		if connectionErr == nil && connection.UseRelay {
+			card.Append(cardText("The relay is not configured. Set it in Settings or use a custom relay for this group.", "warning"))
+		} else {
+			card.Append(cardText("No public address — friends can't join.", "warning"))
+		}
 	}
-	appPort, portErr := u.state.GroupAppPort(g.ID)
-	if portErr != nil {
-		appPort = u.state.Settings().AppPort
+	if connectionErr == nil && connection.UseRelay {
+		card.Append(cardText("Through the relay — no port forward needed.", "desc"))
+	} else {
+		appPort, portErr := u.state.GroupAppPort(g.ID)
+		if portErr != nil {
+			appPort = u.state.Settings().AppPort
+		}
+		card.Append(cardText("UDP "+strconv.Itoa(appPort)+" on this PC", "desc"))
 	}
-	card.Append(cardText("UDP "+strconv.Itoa(appPort)+" on this PC", "desc"))
 	card.Append(gapBox(6))
 	connected := cardText("not running", "desc")
 	if live {
@@ -580,6 +594,13 @@ func (u *probeUI) groupSignature(g group.Group) string {
 		live := u.state.LiveGroupID() == g.ID
 		fmt.Fprintf(&b, "|live=%t", live)
 		fmt.Fprintf(&b, "|connection=%s,%d", g.PublicAddress, g.AppPort)
+		if connection, err := u.state.EffectiveConnection(g.ID); err == nil {
+			fmt.Fprintf(&b, "|use-relay=%t,relay-custom=%t,relay=%s,%d,%s,override=%t",
+				connection.UseRelay, connection.RelayCustom, connection.RelayHost,
+				connection.RelayPort, connection.RelayID, connection.Custom)
+		} else {
+			fmt.Fprintf(&b, "|connection-error=%s", err)
+		}
 		if endpoint, err := u.state.GroupEndpoint(g.ID); err == nil {
 			fmt.Fprintf(&b, "|endpoint=%s", endpoint)
 		} else {

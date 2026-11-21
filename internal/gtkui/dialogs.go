@@ -2,6 +2,8 @@ package gtkui
 
 import (
 	"context"
+	"errors"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -73,35 +75,105 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 		showError(err)
 		return
 	}
+	settingsConnection, err := u.state.PreviewGroupConnection(g.ID, apppkg.GroupConnectionInput{})
+	if err != nil {
+		showError(err)
+		return
+	}
+	hasPassword := u.state.GroupRelayPasswordSet(g.ID)
+	live := func() bool { return u.state.LiveGroupID() == g.ID }
 
 	win, content := u.dialog("Connection for " + g.Name)
-	win.SetDefaultSize(380, 420)
+	win.SetDefaultSize(400, 620)
 
 	content.Append(textLabel("This changes only this group. The defaults live in Settings.", "help"))
-	content.Append(gapBox(12))
+	content.Append(gapBox(10))
 
+	overrideCheck := gtk.NewCheckButtonWithLabel("Override Settings")
+	overrideCheck.SetActive(g.OverrideSettings)
+	content.Append(overrideCheck)
+	content.Append(gapBox(8))
+
+	summaryBox := gtk.NewBox(gtk.OrientationVertical, 0)
+	summaryMode := textLabel("", "card-title")
+	summaryRoute := textLabel("", "mono")
+	summaryDetail := textLabel("", "desc")
+	summaryBox.Append(summaryMode)
+	summaryBox.Append(gapBox(4))
+	summaryBox.Append(summaryRoute)
+	summaryBox.Append(gapBox(4))
+	summaryBox.Append(summaryDetail)
+	content.Append(summaryBox)
+	content.Append(gapBox(8))
+
+	overrideBox := gtk.NewBox(gtk.OrientationVertical, 0)
+	useRelayCheck := gtk.NewCheckButtonWithLabel("Use Relay")
+	useRelayCheck.SetActive(g.UseRelay)
+	overrideBox.Append(useRelayCheck)
+	overrideBox.Append(gapBox(8))
+
+	// Direct fields.
 	publicPlaceholder := settings.PublicAddress
 	if publicPlaceholder == "" {
 		publicPlaceholder = "home.example.net"
 	}
 	publicEntry := entry(publicPlaceholder)
 	publicEntry.SetText(g.PublicAddress)
-	content.Append(formRow("Public address", publicEntry))
-	content.Append(gapBox(8))
-
 	portPlaceholder := strconv.Itoa(settings.AppPort)
 	portEntry := entry(portPlaceholder)
 	if g.AppPort != 0 {
 		portEntry.SetText(strconv.Itoa(g.AppPort))
 	}
-	content.Append(formRow("App port (UDP)", portEntry))
-	content.Append(gapBox(8))
+	directBox := gtk.NewBox(gtk.OrientationVertical, 0)
+	directBox.Append(formRow("Public address", publicEntry))
+	directBox.Append(gapBox(8))
+	directBox.Append(formRow("App port (UDP)", portEntry))
+	directBox.Append(gapBox(6))
+	directBox.Append(textLabel("Blank fields use the Settings defaults.", "help"))
 
-	defaultEndpoint := "not set"
-	if endpoint, err := apppkg.Endpoint(settings.PublicAddress, settings.AppPort); err == nil {
-		defaultEndpoint = endpoint
+	// Relay fields.
+	customCheck := gtk.NewCheckButtonWithLabel("Custom relay for this group")
+	customCheck.SetActive(g.RelayCustom)
+	relayHostEntry := entry(settings.RelayHost)
+	relayHostEntry.SetText(g.RelayHost)
+	relayPortEntry := entry(strconv.Itoa(settings.RelayPort))
+	if g.RelayPort != 0 {
+		relayPortEntry.SetText(strconv.Itoa(g.RelayPort))
 	}
-	content.Append(textLabel("Default: "+defaultEndpoint+" · UDP "+strconv.Itoa(settings.AppPort), "desc"))
+	relayIDEntry := entry(settings.RelayID)
+	relayIDEntry.SetText(g.RelayID)
+	passwordEntry := gtk.NewEntry()
+	passwordEntry.SetVisibility(false)
+	passwordEntry.SetInputPurpose(gtk.InputPurposePassword)
+	passwordEntry.AddCSSClass("field")
+	passwordEntry.SetHExpand(true)
+	passwordStatus := textLabel("", "desc")
+
+	customFields := gtk.NewBox(gtk.OrientationVertical, 0)
+	customFields.Append(gapBox(8))
+	customFields.Append(textLabel("Relay host", "form-label"))
+	customFields.Append(relayHostEntry)
+	customFields.Append(gapBox(8))
+	customFields.Append(textLabel("Relay port", "form-label"))
+	customFields.Append(relayPortEntry)
+	customFields.Append(gapBox(8))
+	customFields.Append(textLabel("Relay ID", "form-label"))
+	customFields.Append(relayIDEntry)
+	customFields.Append(gapBox(8))
+	customFields.Append(textLabel("Relay password", "form-label"))
+	customFields.Append(passwordEntry)
+	customFields.Append(gapBox(4))
+	customFields.Append(passwordStatus)
+
+	inheritedNote := textLabel("", "desc")
+	relayBox := gtk.NewBox(gtk.OrientationVertical, 0)
+	relayBox.Append(customCheck)
+	relayBox.Append(inheritedNote)
+	relayBox.Append(customFields)
+
+	overrideBox.Append(directBox)
+	overrideBox.Append(relayBox)
+	content.Append(overrideBox)
 	content.Append(gapBox(10))
 
 	preview := textLabel("", "mono")
@@ -123,119 +195,261 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 	content.Append(errLabel)
 	content.Append(gapBox(10))
 
-	oldEndpoint, oldErr := apppkg.Endpoint(current.PublicAddress, current.AppPort)
-	if oldErr != nil {
-		oldEndpoint = ""
+	resetting := false
+	pendingReset := false
+	passwordClearedOnSave := false
+
+	updatePasswordStatus := func() {
+		switch {
+		case passwordClearedOnSave:
+			passwordStatus.SetText("The saved password will be cleared when you save.")
+			passwordEntry.SetPlaceholderText("Cleared on save")
+		case hasPassword:
+			passwordStatus.SetText("A custom relay password is saved. Leave this blank to keep it.")
+			passwordEntry.SetPlaceholderText("Saved password")
+		default:
+			passwordStatus.SetText("No custom relay password is saved yet.")
+			passwordEntry.SetPlaceholderText("Relay password")
+		}
 	}
-	live := func() bool { return u.state.LiveGroupID() == g.ID }
 
-	buttons := gtk.NewBox(gtk.OrientationHorizontal, 8)
-	useDefaults := gtk.NewButtonWithLabel("Use defaults")
-	useDefaults.AddCSSClass("quiet")
-	cancel := gtk.NewButtonWithLabel("Cancel")
-	cancel.AddCSSClass("quiet")
-	action := gtk.NewButtonWithLabel("Save")
-	action.AddCSSClass("primary")
+	formInput := func() (apppkg.GroupConnectionInput, error) {
+		in := apppkg.GroupConnectionInput{
+			Override:      overrideCheck.Active(),
+			UseRelay:      useRelayCheck.Active(),
+			PublicAddress: strings.TrimSpace(publicEntry.Text()),
+			RelayCustom:   customCheck.Active(),
+			RelayHost:     strings.TrimSpace(relayHostEntry.Text()),
+			RelayID:       strings.TrimSpace(relayIDEntry.Text()),
+		}
+		if text := strings.TrimSpace(portEntry.Text()); text != "" {
+			port, err := strconv.Atoi(text)
+			if err != nil || port < 1 || port > 65535 {
+				return in, errors.New("the app port must be between 1 and 65535")
+			}
+			in.AppPort = port
+		}
+		if text := strings.TrimSpace(relayPortEntry.Text()); text != "" {
+			port, err := strconv.Atoi(text)
+			if err != nil || port < 1 || port > 65535 {
+				return in, errors.New("the relay port must be between 1 and 65535")
+			}
+			in.RelayPort = port
+		}
+		return in, nil
+	}
 
+	formatEndpoint := func(connection apppkg.GroupConnection) string {
+		if connection.UseRelay {
+			if connection.RelayHost == "" {
+				return ""
+			}
+			return net.JoinHostPort(connection.RelayHost, strconv.Itoa(connection.RelayPort))
+		}
+		endpoint, err := apppkg.Endpoint(connection.PublicAddress, connection.AppPort)
+		if err != nil {
+			return ""
+		}
+		return endpoint
+	}
+
+	if settingsConnection.UseRelay {
+		summaryMode.SetText("Using Settings: Relay")
+		summaryRoute.SetText("Relay: " + relayRoute(settingsConnection.RelayHost, settingsConnection.RelayPort, settingsConnection.RelayID))
+		summaryDetail.SetText("Friends connect through the relay. No port forward is needed.")
+	} else {
+		summaryMode.SetText("Using Settings: Direct")
+		endpoint := formatEndpoint(settingsConnection)
+		if endpoint == "" {
+			endpoint = "not set"
+		}
+		summaryRoute.SetText("Public address: " + endpoint)
+		summaryDetail.SetText("Friends connect to the address in Settings.")
+	}
+	if settingsConnection.UseRelay {
+		inheritedNote.SetText("Relay: from Settings · " + relayRoute(settingsConnection.RelayHost, settingsConnection.RelayPort, settingsConnection.RelayID))
+	} else {
+		inheritedNote.SetText("Relay: the Settings relay is not configured.")
+	}
+
+	var saveButton *gtk.Button
+	var reset *gtk.Button
 	updatePreview := func() {
 		errLabel.SetVisible(false)
-		publicText := strings.TrimSpace(publicEntry.Text())
-		portText := strings.TrimSpace(portEntry.Text())
-		port := settings.AppPort
-		if portText != "" {
-			parsed, err := strconv.Atoi(portText)
-			if err != nil || parsed < 1 || parsed > 65535 {
-				preview.SetText("Friends connect to: check the app port")
-				listen.SetText("")
-				warning.SetVisible(false)
-				endpointNote.SetVisible(false)
-				action.SetLabel("Save")
-				return
+		in, parseErr := formInput()
+		if parseErr != nil {
+			preview.SetText("Check the port values.")
+			listen.SetText("")
+			warning.SetVisible(false)
+			endpointNote.SetVisible(false)
+			return
+		}
+		next, previewErr := u.state.PreviewGroupConnection(g.ID, in)
+		if previewErr != nil {
+			preview.SetText("Connection preview unavailable.")
+			listen.SetText("")
+			return
+		}
+		if !in.Override {
+			preview.SetText("")
+			listen.SetText("")
+			warning.SetVisible(false)
+			endpointNote.SetVisible(false)
+			return
+		}
+		relayChanges := current.UseRelay || next.UseRelay
+		if relayChanges {
+			relayChanges = current.UseRelay != next.UseRelay ||
+				current.RelayHost != next.RelayHost ||
+				current.RelayPort != next.RelayPort ||
+				current.RelayID != next.RelayID
+		}
+		oldEndpoint := formatEndpoint(current)
+		newEndpoint := formatEndpoint(next)
+		restartNeeded := live() && liveConnectionChange(current, next)
+		endpointChanges := !current.UseRelay && !next.UseRelay && oldEndpoint != newEndpoint
+		portChanges := !current.UseRelay && !next.UseRelay && current.AppPort != next.AppPort
+
+		if next.UseRelay {
+			preview.SetText("Relay: " + relayRoute(next.RelayHost, next.RelayPort, next.RelayID))
+			if next.RelayHost != "" {
+				listen.SetText("Friends connect through " + next.RelayHost + " on port " + strconv.Itoa(next.RelayPort) + ". No port forward is needed.")
+			} else {
+				listen.SetText("Set the relay host before saving.")
 			}
-			port = parsed
-		}
-
-		effectivePublic := publicText
-		if effectivePublic == "" {
-			effectivePublic = settings.PublicAddress
-		}
-		endpoint, endpointErr := apppkg.Endpoint(effectivePublic, port)
-		if endpointErr != nil {
-			preview.SetText("Friends connect to: not set")
 		} else {
+			endpoint := newEndpoint
+			if endpoint == "" {
+				endpoint = "not set"
+			}
 			preview.SetText("Friends connect to: " + endpoint)
+			listen.SetText("Host listens on UDP " + strconv.Itoa(next.AppPort))
 		}
-		listen.SetText("Host listens on UDP " + strconv.Itoa(port))
 
-		portChanges := port != current.AppPort
-		restartNeeded := live() && portChanges
+		actionLabel := "Save"
 		warning.SetVisible(false)
-		endpointNote.SetVisible(false)
-		action.SetLabel("Save")
 		if restartNeeded {
-			action.SetLabel("Stop session and apply")
-			warning.SetText("Changing the app port restarts the session. Everyone will disconnect briefly.")
+			actionLabel = "Stop session and apply"
+			warning.SetText("Changing the connection restarts the session. Everyone will disconnect briefly.")
 			warning.SetVisible(true)
 		}
+		if saveButton != nil {
+			saveButton.SetLabel(actionLabel)
+		}
 
-		endpointChanges := oldErr == nil && (endpointErr != nil || endpoint != oldEndpoint)
 		open := len(g.OpenInvites(time.Now()))
-		if note := connectionEndpointNote(endpointChanges, portChanges, open, restartNeeded); note != "" {
+		if note := connectionChangeNote(relayChanges, endpointChanges, portChanges, open, restartNeeded); note != "" {
 			endpointNote.SetText(note)
 			endpointNote.SetVisible(true)
+		} else {
+			endpointNote.SetVisible(false)
 		}
 	}
 
-	publicEntry.ConnectChanged(func() { updatePreview() })
-	portEntry.ConnectChanged(func() { updatePreview() })
+	syncVisibility := func() {
+		override := overrideCheck.Active()
+		relay := override && useRelayCheck.Active()
+		custom := relay && customCheck.Active()
+		summaryBox.SetVisible(!override)
+		overrideBox.SetVisible(override)
+		directBox.SetVisible(override && !relay)
+		relayBox.SetVisible(relay)
+		customFields.SetVisible(custom)
+		inheritedNote.SetVisible(relay && !custom)
+		if reset != nil {
+			reset.SetVisible(override)
+		}
+		updatePasswordStatus()
+		updatePreview()
+	}
 
-	useDefaults.ConnectClicked(func() {
+	markEdited := func() {
+		if resetting {
+			return
+		}
+		pendingReset = false
+		passwordClearedOnSave = false
+		updatePasswordStatus()
+	}
+
+	overrideCheck.ConnectToggled(func() { markEdited(); syncVisibility() })
+	useRelayCheck.ConnectToggled(func() { markEdited(); syncVisibility() })
+	customCheck.ConnectToggled(func() { markEdited(); syncVisibility() })
+	for _, entrance := range []*gtk.Entry{publicEntry, portEntry, relayHostEntry, relayPortEntry, relayIDEntry, passwordEntry} {
+		entrance.ConnectChanged(func() { markEdited(); syncVisibility() })
+	}
+
+	buttons := gtk.NewBox(gtk.OrientationHorizontal, 8)
+	reset = gtk.NewButtonWithLabel("Reset")
+	reset.AddCSSClass("quiet")
+	cancel := gtk.NewButtonWithLabel("Cancel")
+	cancel.AddCSSClass("quiet")
+	saveButton = gtk.NewButtonWithLabel("Save")
+	saveButton.AddCSSClass("primary")
+
+	reset.ConnectClicked(func() {
+		resetting = true
+		pendingReset = true
+		passwordClearedOnSave = true
+		overrideCheck.SetActive(false)
+		useRelayCheck.SetActive(false)
+		customCheck.SetActive(false)
 		publicEntry.SetText("")
 		portEntry.SetText("")
-		updatePreview()
+		relayHostEntry.SetText("")
+		relayPortEntry.SetText("")
+		relayIDEntry.SetText("")
+		passwordEntry.SetText("")
+		resetting = false
+		syncVisibility()
 	})
 	cancel.ConnectClicked(func() { win.Close() })
-	action.ConnectClicked(func() {
+	saveButton.ConnectClicked(func() {
 		errLabel.SetVisible(false)
-		publicText := strings.TrimSpace(publicEntry.Text())
-		portText := strings.TrimSpace(portEntry.Text())
-		port := 0
-		if portText != "" {
-			parsed, err := strconv.Atoi(portText)
-			if err != nil || parsed < 1 || parsed > 65535 {
-				errLabel.SetText("The app port must be between 1 and 65535.")
-				errLabel.SetVisible(true)
-				return
-			}
-			port = parsed
-		}
-		if err := apppkg.ValidateConnection(publicText, port); err != nil {
+		in, err := formInput()
+		if err != nil {
 			errLabel.SetText(err.Error())
 			errLabel.SetVisible(true)
 			return
 		}
-
-		newPort := port
-		if newPort == 0 {
-			newPort = settings.AppPort
+		password := strings.TrimSpace(passwordEntry.Text())
+		if in.Override && in.UseRelay && in.RelayCustom && password == "" && !hasPassword && !pendingReset {
+			errLabel.SetText("Enter the password for this group's relay.")
+			errLabel.SetVisible(true)
+			return
 		}
-		portChanges := live() && newPort != current.AppPort
-		if portChanges {
+		next, err := u.state.PreviewGroupConnection(g.ID, in)
+		if err != nil {
+			errLabel.SetText(err.Error())
+			errLabel.SetVisible(true)
+			return
+		}
+		restartNeeded := live() && liveConnectionChange(current, next)
+		if restartNeeded {
 			if err := u.state.StopSession(); err != nil {
 				errLabel.SetText(err.Error())
 				errLabel.SetVisible(true)
 				return
 			}
 		}
-		if err := u.state.SetGroupConnection(g.ID, publicText, port); err != nil {
+
+		if pendingReset {
+			err = u.state.ResetGroupConnection(g.ID)
+		} else {
+			err = u.state.SaveGroupConnectionOptions(g.ID, in, password)
+		}
+		if err != nil {
+			if restartNeeded {
+				_ = u.state.StartSession(g.ID)
+			}
 			errLabel.SetText(err.Error())
 			errLabel.SetVisible(true)
 			return
 		}
-		if portChanges {
+		if restartNeeded {
 			if err := u.state.StartSession(g.ID); err != nil {
 				updatePreview()
-				errLabel.SetText("Settings saved, but the session could not restart: " + err.Error() + ". Fix the port and start the session again.")
+				errLabel.SetText("Connection saved, but the session could not restart: " + err.Error() + ". Start the session again.")
 				errLabel.SetVisible(true)
 				return
 			}
@@ -244,13 +458,13 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 		u.showGroup(g.ID)
 	})
 
-	buttons.Append(useDefaults)
+	buttons.Append(reset)
 	buttons.Append(cancel)
-	buttons.Append(action)
+	buttons.Append(saveButton)
 	buttons.SetHAlign(gtk.AlignEnd)
 	content.Append(buttons)
 
-	updatePreview()
+	syncVisibility()
 	publicEntry.GrabFocus()
 	win.Present()
 }
@@ -397,9 +611,14 @@ func (u *probeUI) showInviteDialog(g group.Group) {
 	content.Append(textLabel("Friend's name", "form-label"))
 	nameEntry := entry("Ash")
 	content.Append(nameEntry)
-	if endpoint, err := u.state.GroupEndpoint(g.ID); err == nil {
+	if connection, err := u.state.EffectiveConnection(g.ID); err == nil {
 		content.Append(gapBox(8))
-		content.Append(textLabel("Invite endpoint: "+endpoint, "desc"))
+		if connection.UseRelay {
+			content.Append(textLabel("Relay: "+relayRoute(connection.RelayHost, connection.RelayPort, connection.RelayID), "desc"))
+			content.Append(textLabel("The invite carries a short-lived relay token. Friends need no port forward.", "desc"))
+		} else if endpoint, err := u.state.GroupEndpoint(g.ID); err == nil {
+			content.Append(textLabel("Invite endpoint: "+endpoint, "desc"))
+		}
 	}
 	content.Append(gapBox(10))
 	errLabel := textLabel("", "error")
@@ -462,7 +681,12 @@ func (u *probeUI) showInviteCodeDialog(g group.Group, name, code string) {
 	content.Append(codeScroll)
 	if inv, err := invitepkg.Decode(code); err == nil {
 		content.Append(gapBox(8))
-		content.Append(textLabel("Code endpoint: "+inv.Endpoint, "desc"))
+		if inv.Version == invitepkg.RelayVersion {
+			content.Append(textLabel("Relay: "+relayRoute(inv.RelayHost, inv.RelayPort, inv.RelayID), "desc"))
+			content.Append(textLabel("Friends connect through the relay; no port forward is needed.", "desc"))
+		} else {
+			content.Append(textLabel("Code endpoint: "+inv.Endpoint, "desc"))
+		}
 	}
 	content.Append(gapBox(10))
 	content.Append(textLabel("Send this code privately. It works once and expires after 1 hour.", "desc"))

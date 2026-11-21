@@ -11,6 +11,9 @@ func joinInvitePreview(code string) (nameLine, groupLine string) {
 	if err != nil {
 		return "", ""
 	}
-	return "The host has assigned you the name " + inv.PeerName + ".",
-		"Joining " + inv.GroupName + " · hosted by " + inv.HostName + "."
+	groupLine = "Joining " + inv.GroupName + " · hosted by " + inv.HostName + "."
+	if inv.Version == invitepkg.RelayVersion {
+		groupLine += " · via relay"
+	}
+	return "The host has assigned you the name " + inv.PeerName + ".", groupLine
 }

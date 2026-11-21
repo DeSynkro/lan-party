@@ -1,10 +1,14 @@
 package gtkui
 
 import (
+	"context"
 	"errors"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/diamondburned/gotk4/pkg/core/glib"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 
 	apppkg "github.com/desynkro/lan-party/internal/app"
@@ -82,6 +86,10 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	networkNote.SetMarginBottom(8)
 	page.Append(networkNote)
 
+	useRelay := gtk.NewCheckButtonWithLabel("Use Relay")
+	useRelay.SetActive(settings.UseRelay)
+	useRelay.SetMarginBottom(10)
+
 	publicEntry := gtk.NewEntry()
 	publicEntry.SetText(settings.PublicAddress)
 	publicEntry.SetPlaceholderText("home.example.net")
@@ -94,66 +102,258 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	portEntry.AddCSSClass("field")
 	portEntry.SetHExpand(true)
 
-	preview := textLabel("", "mono")
-	preview.SetMarginTop(2)
+	directPreview := textLabel("", "mono")
+	directPreview.SetMarginTop(2)
 
-	updatePreview := func() {
-		feedback.hide()
+	updateDirectPreview := func() {
 		public := strings.TrimSpace(publicEntry.Text())
 		port, err := strconv.Atoi(strings.TrimSpace(portEntry.Text()))
 		switch {
 		case public == "":
-			preview.SetText("Friends connect to: not set")
+			directPreview.SetText("Friends connect to: not set")
 		case err != nil:
-			preview.SetText("Friends connect to: check the app port")
+			directPreview.SetText("Friends connect to: check the app port")
 		default:
 			endpoint, err := apppkg.Endpoint(public, port)
 			if err != nil {
-				preview.SetText("Friends connect to: check the address")
+				directPreview.SetText("Friends connect to: check the address")
 				return
 			}
-			preview.SetText("Friends connect to: " + endpoint)
+			directPreview.SetText("Friends connect to: " + endpoint)
 		}
 	}
-	publicEntry.ConnectChanged(updatePreview)
-	portEntry.ConnectChanged(updatePreview)
-	updatePreview()
+	publicEntry.ConnectChanged(func() {
+		feedback.hide()
+		updateDirectPreview()
+	})
+	portEntry.ConnectChanged(func() {
+		feedback.hide()
+		updateDirectPreview()
+	})
+
+	directBox := gtk.NewBox(gtk.OrientationVertical, 0)
+	directBox.Append(formRow("Public address", publicEntry))
+	directBox.Append(gapBox(8))
+	directBox.Append(formRow("App port (UDP)", portEntry))
+	directBox.Append(gapBox(10))
+	directHelp := textLabel("Use a hostname or IP. Leave the port off unless your router forwards a different outside port, for example home.example.net:40000. The app port is the UDP port on this PC.", "help")
+	directHelp.SetSizeRequest(descriptionWidth, -1)
+	directBox.Append(directHelp)
+	directBox.Append(gapBox(10))
+	directBox.Append(directPreview)
+
+	relayHostEntry := gtk.NewEntry()
+	relayHostEntry.SetText(settings.RelayHost)
+	relayHostEntry.SetPlaceholderText("relay.example.net")
+	relayHostEntry.AddCSSClass("field")
+	relayHostEntry.SetHExpand(true)
+
+	relayPortEntry := gtk.NewEntry()
+	relayPortEntry.SetText(strconv.Itoa(settings.RelayPort))
+	relayPortEntry.SetPlaceholderText("7443")
+	relayPortEntry.AddCSSClass("field")
+	relayPortEntry.SetHExpand(true)
+
+	relayIDEntry := gtk.NewEntry()
+	relayIDEntry.SetText(settings.RelayID)
+	relayIDEntry.SetPlaceholderText("64-character Relay ID")
+	relayIDEntry.AddCSSClass("field")
+	relayIDEntry.SetHExpand(true)
+
+	relayPasswordEntry := gtk.NewEntry()
+	relayPasswordEntry.SetVisibility(false)
+	relayPasswordEntry.SetInputPurpose(gtk.InputPurposePassword)
+	relayPasswordEntry.AddCSSClass("field")
+	relayPasswordEntry.SetHExpand(true)
+
+	passwordStatus := textLabel("", "desc")
+	updatePasswordStatus := func() {
+		if u.state.RelayPasswordSet() {
+			passwordStatus.SetText("A relay password is saved. Leave this blank to keep it.")
+			relayPasswordEntry.SetPlaceholderText("Saved password")
+		} else {
+			passwordStatus.SetText("No relay password is saved yet.")
+			relayPasswordEntry.SetPlaceholderText("Relay password")
+		}
+	}
+
+	relayPreview := textLabel("", "mono")
+	relayPreview.SetMarginTop(2)
+	updateRelayPreview := func() {
+		host := strings.TrimSpace(relayHostEntry.Text())
+		port, err := strconv.Atoi(strings.TrimSpace(relayPortEntry.Text()))
+		switch {
+		case host == "":
+			relayPreview.SetText("Friends connect through: set the relay host")
+		case err != nil:
+			relayPreview.SetText("Friends connect through: check the relay port")
+		default:
+			relayPreview.SetText("Friends connect through " + host + " on port " + strconv.Itoa(port) + ". No port forward is needed.")
+		}
+	}
+	for _, entry := range []*gtk.Entry{relayHostEntry, relayPortEntry, relayIDEntry} {
+		entry.ConnectChanged(func() {
+			feedback.hide()
+			updateRelayPreview()
+		})
+	}
+	relayPasswordEntry.ConnectChanged(func() { feedback.hide() })
+
+	relayBox := gtk.NewBox(gtk.OrientationVertical, 0)
+	relayBox.Append(formRow("Relay host", relayHostEntry))
+	relayBox.Append(gapBox(8))
+	relayBox.Append(formRow("Relay port", relayPortEntry))
+	relayBox.Append(gapBox(8))
+	relayBox.Append(formRow("Relay ID", relayIDEntry))
+	relayBox.Append(gapBox(8))
+	relayBox.Append(formRow("Relay password", relayPasswordEntry))
+	relayBox.Append(gapBox(4))
+	relayBox.Append(passwordStatus)
+	relayBox.Append(gapBox(10))
+	relayHelp := textLabel("The relay is a server you run. Friends do not need the relay password; each invite carries a short-lived token. The Relay ID is the relay's public fingerprint.", "help")
+	relayHelp.SetSizeRequest(descriptionWidth, -1)
+	relayBox.Append(relayHelp)
+	relayBox.Append(gapBox(10))
+	relayBox.Append(relayPreview)
+
+	syncConnectionFields := func() {
+		relay := useRelay.Active()
+		directBox.SetVisible(!relay)
+		relayBox.SetVisible(relay)
+	}
+	useRelay.ConnectToggled(func() {
+		feedback.hide()
+		syncConnectionFields()
+	})
 
 	networkCard := gtk.NewBox(gtk.OrientationVertical, 0)
 	networkCard.AddCSSClass("card")
 	networkCard.SetMarginBottom(10)
-	networkCard.Append(formRow("Public address", publicEntry))
-	networkCard.Append(gapBox(8))
-	networkCard.Append(formRow("App port (UDP)", portEntry))
-	networkCard.Append(gapBox(10))
-	networkHelp := textLabel("Use a hostname or IP. Leave the port off unless your router forwards a different outside port, for example home.example.net:40000. The app port is the UDP port on this PC.", "help")
-	networkHelp.SetSizeRequest(descriptionWidth, -1)
-	networkCard.Append(networkHelp)
-	networkCard.Append(gapBox(10))
-	networkCard.Append(preview)
+	networkCard.Append(useRelay)
+	networkCard.Append(directBox)
+	networkCard.Append(relayBox)
+
+	importProfile := gtk.NewButtonWithLabel("Import relay profile…")
+	importProfile.AddCSSClass("secondary")
+	importProfile.SetHAlign(gtk.AlignStart)
+	importProfile.ConnectClicked(func() {
+		chooser := gtk.NewFileChooserNative("Import relay profile", &u.win.Window, gtk.FileChooserActionOpen, "Import", "Cancel")
+		filter := gtk.NewFileFilter()
+		filter.SetName("Relay profile")
+		filter.AddPattern("relay-profile.json")
+		filter.AddPattern("*.json")
+		chooser.AddFilter(filter)
+		chooser.ConnectResponse(func(response int) {
+			defer chooser.Destroy()
+			if response != int(gtk.ResponseAccept) {
+				return
+			}
+			file := chooser.File()
+			if file == nil {
+				return
+			}
+			data, err := os.ReadFile(file.Path())
+			if err != nil {
+				feedback.showError(errors.New("could not read that relay profile"))
+				return
+			}
+			imported, err := u.state.ImportRelayProfile(data)
+			if err != nil {
+				feedback.showError(err)
+				return
+			}
+			settings = imported
+			useRelay.SetActive(true)
+			relayHostEntry.SetText(imported.RelayHost)
+			relayPortEntry.SetText(strconv.Itoa(imported.RelayPort))
+			relayIDEntry.SetText(imported.RelayID)
+			relayPasswordEntry.SetText("")
+			updatePasswordStatus()
+			updateRelayPreview()
+			syncConnectionFields()
+			feedback.showStatus("Imported the relay profile.")
+		})
+		chooser.Show()
+	})
+
+	testRelay := gtk.NewButtonWithLabel("Test relay")
+	testRelay.AddCSSClass("secondary")
+	testRelay.SetHAlign(gtk.AlignStart)
+	testRelay.ConnectClicked(func() {
+		host := strings.TrimSpace(relayHostEntry.Text())
+		port, err := strconv.Atoi(strings.TrimSpace(relayPortEntry.Text()))
+		if err != nil {
+			feedback.showError(errors.New("the relay port must be a number"))
+			return
+		}
+		relayID := strings.TrimSpace(relayIDEntry.Text())
+		password := relayPasswordEntry.Text()
+		testRelay.SetSensitive(false)
+		feedback.showStatus("Testing the relay…")
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+			defer cancel()
+			err := u.state.TestRelayConnection(ctx, host, port, relayID, password)
+			glib.IdleAdd(func() {
+				testRelay.SetSensitive(true)
+				if err != nil {
+					feedback.showError(err)
+					return
+				}
+				feedback.showStatus("Relay reachable and the password is correct.")
+			})
+		}()
+	})
 
 	save := gtk.NewButtonWithLabel("Save network settings")
 	save.AddCSSClass("primary")
 	save.SetHAlign(gtk.AlignStart)
-	save.SetMarginTop(12)
 	save.ConnectClicked(func() {
-		port, err := strconv.Atoi(strings.TrimSpace(portEntry.Text()))
+		s := u.state.Settings()
+		directPort, err := strconv.Atoi(strings.TrimSpace(portEntry.Text()))
 		if err != nil {
 			feedback.showError(errors.New("the app port must be a number"))
 			return
 		}
-		s := u.state.Settings()
+		relayPort := u.state.Settings().RelayPort
+		if text := strings.TrimSpace(relayPortEntry.Text()); text != "" {
+			relayPort, err = strconv.Atoi(text)
+			if err != nil {
+				feedback.showError(errors.New("the relay port must be a number"))
+				return
+			}
+		}
 		s.PublicAddress = strings.TrimSpace(publicEntry.Text())
-		s.AppPort = port
-		if err := u.state.SaveSettings(s); err != nil {
+		s.AppPort = directPort
+		s.UseRelay = useRelay.Active()
+		s.RelayHost = strings.TrimSpace(relayHostEntry.Text())
+		s.RelayPort = relayPort
+		s.RelayID = strings.TrimSpace(relayIDEntry.Text())
+		if err := u.state.SaveSettingsWithRelayPassword(s, relayPasswordEntry.Text()); err != nil {
 			feedback.showError(err)
 			return
 		}
-		updatePreview()
+		settings = u.state.Settings()
+		relayPasswordEntry.SetText("")
+		updatePasswordStatus()
+		updateDirectPreview()
+		updateRelayPreview()
 		feedback.showStatus("Saved.")
 	})
-	networkCard.Append(save)
+
+	buttonRow := gtk.NewBox(gtk.OrientationHorizontal, 8)
+	buttonRow.Append(testRelay)
+	buttonRow.Append(importProfile)
+	buttonRow.Append(save)
+	buttonRow.SetHAlign(gtk.AlignStart)
+	buttonRow.SetMarginTop(12)
+	networkCard.Append(buttonRow)
 	page.Append(networkCard)
+
+	updateDirectPreview()
+	updateRelayPreview()
+	updatePasswordStatus()
+	syncConnectionFields()
 
 	connection := textLabel("Connection", "section")
 	connection.SetMarginTop(18)
