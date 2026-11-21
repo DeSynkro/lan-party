@@ -59,8 +59,19 @@ func LoadSettings(p Paths) (Settings, error) {
 	if err != nil {
 		return s, fmt.Errorf("read settings: %w", err)
 	}
+	var present struct {
+		ForgetFriendsDays *int `json:"forgetFriendsDays"`
+	}
+	if err := json.Unmarshal(data, &present); err != nil {
+		return DefaultSettings(), fmt.Errorf("parse settings: %w", err)
+	}
 	if err := json.Unmarshal(data, &s); err != nil {
 		return DefaultSettings(), fmt.Errorf("parse settings: %w", err)
+	}
+	if present.ForgetFriendsDays == nil {
+		// Existing settings files predate the inactivity cleanup. Do not
+		// forget anyone until the host chooses a window.
+		s.ForgetFriendsDays = 0
 	}
 	if s.AppPort == 0 {
 		s.AppPort = DefaultAppPort

@@ -136,6 +136,23 @@ func TestLoadSettingsFillsRelayPort(t *testing.T) {
 	}
 }
 
+func TestLoadSettingsUpgradeDoesNotForget(t *testing.T) {
+	p := testPaths(t)
+	if err := os.MkdirAll(p.ConfigDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(p.ConfigDir, "settings.json"), []byte(`{"appPort":51820}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := LoadSettings(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ForgetFriendsDays != 0 {
+		t.Fatalf("ForgetFriendsDays = %d, want 0 for an upgraded settings file", got.ForgetFriendsDays)
+	}
+}
+
 func TestSettingsKeepsNeverForget(t *testing.T) {
 	p := testPaths(t)
 	s := DefaultSettings()

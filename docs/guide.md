@@ -144,9 +144,10 @@ relay README.
 ### Forget inactive friends
 
 In **Settings → Friends**, set how many days a friend can go without connecting
-before their member record and reconnect access are removed. The default is 5
-days. Leave the field blank to keep friends forever. Friends who are currently
-connected are never removed.
+before their member record and reconnect access are removed. New installs start
+at 5 days. An existing settings file starts blank (never) so an upgrade cannot
+forget anyone before the host chooses a window. Leave the field blank to keep
+friends forever. Friends who are currently connected are never removed.
 
 A friend who is removed needs a new invite and host approval. The member details
 show when they last connected and when they will be forgotten.
