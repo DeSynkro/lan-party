@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+# Friendly, safer entry points for a native relay install.
+set -euo pipefail
+
+dir="${LANPARTY_RELAY_DIR:-/etc/lan-party-relay}"
+service="${LANPARTY_RELAY_SERVICE:-lan-party-relay}"
+bin="${LANPARTY_RELAY_BIN:-}"
+
+if [ -z "$bin" ]; then
+    if [ -x /usr/local/bin/lan-party-relay ]; then
+        bin=/usr/local/bin/lan-party-relay
+    elif [ -x "$(dirname "$0")/../lan-party-relay" ]; then
+        bin="$(cd "$(dirname "$0")/.." && pwd)/lan-party-relay"
+    else
+        echo "lan-party-relay binary not found. Install it to /usr/local/bin or set LANPARTY_RELAY_BIN." >&2
+        exit 1
+    fi
+fi
+
+usage() {
+    cat >&2 <<EOF
+Usage: sudo $0 <command>
+
+Commands:
+  setpass     Set a new relay password (prompted, not echoed)
+  genpass     Generate and set a random relay password
+  relayreset  Replace the relay key and Relay ID (asks for confirmation)
+  showinfo    Show the host, port, Relay ID and password for the host app
+
+Uses $dir and the $service systemd service. Override with
+LANPARTY_RELAY_DIR, LANPARTY_RELAY_SERVICE and LANPARTY_RELAY_BIN.
+The relay is host-only: share invites, not the Relay ID or password.
+EOF
+}
+
+require_root() {
+    if [ "$(id -u)" -ne 0 ]; then
+        echo "Run with sudo: sudo $0 ${1:-<command>}" >&2
+        exit 1
+    fi
+}
+
+fix_service_files() {
+    if id lan-party-relay >/dev/null 2>&1; then
+        chown lan-party-relay:lan-party-relay "$dir/relay.json" "$dir/relay.key" 2>/dev/null || true
+        chmod 0600 "$dir/relay.json" "$dir/relay.key" 2>/dev/null || true
+    fi
+}
+
+showinfo() {
+    echo "Host-only relay: do not share the Relay ID or password." >&2
+    echo "Keep this terminal private and clear it after copying." >&2
+    "$bin" show-info --dir "$dir"
+}
+
+setpass() {
+    local first second
+    printf 'New relay password: ' >&2
+    IFS= read -r -s first || true
+    printf '\n' >&2
+    printf 'Repeat new relay password: ' >&2
+    IFS= read -r -s second || true
+    printf '\n' >&2
+
+    if [ -z "$first" ]; then
+        echo "The password is empty. Nothing changed." >&2
+        exit 1
+    fi
+    if [ "$first" != "$second" ]; then
+        echo "The passwords do not match. Nothing changed." >&2
+        exit 1
+    fi
+
+    printf '%s\n' "$first" | "$bin" passwd --password-stdin --dir "$dir"
+    unset first second
+    fix_service_files
+    systemctl restart "$service"
+    echo
+    showinfo
+}
+
+genpass() {
+    echo "This replaces the relay password and restarts the relay." >&2
+    printf 'Type GENPASS to continue: ' >&2
+    read -r answer || true
+    if [ "$answer" != "GENPASS" ]; then
+        echo "Cancelled." >&2
+        exit 1
+    fi
+
+    "$bin" passwd --generate --dir "$dir"
+    fix_service_files
+    systemctl restart "$service"
+    echo
+    showinfo
+}
+
+relayreset() {
+    echo "This replaces the relay key and Relay ID." >&2
+    echo "Old pins and invites stop working. The relay password does not change." >&2
+    printf 'Type RESET to continue: ' >&2
+    read -r answer || true
+    if [ "$answer" != "RESET" ]; then
+        echo "Cancelled." >&2
+        exit 1
+    fi
+
+    systemctl stop "$service"
+    "$bin" rotate-key --dir "$dir"
+    fix_service_files
+    systemctl start "$service"
+    echo
+    echo "Relay identity rotated. Run: sudo $0 showinfo"
+}
+
+case "${1:-help}" in
+    setpass)
+        require_root setpass
+        setpass
+        ;;
+    genpass | generate)
+        require_root genpass
+        genpass
+        ;;
+    relayreset | reset)
+        require_root relayreset
+        relayreset
+        ;;
+    showinfo | show-info)
+        require_root showinfo
+        showinfo
+        ;;
+    help | -h | --help)
+        usage
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+esac

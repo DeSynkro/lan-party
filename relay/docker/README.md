@@ -7,6 +7,10 @@ read the host/friend QUIC/TLS traffic.
 The image is distroless. It has no shell, package manager or extra tools; the
 only executable is `lan-party-relay`.
 
+The commands below use `sudo`. If your user can access Docker without sudo (for
+example via the `docker` group), omit it from both `docker compose` and
+`./relayctl`; `relayctl` does not hardcode sudo.
+
 ## Quick start
 
 From a source checkout, `compose.override.yaml` builds the image locally:

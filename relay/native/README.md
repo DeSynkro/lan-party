@@ -28,6 +28,7 @@ Create the service user and install the binary and unit:
 ```sh
 sudo useradd --system --home-dir /nonexistent --shell /usr/sbin/nologin lan-party-relay
 sudo install -m 0755 lan-party-relay /usr/local/bin/lan-party-relay
+sudo install -m 0755 native/relayctl /usr/local/bin/lan-party-relayctl
 sudo install -m 0644 native/lan-party-relay.service /etc/systemd/system/lan-party-relay.service
 sudo install -d -m 0700 /etc/lan-party-relay
 ```
@@ -106,6 +107,24 @@ sudo ufw allow 7443/udp
 Use the same TCP and UDP port. The control channel uses TCP; friend traffic uses
 UDP.
 
+## Shortcuts
+
+The install step above puts the wrapper at
+`/usr/local/bin/lan-party-relayctl`. It has the same commands as the Docker
+wrapper:
+
+```sh
+sudo lan-party-relayctl showinfo
+sudo lan-party-relayctl setpass
+sudo lan-party-relayctl genpass
+sudo lan-party-relayctl relayreset
+```
+
+You can also run `sudo ./native/relayctl ...` from the extracted release.
+
+The wrapper uses `/etc/lan-party-relay` and the `lan-party-relay` service. The
+raw `lan-party-relay` commands below still work for scripts and advanced use.
+
 ## Show the values for the host app
 
 The profile stays root-only on the relay. Display the values instead of copying
@@ -127,14 +146,23 @@ with the new password; the password cannot be recovered from `relay.json`.
 
 ## Password and key rotation
 
-To choose your own password before the first setup, pass it explicitly:
+Use the shortcuts. They prompt without echoing, restart the service and show the
+new values:
 
 ```sh
-sudo lan-party-relay setup --dir /etc/lan-party-relay --password 'your password'
+sudo lan-party-relayctl setpass
+sudo lan-party-relayctl genpass
+sudo lan-party-relayctl relayreset
 ```
 
-Change the password later without rotating the key. The prompt does not echo,
-and the password is passed on stdin rather than in the command line:
+If you did not install the wrapper, run `sudo ./native/relayctl ...` from the
+extracted release instead.
+
+The raw commands are for scripts. To choose a password before the first setup,
+the setup accepts `--password`, but it appears in shell history. The safer path
+is to let setup generate one, then run `relayctl setpass`.
+
+Change the password later with stdin:
 
 ```sh
 read -r -s -p 'New relay password: ' pw; echo
@@ -162,9 +190,14 @@ stopped:
 ```sh
 sudo systemctl stop lan-party-relay
 sudo lan-party-relay rotate-key --dir /etc/lan-party-relay
+sudo chown lan-party-relay:lan-party-relay /etc/lan-party-relay/relay.key
+sudo chmod 0600 /etc/lan-party-relay/relay.key
 sudo systemctl start lan-party-relay
 sudo lan-party-relay show-info --dir /etc/lan-party-relay
 ```
+
+The chown/chmod keeps the new key readable by the service user. The
+`native/relayctl relayreset` shortcut does this for you.
 
 This changes the Relay ID. Enter the new Relay ID in the app and issue new
 invites; old pins and invites that carry the old Relay ID stop working.

@@ -397,9 +397,12 @@ Relay zip contents:
 
 - static Linux amd64/arm64 `lan-party-relay` binary
 - `lan-party-relay setup` command
-- `docker/compose.yaml` and env example
-- `native/lan-party-relay.service`, env example and install notes
+- `docker/compose.yaml`, env example, `relayctl` and install notes
+- `native/lan-party-relay.service`, env example, `relayctl` and install notes
 - `README.md` with the quick start
+
+Both `relayctl` wrappers provide `showinfo`, `setpass`, `genpass` and
+`relayreset`, so Docker and native installs have the same admin commands.
 
 Native path:
 
@@ -479,6 +482,7 @@ relay/
   native/
     lan-party-relay.service
     relay.env.example
+    relayctl
     README.md
 build/relay.sh
 cmd/lan-party-relay/

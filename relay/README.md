@@ -30,6 +30,7 @@ lan-party-relay_1.2.0_linux_amd64/
   native/
     lan-party-relay.service
     relay.env.example
+    relayctl
     README.md
   .dockerignore
   LICENSE
@@ -79,8 +80,10 @@ For a machine without Docker, or when you prefer a normal service.
 sudo lan-party-relay setup --dir /etc/lan-party-relay
 ```
 
-Then install the binary and unit from `native/`. See
-[native/README.md](native/README.md) for the full steps.
+Then install the binary and unit from `native/`. The native package includes
+`native/relayctl` with the same `showinfo`, `setpass`, `genpass` and
+`relayreset` commands as Docker. See [native/README.md](native/README.md) for
+the full steps.
 
 ## Setup flow
 
