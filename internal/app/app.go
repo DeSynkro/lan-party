@@ -1302,8 +1302,49 @@ func (a *App) StartSession(groupID string) error {
 	a.host = host
 	a.liveGroupID = groupID
 	a.mu.Unlock()
+	if connection.UseRelay {
+		a.reauthorizeRelayInvites(host, groupID, connection)
+	}
 	log.Printf("session: host live group %s", groupID)
 	return nil
+}
+
+// reauthorizeRelayInvites registers the relay tokens for open invites that
+// were created in this run. Invite codes are only kept in memory, so a code
+// from a previous run has to be replaced after the app restarts.
+func (a *App) reauthorizeRelayInvites(host *session.Host, groupID string, connection GroupConnection) {
+	now := time.Now().UTC()
+	a.mu.Lock()
+	idx := a.groupIndexLocked(groupID)
+	if idx < 0 {
+		a.mu.Unlock()
+		return
+	}
+	var codes []string
+	for _, record := range a.groups[idx].OpenInvites(now) {
+		if code := a.inviteCodes[record.ID]; code != "" {
+			codes = append(codes, code)
+		}
+	}
+	a.mu.Unlock()
+	if len(codes) == 0 {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	for _, code := range codes {
+		inv, err := invite.Decode(code)
+		if err != nil || inv.Version != invite.RelayVersion {
+			continue
+		}
+		if inv.RelayHost != connection.RelayHost || inv.RelayPort != connection.RelayPort || inv.RelayID != connection.RelayID {
+			continue
+		}
+		if err := host.AuthorizeRelayToken(ctx, inv.RelayToken, inv.Expires); err != nil {
+			log.Printf("session: reauthorize relay invite: %v", err)
+		}
+	}
 }
 
 // StopSession closes whatever is running.

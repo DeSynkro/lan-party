@@ -219,6 +219,9 @@ is what closing does anyway. The setting says so.
 - The host stores only a hash, so a code cannot be shown again after the app
   restarts. Create a new invite for the same friend if you need to send it
   again.
+- A relay invite also depends on the host's live relay session. Stopping and
+  starting the session in the same app run re-registers its token. After an app
+  restart, create a new relay invite.
 - A denied or timed-out join leaves the invite usable until it expires.
 - **Cancel invite** in the host's group screen stops a code immediately.
 
@@ -259,6 +262,13 @@ Check, in this order:
 5. The host is behind carrier-grade NAT. Compare the router's WAN address with
    the address your ISP shows. If they differ, use the self-hosted relay and
    check **Test relay** in Settings.
+
+### The relay went down
+
+Stop and start the session after the relay is back. The host app does not
+silently switch to direct mode. Relay invites created in this app run are
+registered again when the session starts; after an app restart, create new
+invites.
 
 ### The public address changed
 

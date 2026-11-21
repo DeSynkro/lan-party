@@ -2094,3 +2094,39 @@ func TestPreviewGroupConnection(t *testing.T) {
 		t.Fatalf("inherited preview = %+v", inherited)
 	}
 }
+
+func TestRelayInviteSurvivesSessionRestart(t *testing.T) {
+	relayServer := startTestRelayServer(t, "relay test password")
+	hostApp := newTestApp(t)
+	s := hostApp.Settings()
+	s.ApproveNewDevices = false
+	if err := hostApp.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	enableSettingsRelay(t, hostApp, relayServer)
+	g, err := hostApp.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := hostApp.StartSession(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	code, err := hostApp.CreateInvite(g.ID, "Ash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := hostApp.StopSession(); err != nil {
+		t.Fatal(err)
+	}
+	if err := hostApp.StartSession(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = hostApp.StopSession() })
+
+	friendApp := newTestApp(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if _, err := friendApp.JoinInvite(ctx, code, "ash-desktop"); err != nil {
+		t.Fatalf("the invite did not survive the session restart: %v", err)
+	}
+}
