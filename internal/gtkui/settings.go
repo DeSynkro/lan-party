@@ -341,13 +341,15 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 		feedback.showStatus("Saved.")
 	})
 
-	buttonRow := gtk.NewBox(gtk.OrientationHorizontal, 8)
-	buttonRow.Append(testRelay)
-	buttonRow.Append(importProfile)
-	buttonRow.Append(save)
-	buttonRow.SetHAlign(gtk.AlignStart)
-	buttonRow.SetMarginTop(12)
-	networkCard.Append(buttonRow)
+	testRow := gtk.NewBox(gtk.OrientationHorizontal, 8)
+	testRow.Append(testRelay)
+	testRow.Append(importProfile)
+	testRow.SetHAlign(gtk.AlignStart)
+	testRow.SetMarginTop(12)
+	networkCard.Append(testRow)
+
+	save.SetMarginTop(8)
+	networkCard.Append(save)
 	page.Append(networkCard)
 
 	updateDirectPreview()
