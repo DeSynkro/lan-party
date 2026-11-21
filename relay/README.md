@@ -62,7 +62,7 @@ For a VPS with Docker. Use the files in `docker/`.
 ```sh
 cd docker
 cp .env.example .env
-# edit LANPARTY_RELAY_PUBLIC_HOST and LANPARTY_RELAY_PUBLIC_PORT
+# edit LANPARTY_RELAY_PUBLIC_HOST and LANPARTY_RELAY_PORT
 sudo docker compose up -d
 sudo ./relayctl showinfo
 ```

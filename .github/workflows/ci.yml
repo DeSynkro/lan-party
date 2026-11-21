@@ -303,7 +303,6 @@ jobs:
           cd relay/docker
           cp .env.example .env
           sed -i "s/^LANPARTY_RELAY_PUBLIC_HOST=.*/LANPARTY_RELAY_PUBLIC_HOST=relay.test/" .env
-          sed -i "s/^LANPARTY_RELAY_PUBLIC_PORT=.*/LANPARTY_RELAY_PUBLIC_PORT=${port}/" .env
           sed -i "s/^LANPARTY_RELAY_PORT=.*/LANPARTY_RELAY_PORT=${port}/" .env
           echo "LANPARTY_RELAY_VERSION=source-ci" >> .env
 
@@ -337,7 +336,6 @@ jobs:
           cd "${pkg}/docker"
           cp .env.example .env
           sed -i "s/^LANPARTY_RELAY_PUBLIC_HOST=.*/LANPARTY_RELAY_PUBLIC_HOST=relay.test/" .env
-          sed -i "s/^LANPARTY_RELAY_PUBLIC_PORT=.*/LANPARTY_RELAY_PUBLIC_PORT=${port}/" .env
           sed -i "s/^LANPARTY_RELAY_PORT=.*/LANPARTY_RELAY_PORT=${port}/" .env
           echo "LANPARTY_RELAY_IMAGE=lan-party-relay:ci" >> .env
 

@@ -14,7 +14,7 @@ From a source checkout, `compose.override.yaml` builds the image locally:
 ```sh
 cd relay/docker
 cp .env.example .env
-# edit LANPARTY_RELAY_PUBLIC_HOST and LANPARTY_RELAY_PUBLIC_PORT
+# edit LANPARTY_RELAY_PUBLIC_HOST and LANPARTY_RELAY_PORT
 sudo docker compose up --build -d
 sudo docker compose logs -f
 ```
@@ -24,7 +24,7 @@ From a release zip, the published image is used:
 ```sh
 cd docker
 cp .env.example .env
-# edit LANPARTY_RELAY_PUBLIC_HOST and LANPARTY_RELAY_PUBLIC_PORT
+# edit LANPARTY_RELAY_PUBLIC_HOST and LANPARTY_RELAY_PORT
 sudo docker compose up -d
 sudo docker compose logs -f
 ```
@@ -39,24 +39,23 @@ sudo ./relayctl showinfo
 ```
 
 Set `LANPARTY_RELAY_PUBLIC_HOST` to the hostname or IP that friends and the
-host app use, and `LANPARTY_RELAY_PUBLIC_PORT` to the public port:
+host app use, and `LANPARTY_RELAY_PORT` to the public port:
 
 ```text
 LANPARTY_RELAY_PUBLIC_HOST=relay.example.com
-LANPARTY_RELAY_PUBLIC_PORT=7443
+LANPARTY_RELAY_PORT=7443
 ```
 
 For example, `203.0.113.10` on port `8443`:
 
 ```text
 LANPARTY_RELAY_PUBLIC_HOST=203.0.113.10
-LANPARTY_RELAY_PUBLIC_PORT=8443
 LANPARTY_RELAY_PORT=8443
 ```
 
-`LANPARTY_RELAY_PORT` is the host port mapped to the container's internal
-`7443`. Keep it equal to the public port unless you have an external port
-mapping.
+`LANPARTY_RELAY_PORT` is both the public port and the host port Docker
+publishes. Docker maps it to the container's internal `7443`. Friends use
+`host:port`.
 
 The host and port are written into the host profile on the first start.
 Changing them afterwards does not update the existing profile; recreate the
@@ -228,8 +227,8 @@ sudo docker compose up --build -d
 ```
 
 **Address already in use.** Another process on the relay machine owns the host
-port. Check with `sudo ss -lntup | grep 7443` or change
-`LANPARTY_RELAY_PORT` and `LANPARTY_RELAY_PUBLIC_PORT` together.
+port. Check with `sudo ss -lntup | grep 7443` or change `LANPARTY_RELAY_PORT` in
+`.env`.
 
 **Friends cannot connect.** Confirm both TCP and UDP are open on the relay
 machine and at the VPS provider. The relay also needs outbound UDP to reach

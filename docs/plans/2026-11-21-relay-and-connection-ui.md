@@ -324,7 +324,7 @@ services:
     environment:
       LANPARTY_RELAY_CONFIG: /data/relay.json
       LANPARTY_RELAY_PUBLIC_HOST: "${LANPARTY_RELAY_PUBLIC_HOST:-127.0.0.1}"
-      LANPARTY_RELAY_PUBLIC_PORT: "${LANPARTY_RELAY_PUBLIC_PORT:-7443}"
+      LANPARTY_RELAY_PUBLIC_PORT: "${LANPARTY_RELAY_PORT:-7443}"
     ports:
       - "${LANPARTY_RELAY_PORT:-7443}:7443/tcp"
       - "${LANPARTY_RELAY_PORT:-7443}:7443/udp"
@@ -416,7 +416,7 @@ Docker path:
 ```sh
 cd relay/docker
 cp .env.example .env
-# set LANPARTY_RELAY_PUBLIC_HOST and LANPARTY_RELAY_PUBLIC_PORT
+# set LANPARTY_RELAY_PUBLIC_HOST and LANPARTY_RELAY_PORT
 sudo docker compose up --build -d
 ```
 
