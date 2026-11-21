@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"net"
 	"strings"
 	"testing"
 	"time"
@@ -443,5 +444,49 @@ func TestServerCloseUnblocksPendingHandshake(t *testing.T) {
 	case <-done:
 	case <-time.After(2 * time.Second):
 		t.Fatal("server close blocked on a pending handshake")
+	}
+}
+
+func TestTunnelWithPacketConn(t *testing.T) {
+	host := testIdentity(t, "host")
+	serverConn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv, err := Listen(ServerConfig{
+		Identity:        host,
+		PacketConn:      serverConn,
+		ApprovalTimeout: 3 * time.Second,
+		Authenticate: authFunc(func(context.Context, AuthRequest) (AuthDecision, error) {
+			return AuthDecision{Allow: true, MemberID: "friend"}, nil
+		}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = srv.Close() })
+
+	clientConn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	c, err := Dial(ctx, ClientConfig{
+		Identity:   testIdentity(t, "packet-conn-client"),
+		Endpoint:   srv.Addr().String(),
+		PacketConn: clientConn,
+		HostPin:    secure.Pin(host.Public),
+		GroupID:    "group",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if c.MemberID != "friend" {
+		t.Fatalf("member id = %q", c.MemberID)
+	}
+	if err := c.Send(ControlMessage{Type: MsgBye}); err != nil {
+		t.Fatal(err)
 	}
 }

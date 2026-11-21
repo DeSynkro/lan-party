@@ -23,18 +23,20 @@ const maxControlMessage = 64 * 1024
 // Conn is one authenticated QUIC connection. The control stream is already
 // past its hello/welcome exchange when a Conn is returned.
 type Conn struct {
-	qc       *quic.Conn
-	control  *quic.Stream
-	reader   *bufio.Reader
-	enc      *json.Encoder
-	writeMu  sync.Mutex
-	datagram sync.Mutex
-	messages chan ControlMessage
-	ctx      context.Context
-	cancel   context.CancelFunc
-	close    sync.Once
-	cleanup  sync.Once
-	onClose  func()
+	qc         *quic.Conn
+	control    *quic.Stream
+	reader     *bufio.Reader
+	enc        *json.Encoder
+	transport  *quic.Transport
+	packetConn net.PacketConn
+	writeMu    sync.Mutex
+	datagram   sync.Mutex
+	messages   chan ControlMessage
+	ctx        context.Context
+	cancel     context.CancelFunc
+	close      sync.Once
+	cleanup    sync.Once
+	onClose    func()
 
 	// MemberID and Services are the values agreed during the handshake. They
 	// are written once before the Conn is handed to the caller.
@@ -44,7 +46,7 @@ type Conn struct {
 
 func newConn(qc *quic.Conn, control *quic.Stream, reader *bufio.Reader, enc *json.Encoder, onClose func()) *Conn {
 	ctx, cancel := context.WithCancel(qc.Context())
-	c := &Conn{
+	return &Conn{
 		qc:       qc,
 		control:  control,
 		reader:   reader,
@@ -54,8 +56,12 @@ func newConn(qc *quic.Conn, control *quic.Stream, reader *bufio.Reader, enc *jso
 		cancel:   cancel,
 		onClose:  onClose,
 	}
+}
+
+// start begins delivering control messages. Callers set MemberID, Services,
+// transport and onClose before starting so the first close cannot race.
+func (c *Conn) start() {
 	go c.readLoop()
-	return c
 }
 
 func (c *Conn) readLoop() {
@@ -194,6 +200,12 @@ func (c *Conn) Close() error {
 	c.close.Do(func() {
 		c.cancel()
 		err = c.qc.CloseWithError(0, "closed")
+		if c.transport != nil {
+			_ = c.transport.Close()
+		}
+		if c.packetConn != nil {
+			_ = c.packetConn.Close()
+		}
 		c.cleanupOnce()
 	})
 	return err

@@ -18,6 +18,7 @@ import (
 type ServerConfig struct {
 	Identity             secure.Identity
 	ListenAddr           string
+	PacketConn           net.PacketConn // optional; the server takes ownership
 	Authenticate         Authenticator
 	MaxStreams           int
 	ApprovalTimeout      time.Duration
@@ -28,6 +29,8 @@ type ServerConfig struct {
 // Server accepts friends and delivers authenticated connections.
 type Server struct {
 	listener         *quic.Listener
+	transport        *quic.Transport
+	packetConn       net.PacketConn
 	auth             Authenticator
 	approvalTimeout  time.Duration
 	handshakeTimeout time.Duration
@@ -53,13 +56,25 @@ func Listen(cfg ServerConfig) (*Server, error) {
 		return nil, fmt.Errorf("host certificate: %w", err)
 	}
 
-	addr := cfg.ListenAddr
-	if addr == "" {
-		addr = "0.0.0.0:0"
-	}
-	listener, err := quic.ListenAddr(addr, tlsConf, serverQUICConfig(cfg.MaxStreams))
-	if err != nil {
-		return nil, fmt.Errorf("listen: %w", err)
+	var listener *quic.Listener
+	var transport *quic.Transport
+	if cfg.PacketConn != nil {
+		transport = &quic.Transport{Conn: cfg.PacketConn}
+		listener, err = transport.Listen(tlsConf, serverQUICConfig(cfg.MaxStreams))
+		if err != nil {
+			_ = transport.Close()
+			_ = cfg.PacketConn.Close()
+			return nil, fmt.Errorf("listen: %w", err)
+		}
+	} else {
+		addr := cfg.ListenAddr
+		if addr == "" {
+			addr = "0.0.0.0:0"
+		}
+		listener, err = quic.ListenAddr(addr, tlsConf, serverQUICConfig(cfg.MaxStreams))
+		if err != nil {
+			return nil, fmt.Errorf("listen: %w", err)
+		}
 	}
 
 	timeout := cfg.ApprovalTimeout
@@ -77,6 +92,8 @@ func Listen(cfg ServerConfig) (*Server, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	s := &Server{
 		listener:         listener,
+		transport:        transport,
+		packetConn:       cfg.PacketConn,
 		auth:             cfg.Authenticate,
 		approvalTimeout:  timeout,
 		handshakeTimeout: handshakeTimeout,
@@ -115,6 +132,12 @@ func (s *Server) Close() error {
 
 		s.cancel()
 		_ = s.listener.Close()
+		if s.transport != nil {
+			_ = s.transport.Close()
+		}
+		if s.packetConn != nil {
+			_ = s.packetConn.Close()
+		}
 
 		s.mu.Lock()
 		conns := make([]*Conn, 0, len(s.active))
@@ -276,10 +299,11 @@ func (s *Server) handshake(qc *quic.Conn) (*Conn, error) {
 		return nil, fmt.Errorf("send welcome: %w", err)
 	}
 
-	var c *Conn
-	c = newConn(qc, stream, reader, enc, func() { s.removeConn(c) })
+	c := newConn(qc, stream, reader, enc, nil)
+	c.onClose = func() { s.removeConn(c) }
 	c.MemberID = memberID
 	c.Services = decision.Services
+	c.start()
 	return c, nil
 }
 
