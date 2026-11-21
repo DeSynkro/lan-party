@@ -34,11 +34,12 @@ type Bound struct {
 
 // JoinConfig is what a friend needs to open a group.
 type JoinConfig struct {
-	Identity   secure.Identity
-	Invite     invite.Invite
-	DeviceName string
-	MemberID   string
-	Token      string
+	Identity      secure.Identity
+	Invite        invite.Invite
+	DeviceName    string
+	MemberID      string
+	Token         string
+	HasRelayToken bool
 }
 
 // Friend is a running session on the friend's side.
@@ -63,7 +64,12 @@ func Join(ctx context.Context, cfg JoinConfig) (*Friend, error) {
 		if err := invite.Validate(cfg.Invite, time.Now()); err != nil {
 			return nil, err
 		}
-	} else if cfg.Invite.Endpoint == "" || cfg.Invite.HostPin == "" || cfg.Invite.GroupID == "" {
+	} else if cfg.Invite.HostPin == "" || cfg.Invite.GroupID == "" {
+		return nil, errResumeDetails
+	} else if cfg.Invite.Version == invite.CurrentVersion && cfg.Invite.Endpoint == "" {
+		return nil, errResumeDetails
+	} else if cfg.Invite.Version == invite.RelayVersion &&
+		(cfg.Invite.RelayHost == "" || cfg.Invite.RelayPort == 0 || cfg.Invite.RelayID == "" || cfg.Invite.RelayToken == "") {
 		return nil, errResumeDetails
 	}
 
@@ -90,15 +96,16 @@ func Join(ctx context.Context, cfg JoinConfig) (*Friend, error) {
 	}
 
 	conn, err := tunnel.Dial(ctx, tunnel.ClientConfig{
-		Identity:   cfg.Identity,
-		Endpoint:   endpoint,
-		PacketConn: packetConn,
-		HostPin:    cfg.Invite.HostPin,
-		GroupID:    cfg.Invite.GroupID,
-		MemberID:   cfg.MemberID,
-		PeerName:   cfg.Invite.PeerName,
-		DeviceName: cfg.DeviceName,
-		Token:      cfg.Token,
+		Identity:      cfg.Identity,
+		Endpoint:      endpoint,
+		PacketConn:    packetConn,
+		HostPin:       cfg.Invite.HostPin,
+		GroupID:       cfg.Invite.GroupID,
+		MemberID:      cfg.MemberID,
+		PeerName:      cfg.Invite.PeerName,
+		DeviceName:    cfg.DeviceName,
+		Token:         cfg.Token,
+		HasRelayToken: cfg.HasRelayToken,
 	})
 	if err != nil {
 		return nil, err
@@ -137,6 +144,9 @@ func (f *Friend) Services() []tunnel.ServiceInfo {
 
 // Done is closed when the friend session ends.
 func (f *Friend) Done() <-chan struct{} { return f.ctx.Done() }
+
+// RelayToken is the host-issued reconnect token from the welcome, if any.
+func (f *Friend) RelayToken() string { return f.conn.RelayToken }
 
 // Revoked reports whether the host removed this device.
 func (f *Friend) Revoked() bool {

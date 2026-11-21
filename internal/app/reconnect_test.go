@@ -138,3 +138,25 @@ func TestReconnectStatusReportsStopReason(t *testing.T) {
 		t.Fatalf("status = %+v", status)
 	}
 }
+
+func TestHostRecoveryDelay(t *testing.T) {
+	cases := []struct {
+		elapsed time.Duration
+		want    time.Duration
+		ok      bool
+	}{
+		{0, 5 * time.Second, true},
+		{59 * time.Second, 5 * time.Second, true},
+		{time.Minute, 10 * time.Second, true},
+		{5*time.Minute + 59*time.Second, 10 * time.Second, true},
+		{6 * time.Minute, 30 * time.Second, true},
+		{15*time.Minute + 59*time.Second, 30 * time.Second, true},
+		{16 * time.Minute, 0, false},
+	}
+	for _, tc := range cases {
+		got, ok := hostRecoveryDelay(tc.elapsed)
+		if got != tc.want || ok != tc.ok {
+			t.Errorf("hostRecoveryDelay(%v) = %v, %v; want %v, %v", tc.elapsed, got, ok, tc.want, tc.ok)
+		}
+	}
+}

@@ -38,10 +38,11 @@ type Conn struct {
 	cleanup    sync.Once
 	onClose    func()
 
-	// MemberID and Services are the values agreed during the handshake. They
-	// are written once before the Conn is handed to the caller.
-	MemberID string
-	Services []ServiceInfo
+	// MemberID, Services and RelayToken are the values agreed during the
+	// handshake. They are written once before the Conn is handed to the caller.
+	MemberID   string
+	Services   []ServiceInfo
+	RelayToken string
 }
 
 func newConn(qc *quic.Conn, control *quic.Stream, reader *bufio.Reader, enc *json.Encoder, onClose func()) *Conn {

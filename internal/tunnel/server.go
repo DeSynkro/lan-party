@@ -260,15 +260,16 @@ func (s *Server) handshake(qc *quic.Conn) (*Conn, error) {
 	}
 
 	request := AuthRequest{
-		GroupID:     hello.GroupID,
-		MemberID:    clipText(hello.MemberID, 128),
-		PeerName:    clipText(hello.PeerName, 60),
-		DeviceName:  clipText(hello.DeviceName, 120),
-		Token:       clipText(hello.Token, 512),
-		RemoteAddr:  qc.RemoteAddr().String(),
-		Relay:       s.relay,
-		PublicKey:   pub,
-		Fingerprint: secure.Fingerprint(pub),
+		GroupID:       hello.GroupID,
+		MemberID:      clipText(hello.MemberID, 128),
+		PeerName:      clipText(hello.PeerName, 60),
+		DeviceName:    clipText(hello.DeviceName, 120),
+		Token:         clipText(hello.Token, 512),
+		HasRelayToken: hello.HasRelayToken,
+		RemoteAddr:    qc.RemoteAddr().String(),
+		Relay:         s.relay,
+		PublicKey:     pub,
+		Fingerprint:   secure.Fingerprint(pub),
 	}
 
 	decision, authErr := s.auth.Authenticate(ctx, request)
@@ -296,9 +297,10 @@ func (s *Server) handshake(qc *quic.Conn) (*Conn, error) {
 	}
 
 	if err := writeControl(enc, stream, ControlMessage{
-		Type:     MsgWelcome,
-		MemberID: memberID,
-		Services: decision.Services,
+		Type:       MsgWelcome,
+		MemberID:   memberID,
+		Services:   decision.Services,
+		RelayToken: decision.RelayToken,
 	}); err != nil {
 		return nil, fmt.Errorf("send welcome: %w", err)
 	}

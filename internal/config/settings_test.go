@@ -24,6 +24,9 @@ func TestSettingsDefaults(t *testing.T) {
 	if s.RelayPort != DefaultRelayPort {
 		t.Fatalf("RelayPort = %d", s.RelayPort)
 	}
+	if s.ForgetFriendsDays != 5 {
+		t.Fatalf("ForgetFriendsDays = %d", s.ForgetFriendsDays)
+	}
 	if s.UseRelay {
 		t.Fatal("UseRelay should be off by default")
 	}
@@ -130,6 +133,23 @@ func TestLoadSettingsFillsRelayPort(t *testing.T) {
 	}
 	if got.RelayPort != DefaultRelayPort {
 		t.Fatalf("RelayPort = %d", got.RelayPort)
+	}
+}
+
+func TestSettingsInactiveFriendValidation(t *testing.T) {
+	for _, days := range []int{1, 5, 365, 0} {
+		s := DefaultSettings()
+		s.ForgetFriendsDays = days
+		if err := s.Validate(); err != nil {
+			t.Errorf("days %d = %v", days, err)
+		}
+	}
+	for _, days := range []int{-1, 366} {
+		s := DefaultSettings()
+		s.ForgetFriendsDays = days
+		if err := s.Validate(); err == nil {
+			t.Errorf("days %d was accepted", days)
+		}
 	}
 }
 

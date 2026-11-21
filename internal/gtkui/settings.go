@@ -336,6 +336,54 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 		feedback,
 	))
 
+	friends := textLabel("Friends", "section")
+	friends.SetMarginTop(18)
+	friends.SetMarginBottom(8)
+	page.Append(friends)
+
+	forgetEntry := gtk.NewEntry()
+	if settings.ForgetFriendsDays > 0 {
+		forgetEntry.SetText(strconv.Itoa(settings.ForgetFriendsDays))
+	}
+	forgetEntry.SetPlaceholderText("Never")
+	forgetEntry.SetMaxLength(3)
+	forgetEntry.AddCSSClass("field")
+	forgetEntry.SetHExpand(true)
+
+	friendsCard := gtk.NewBox(gtk.OrientationVertical, 0)
+	friendsCard.AddCSSClass("card")
+	friendsCard.SetMarginBottom(10)
+	friendsCard.Append(textLabel("Forget inactive friends", "setting-title"))
+	friendsCard.Append(gapBox(4))
+	friendsCard.Append(formRow("After (days)", forgetEntry))
+	friendsCard.Append(gapBox(8))
+	friendsCard.Append(textLabel("Friends who have not connected in this many days are removed and need a new invite. Leave blank to keep them forever.", "help"))
+	friendsSave := gtk.NewButtonWithLabel("Save friend settings")
+	friendsSave.AddCSSClass("primary")
+	friendsSave.SetHAlign(gtk.AlignStart)
+	friendsSave.SetMarginTop(10)
+	friendsSave.ConnectClicked(func() {
+		days := 0
+		if text := strings.TrimSpace(forgetEntry.Text()); text != "" {
+			n, err := strconv.Atoi(text)
+			if err != nil || n < 1 || n > 365 {
+				feedback.showError(errors.New("the inactive friend limit must be between 1 and 365 days, or blank for never"))
+				return
+			}
+			days = n
+		}
+		s := u.state.Settings()
+		s.ForgetFriendsDays = days
+		if err := u.state.SaveSettings(s); err != nil {
+			feedback.showError(err)
+			return
+		}
+		settings = u.state.Settings()
+		feedback.showStatus("Saved.")
+	})
+	friendsCard.Append(friendsSave)
+	page.Append(friendsCard)
+
 	security := textLabel("Security", "section")
 	security.SetMarginTop(18)
 	security.SetMarginBottom(8)

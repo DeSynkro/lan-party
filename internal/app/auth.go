@@ -81,7 +81,7 @@ func (a *App) authenticate(ctx context.Context, groupID string, req tunnel.AuthR
 
 	if member, ok := g.FindMemberByKey(key); ok && member.IsApproved() {
 		a.noteConnection(groupID, member.ID, displayAddr)
-		return allow(member.ID, g.Services), nil
+		return a.reconnectDecision(groupID, member.ID, g.Services, req.HasRelayToken), nil
 	}
 
 	if req.MemberID != "" {
@@ -116,7 +116,7 @@ func (a *App) authenticate(ctx context.Context, groupID string, req tunnel.AuthR
 			_ = host.Revoke(member.ID)
 		}
 		current, _ := a.groupCopy(groupID)
-		return allow(member.ID, current.Services), nil
+		return a.reconnectDecision(groupID, member.ID, current.Services, req.HasRelayToken), nil
 	}
 
 	if req.Token == "" {
@@ -172,7 +172,7 @@ func (a *App) authenticate(ctx context.Context, groupID string, req tunnel.AuthR
 		}
 	}
 	current, _ := a.groupCopy(groupID)
-	return allow(memberID, current.Services), nil
+	return a.reconnectDecision(groupID, memberID, current.Services, req.HasRelayToken), nil
 }
 
 func (a *App) noteConnection(groupID, memberID, ip string) {

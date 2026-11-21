@@ -3,6 +3,7 @@ package gtkui
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -1030,12 +1031,39 @@ func (u *probeUI) showMemberDialog(g group.Group, m group.Member) {
 		status = "waiting for approval"
 	}
 	content.Append(cardText("Status: "+status, "desc"))
+	reconnectSet := u.state.MemberReconnectSet(g.ID, m.ID)
+	if reconnectSet {
+		content.Append(cardText("Automatic reconnect: on", "desc"))
+	} else {
+		content.Append(cardText("Automatic reconnect: not available yet", "desc"))
+	}
+	if days := u.state.Settings().ForgetFriendsDays; days > 0 && !m.LastSeen.IsZero() {
+		forgetAt := m.LastSeen.Add(time.Duration(days) * 24 * time.Hour)
+		if forgetAt.Before(time.Now()) {
+			content.Append(cardText("Inactive: will be forgotten on the next check.", "warning"))
+		} else {
+			content.Append(cardText(fmt.Sprintf("Forgotten after %d days without a connection (around %s).", days, when(forgetAt)), "desc"))
+		}
+	}
 	content.Append(gapBox(14))
 
 	buttons := gtk.NewBox(gtk.OrientationHorizontal, 8)
 	cancel := gtk.NewButtonWithLabel("Close")
 	cancel.AddCSSClass("quiet")
 	cancel.ConnectClicked(func() { win.Close() })
+	reset := gtk.NewButtonWithLabel("Reset reconnect")
+	reset.AddCSSClass("secondary")
+	reset.SetSensitive(reconnectSet)
+	reset.ConnectClicked(func() {
+		u.confirm("Reset reconnect access?", "This friend will need a new invite to reconnect through the relay.", "Reset reconnect", func() {
+			if err := u.state.ResetMemberReconnect(g.ID, m.ID); err != nil {
+				u.alert("Could not reset reconnect access", err.Error())
+				return
+			}
+			win.Close()
+			u.showGroup(g.ID)
+		})
+	})
 	remove := gtk.NewButtonWithLabel("Remove member")
 	remove.AddCSSClass("secondary")
 	remove.ConnectClicked(func() {
@@ -1047,6 +1075,7 @@ func (u *probeUI) showMemberDialog(g group.Group, m group.Member) {
 		u.showGroup(g.ID)
 	})
 	buttons.Append(cancel)
+	buttons.Append(reset)
 	buttons.Append(remove)
 	buttons.SetHAlign(gtk.AlignEnd)
 	content.Append(buttons)

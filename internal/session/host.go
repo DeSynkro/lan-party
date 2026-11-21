@@ -158,6 +158,25 @@ func (h *Host) AuthorizeRelayToken(ctx context.Context, token string, expires ti
 	return h.relayClient.Authorize(ctx, token, expires)
 }
 
+// RelayEnabled reports whether this host session is connected to a relay.
+func (h *Host) RelayEnabled() bool { return h.relayClient != nil }
+
+// AuthorizeRelayReconnect registers a reusable reconnect token by hash.
+func (h *Host) AuthorizeRelayReconnect(ctx context.Context, hash string) error {
+	if h.relayClient == nil {
+		return errors.New("the relay is not enabled for this session")
+	}
+	return h.relayClient.AuthorizeHash(ctx, hash, true, time.Now().Add(365*24*time.Hour))
+}
+
+// RevokeRelayReconnect removes a reusable reconnect token by hash.
+func (h *Host) RevokeRelayReconnect(ctx context.Context, hash string) error {
+	if h.relayClient == nil {
+		return errors.New("the relay is not enabled for this session")
+	}
+	return h.relayClient.RevokeHash(ctx, hash)
+}
+
 func (h *Host) relayKeepalive(conn *relay.HostPacketConn) {
 	ticker := time.NewTicker(20 * time.Second)
 	defer ticker.Stop()

@@ -37,38 +37,42 @@ type ServiceInfo struct {
 
 // ControlMessage is one JSON object on the control stream.
 type ControlMessage struct {
-	Type       string        `json:"type"`
-	Version    int           `json:"version,omitempty"`
-	GroupID    string        `json:"groupID,omitempty"`
-	MemberID   string        `json:"memberID,omitempty"`
-	PeerName   string        `json:"peerName,omitempty"`
-	DeviceName string        `json:"deviceName,omitempty"`
-	Token      string        `json:"token,omitempty"`
-	Reason     string        `json:"reason,omitempty"`
-	Services   []ServiceInfo `json:"services,omitempty"`
+	Type          string        `json:"type"`
+	Version       int           `json:"version,omitempty"`
+	GroupID       string        `json:"groupID,omitempty"`
+	MemberID      string        `json:"memberID,omitempty"`
+	PeerName      string        `json:"peerName,omitempty"`
+	DeviceName    string        `json:"deviceName,omitempty"`
+	Token         string        `json:"token,omitempty"`
+	HasRelayToken bool          `json:"hasRelayToken,omitempty"`
+	RelayToken    string        `json:"relayToken,omitempty"`
+	Reason        string        `json:"reason,omitempty"`
+	Services      []ServiceInfo `json:"services,omitempty"`
 }
 
 // AuthRequest is what the host policy layer gets to inspect before a
 // connection is allowed. The public key comes from the TLS client
 // certificate, not from the request body.
 type AuthRequest struct {
-	GroupID     string
-	MemberID    string
-	PeerName    string
-	DeviceName  string
-	Token       string
-	RemoteAddr  string
-	Relay       bool
-	PublicKey   ed25519.PublicKey
-	Fingerprint string
+	GroupID       string
+	MemberID      string
+	PeerName      string
+	DeviceName    string
+	Token         string
+	HasRelayToken bool
+	RemoteAddr    string
+	Relay         bool
+	PublicKey     ed25519.PublicKey
+	Fingerprint   string
 }
 
 // AuthDecision is the host's answer.
 type AuthDecision struct {
-	Allow    bool
-	MemberID string
-	Services []ServiceInfo
-	Reason   string
+	Allow      bool
+	MemberID   string
+	Services   []ServiceInfo
+	RelayToken string
+	Reason     string
 }
 
 // Authenticator decides whether a connection may proceed. It may block while

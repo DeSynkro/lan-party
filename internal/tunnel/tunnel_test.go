@@ -490,3 +490,33 @@ func TestTunnelWithPacketConn(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestTunnelCarriesRelayReconnectToken(t *testing.T) {
+	sawHasToken := make(chan bool, 1)
+	srv, pin := startServer(t, authFunc(func(_ context.Context, req AuthRequest) (AuthDecision, error) {
+		sawHasToken <- req.HasRelayToken
+		return AuthDecision{Allow: true, MemberID: "friend", RelayToken: "reconnect-token"}, nil
+	}), 4)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	c, err := Dial(ctx, ClientConfig{
+		Identity:      testIdentity(t, "relay-token-client"),
+		Endpoint:      srv.Addr().String(),
+		HostPin:       pin,
+		GroupID:       "group-1",
+		PeerName:      "Ash",
+		DeviceName:    "ash-desktop",
+		HasRelayToken: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if !<-sawHasToken {
+		t.Fatal("the host did not see the friend's reconnect-token flag")
+	}
+	if c.RelayToken != "reconnect-token" {
+		t.Fatalf("relay token = %q", c.RelayToken)
+	}
+}

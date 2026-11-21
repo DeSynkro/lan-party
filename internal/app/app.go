@@ -3,6 +3,7 @@ package app
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -46,6 +47,10 @@ type App struct {
 	reconnectMu   sync.Mutex
 	autoReconnect *reconnectState
 	sessionEpoch  uint64
+
+	cleanupStop  chan struct{}
+	cleanupOnce  sync.Once
+	hostRecovery *hostRecoveryState
 }
 
 var errSessionStopped = errors.New("the session was stopped")
@@ -83,7 +88,7 @@ func NewWithStore(paths config.Paths, kr secure.SecretStore) (*App, error) {
 		}
 		groups[i].Invites = kept
 	}
-	return &App{
+	a := &App{
 		paths:       paths,
 		settings:    settings,
 		store:       store,
@@ -92,12 +97,122 @@ func NewWithStore(paths config.Paths, kr secure.SecretStore) (*App, error) {
 		secrets:     kr,
 		inviteCodes: map[string]string{},
 		limiter:     newAttemptLimiter(),
-	}, nil
+		cleanupStop: make(chan struct{}),
+	}
+	a.cleanupInactiveFriends(time.Now().UTC())
+	go a.cleanupLoop()
+	return a, nil
 }
 
 // Close ends any running session.
 func (a *App) Close() error {
+	a.cleanupOnce.Do(func() { close(a.cleanupStop) })
 	return a.StopSession()
+}
+
+func (a *App) cleanupLoop() {
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-a.cleanupStop:
+			return
+		case now := <-ticker.C:
+			a.mu.Lock()
+			if a.host != nil {
+				a.markLiveMembersSeenLocked(a.host, a.liveGroupID)
+			}
+			a.mu.Unlock()
+			a.cleanupInactiveFriends(now.UTC())
+		}
+	}
+}
+
+// cleanupInactiveFriends removes members that have not connected within the
+// host's selected window. Live members are always kept.
+func (a *App) cleanupInactiveFriends(now time.Time) {
+	a.mu.Lock()
+
+	days := a.settings.ForgetFriendsDays
+	if days <= 0 {
+		a.mu.Unlock()
+		return
+	}
+	cutoff := now.Add(-time.Duration(days) * 24 * time.Hour)
+	live := map[string]bool{}
+	if a.host != nil {
+		for id, presence := range a.host.Presence() {
+			if presence.Live {
+				live[id] = true
+			}
+		}
+	}
+
+	type forgotten struct {
+		groupID  string
+		memberID string
+		hash     string
+	}
+	var removed []forgotten
+	oldGroups := make([]group.Group, len(a.groups))
+	for i := range a.groups {
+		oldGroups[i] = cloneGroup(a.groups[i])
+	}
+	for i := range a.groups {
+		g := &a.groups[i]
+		if !g.IsHost() {
+			continue
+		}
+		kept := g.Members[:0]
+		for _, member := range g.Members {
+			if !member.IsApproved() || live[member.ID] {
+				kept = append(kept, member)
+				continue
+			}
+			seen := member.LastSeen
+			if seen.IsZero() {
+				seen = member.FirstSeen
+			}
+			if seen.IsZero() || !seen.Before(cutoff) {
+				kept = append(kept, member)
+				continue
+			}
+			hash, ok, err := a.relayReconnectHashLocked(g.ID, member.ID)
+			if err != nil {
+				log.Printf("session: inactive friend token for %s: %v", member.ID, err)
+			}
+			if ok {
+				removed = append(removed, forgotten{groupID: g.ID, memberID: member.ID, hash: hash})
+			} else {
+				removed = append(removed, forgotten{groupID: g.ID, memberID: member.ID})
+			}
+		}
+		g.Members = kept
+	}
+	if len(removed) == 0 {
+		a.mu.Unlock()
+		return
+	}
+	if err := a.saveLocked(); err != nil {
+		a.groups = oldGroups
+		a.mu.Unlock()
+		log.Printf("session: save inactive friend cleanup: %v", err)
+		return
+	}
+	host := a.host
+	for _, item := range removed {
+		_ = a.clearRelayReconnectHashLocked(item.groupID, item.memberID)
+	}
+	a.mu.Unlock()
+
+	for _, item := range removed {
+		if host != nil && item.hash != "" {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			_ = host.RevokeRelayReconnect(ctx, item.hash)
+			cancel()
+		}
+		log.Printf("session: forgot inactive friend %s in group %s", item.memberID, item.groupID)
+	}
 }
 
 // Groups returns a copy of the saved groups.
@@ -204,6 +319,72 @@ const (
 
 func groupRelaySecret(groupID string) string { return "group/" + groupID }
 
+func relayMemberSecret(groupID, memberID string) string {
+	return "member/" + groupID + "/" + memberID
+}
+
+func friendRelaySecret(hostGroupID string) string { return "friend/" + hostGroupID }
+
+func (a *App) relayReconnectHashLocked(groupID, memberID string) (string, bool, error) {
+	value, err := a.secrets.Get(relaySecretService, relayMemberSecret(groupID, memberID))
+	if errors.Is(err, fs.ErrNotExist) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("read reconnect token: %w", err)
+	}
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", false, nil
+	}
+	return value, true, nil
+}
+
+func (a *App) storeRelayReconnectHashLocked(groupID, memberID, hash string) error {
+	hash = strings.TrimSpace(hash)
+	if hash == "" {
+		return errors.New("the reconnect token hash is empty")
+	}
+	if err := a.secrets.Set(relaySecretService, relayMemberSecret(groupID, memberID), hash); err != nil {
+		return fmt.Errorf("store reconnect token: %w", err)
+	}
+	return nil
+}
+
+func (a *App) clearRelayReconnectHashLocked(groupID, memberID string) error {
+	err := a.secrets.Delete(relaySecretService, relayMemberSecret(groupID, memberID))
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("clear reconnect token: %w", err)
+	}
+	return nil
+}
+
+func (a *App) friendRelayTokenLocked(hostGroupID string) (string, bool, error) {
+	value, err := a.secrets.Get(relaySecretService, friendRelaySecret(hostGroupID))
+	if errors.Is(err, fs.ErrNotExist) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("read reconnect token: %w", err)
+	}
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", false, nil
+	}
+	return value, true, nil
+}
+
+func (a *App) storeFriendRelayTokenLocked(hostGroupID, token string) error {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return errors.New("the reconnect token is empty")
+	}
+	if err := a.secrets.Set(relaySecretService, friendRelaySecret(hostGroupID), token); err != nil {
+		return fmt.Errorf("store reconnect token: %w", err)
+	}
+	return nil
+}
+
 // relayPasswordLocked reads one relay password from the owner-only secret
 // store. Callers hold a.mu.
 func (a *App) relayPasswordLocked(name string) (string, bool, error) {
@@ -309,6 +490,162 @@ func (a *App) ClearRelayPassword() error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.clearRelayPasswordLocked(defaultRelaySecret)
+}
+
+// issueRelayReconnectToken creates a per-device token, stores its hash and
+// registers it with the live relay. The raw token is returned once so it can
+// travel inside the encrypted welcome.
+func (a *App) issueRelayReconnectToken(host *session.Host, groupID, memberID string) (string, error) {
+	raw, token, err := relay.NewFriendToken()
+	if err != nil {
+		return "", err
+	}
+	hash := relay.TokenHash(raw)
+	hashText := hex.EncodeToString(hash[:])
+
+	a.mu.Lock()
+	oldHash, hadOld, err := a.relayReconnectHashLocked(groupID, memberID)
+	if err != nil {
+		a.mu.Unlock()
+		return "", err
+	}
+	if err := a.storeRelayReconnectHashLocked(groupID, memberID, hashText); err != nil {
+		a.mu.Unlock()
+		return "", err
+	}
+	a.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	if err := host.AuthorizeRelayReconnect(ctx, hashText); err != nil {
+		a.mu.Lock()
+		if hadOld {
+			_ = a.storeRelayReconnectHashLocked(groupID, memberID, oldHash)
+		} else {
+			_ = a.clearRelayReconnectHashLocked(groupID, memberID)
+		}
+		a.mu.Unlock()
+		return "", err
+	}
+	if hadOld && oldHash != hashText {
+		if err := host.RevokeRelayReconnect(ctx, oldHash); err != nil {
+			log.Printf("session: revoke old reconnect token: %v", err)
+		}
+	}
+	return token, nil
+}
+
+// reconnectDecision allows a member and, when needed, issues a fresh
+// reconnect token for the encrypted welcome.
+func (a *App) reconnectDecision(groupID, memberID string, services []group.Service, hasToken bool) tunnel.AuthDecision {
+	decision := allow(memberID, services)
+	host := a.currentHost()
+	if host == nil || !host.RelayEnabled() {
+		return decision
+	}
+	a.mu.Lock()
+	_, haveHash, err := a.relayReconnectHashLocked(groupID, memberID)
+	a.mu.Unlock()
+	if err != nil {
+		log.Printf("session: reconnect token lookup: %v", err)
+		return decision
+	}
+	if hasToken && haveHash {
+		return decision
+	}
+	token, err := a.issueRelayReconnectToken(host, groupID, memberID)
+	if err != nil {
+		log.Printf("session: issue reconnect token: %v", err)
+		return decision
+	}
+	decision.RelayToken = token
+	return decision
+}
+
+// FriendRelayTokenSet reports whether a joined group can reconnect through
+// its relay without a new invite.
+func (a *App) FriendRelayTokenSet(groupID string) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	idx := a.groupIndexLocked(groupID)
+	if idx < 0 || !a.groups[idx].UseRelay {
+		return false
+	}
+	_, ok, err := a.friendRelayTokenLocked(a.groups[idx].HostGroupID)
+	return err == nil && ok
+}
+
+// MemberReconnectSet reports whether a host member has a saved reconnect
+// token for the relay.
+func (a *App) MemberReconnectSet(groupID, memberID string) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	_, ok, err := a.relayReconnectHashLocked(groupID, memberID)
+	return err == nil && ok
+}
+
+// ResetMemberReconnect revokes a member's reconnect token. The friend needs a
+// new invite on its next reconnect.
+func (a *App) ResetMemberReconnect(groupID, memberID string) error {
+	a.mu.Lock()
+	idx := a.groupIndexLocked(groupID)
+	if idx < 0 {
+		a.mu.Unlock()
+		return errors.New("group not found")
+	}
+	if !a.groups[idx].IsHost() {
+		a.mu.Unlock()
+		return errors.New("only the host can reset reconnect access")
+	}
+	hash, ok, err := a.relayReconnectHashLocked(groupID, memberID)
+	host := a.host
+	a.mu.Unlock()
+	if err != nil {
+		return err
+	}
+	if host != nil && ok && hash != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		_ = host.RevokeRelayReconnect(ctx, hash)
+		cancel()
+	}
+	a.mu.Lock()
+	err = a.clearRelayReconnectHashLocked(groupID, memberID)
+	a.mu.Unlock()
+	return err
+}
+
+// registerMemberReconnectTokens registers the saved hashes with a fresh relay
+// session before friends start reconnecting.
+func (a *App) registerMemberReconnectTokens(host *session.Host, groupID string) {
+	a.mu.Lock()
+	idx := a.groupIndexLocked(groupID)
+	if idx < 0 {
+		a.mu.Unlock()
+		return
+	}
+	var hashes []string
+	for _, member := range a.groups[idx].Members {
+		if !member.IsApproved() {
+			continue
+		}
+		hash, ok, err := a.relayReconnectHashLocked(groupID, member.ID)
+		if err != nil {
+			log.Printf("session: reconnect token for %s: %v", member.ID, err)
+			continue
+		}
+		if ok {
+			hashes = append(hashes, hash)
+		}
+	}
+	a.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	for _, hash := range hashes {
+		if err := host.AuthorizeRelayReconnect(ctx, hash); err != nil {
+			log.Printf("session: register reconnect token: %v", err)
+		}
+	}
 }
 
 // GroupRelayPasswordSet reports whether a group's custom relay has a password.
@@ -532,6 +869,10 @@ func (a *App) DeleteGroup(id string) error {
 	if a.autoReconnect != nil && a.autoReconnect.groupID == id {
 		a.stopAutoReconnectLocked()
 	}
+	if a.hostRecovery != nil && a.hostRecovery.groupID == id {
+		a.hostRecovery.cancel()
+		a.hostRecovery = nil
+	}
 	a.mu.Unlock()
 
 	if live {
@@ -555,6 +896,12 @@ func (a *App) DeleteGroup(id string) error {
 		return err
 	}
 	a.mu.Unlock()
+
+	for _, member := range g.Members {
+		a.mu.Lock()
+		_ = a.clearRelayReconnectHashLocked(id, member.ID)
+		a.mu.Unlock()
+	}
 
 	keyName := "host/" + id
 	if g.Role == group.RoleFriend {
@@ -1222,13 +1569,21 @@ func (a *App) RemoveInvite(groupID, inviteID string) error {
 
 // StartSession opens the tunnel for a host group.
 func (a *App) StartSession(groupID string) error {
+	a.stopHostRecovery()
+	log.Printf("session: starting host group %s", groupID)
+	return a.startSession(groupID, false)
+}
+
+func (a *App) startSession(groupID string, fromRecovery bool) error {
 	log.Printf("session: starting host group %s", groupID)
 	a.stopAutoReconnect()
 	a.reconnectMu.Lock()
 	defer a.reconnectMu.Unlock()
 
 	a.mu.Lock()
-	a.hostNote = ""
+	if !fromRecovery {
+		a.hostNote = ""
+	}
 	idx := a.groupIndexLocked(groupID)
 	if idx < 0 {
 		a.mu.Unlock()
@@ -1327,13 +1682,36 @@ func (a *App) StartSession(groupID string) error {
 	}
 	a.host = host
 	a.liveGroupID = groupID
+	a.hostNote = ""
+	if fromRecovery && a.hostRecovery != nil {
+		a.hostRecovery.cancel()
+		a.hostRecovery = nil
+	}
 	a.mu.Unlock()
 	if connection.UseRelay {
+		a.registerMemberReconnectTokens(host, groupID)
 		a.reauthorizeRelayInvites(host, groupID, connection)
 	}
 	go a.watchHost(host, groupID)
 	log.Printf("session: host live group %s", groupID)
 	return nil
+}
+
+// markLiveMembersSeenLocked refreshes LastSeen for friends connected right
+// now, so a long session does not look stale to the inactivity cleanup.
+func (a *App) markLiveMembersSeenLocked(host *session.Host, groupID string) {
+	idx := a.groupIndexLocked(groupID)
+	if idx < 0 {
+		return
+	}
+	now := time.Now().UTC()
+	presence := host.Presence()
+	for i := range a.groups[idx].Members {
+		if presence[a.groups[idx].Members[i].ID].Live {
+			a.groups[idx].Members[i].LastSeen = now
+		}
+	}
+	_ = a.saveLocked()
 }
 
 // watchHost clears the live host if the relay control path ends underneath it.
@@ -1344,11 +1722,12 @@ func (a *App) watchHost(host *session.Host, groupID string) {
 		a.mu.Unlock()
 		return
 	}
+	a.markLiveMembersSeenLocked(host, groupID)
 	a.host = nil
 	a.liveGroupID = ""
 	if err := host.RelayError(); err != nil {
-		a.hostNote = "The relay connection ended. Start the session again after the relay is back."
 		log.Printf("session: host relay ended: %v", err)
+		a.startHostRecoveryLocked(groupID)
 	}
 	a.mu.Unlock()
 }
@@ -1401,11 +1780,15 @@ func (a *App) reauthorizeRelayInvites(host *session.Host, groupID string, connec
 // StopSession closes whatever is running.
 func (a *App) StopSession() error {
 	log.Printf("session: stopping")
+	a.stopHostRecovery()
 	a.mu.Lock()
 	a.sessionEpoch++
 	a.stopAutoReconnectLocked()
 	host := a.host
 	friend := a.friend
+	if host != nil {
+		a.markLiveMembersSeenLocked(host, a.liveGroupID)
+	}
 	a.host = nil
 	a.friend = nil
 	a.liveGroupID = ""
@@ -1472,16 +1855,37 @@ func (a *App) JoinInvite(ctx context.Context, code, deviceName string) (group.Gr
 		return group.Group{}, err
 	}
 
+	hasRelayToken := false
+	if inv.Version == invite.RelayVersion {
+		a.mu.Lock()
+		_, hasRelayToken, err = a.friendRelayTokenLocked(inv.GroupID)
+		a.mu.Unlock()
+		if err != nil {
+			return group.Group{}, err
+		}
+	}
+
 	log.Printf("join: connecting")
 	friend, err := session.Join(ctx, session.JoinConfig{
-		Identity:   identity,
-		Invite:     inv,
-		DeviceName: deviceName,
-		Token:      inv.Token,
+		Identity:      identity,
+		Invite:        inv,
+		DeviceName:    deviceName,
+		Token:         inv.Token,
+		HasRelayToken: hasRelayToken,
 	})
 	if err != nil {
 		log.Printf("join: failed: %v", err)
 		return group.Group{}, err
+	}
+
+	if token := friend.RelayToken(); token != "" {
+		a.mu.Lock()
+		err := a.storeFriendRelayTokenLocked(inv.GroupID, token)
+		a.mu.Unlock()
+		if err != nil {
+			_ = friend.Close()
+			return group.Group{}, err
+		}
 	}
 
 	g := group.CreateFriendGroup(
@@ -1595,10 +1999,6 @@ func (a *App) reconnect(ctx context.Context, groupID string) error {
 		a.mu.Unlock()
 		return permanentReconnect(errors.New("only a joined group can be reconnected"))
 	}
-	if a.groups[idx].UseRelay {
-		a.mu.Unlock()
-		return permanentReconnect(errors.New("this group joined through a relay. Ask the host for a new invite to reconnect."))
-	}
 	epoch := a.sessionEpoch
 	if a.host != nil {
 		a.mu.Unlock()
@@ -1631,12 +2031,43 @@ func (a *App) reconnect(ctx context.Context, groupID string) error {
 		return permanentReconnect(errors.New("the device key for this group is missing. If this group came from an older build, delete it and join again"))
 	}
 
+	reconnectInvite := invite.Invite{
+		Version:   invite.CurrentVersion,
+		GroupID:   g.HostGroupID,
+		GroupName: g.Name,
+		HostName:  g.HostName,
+		Endpoint:  g.Endpoint,
+		HostPin:   g.HostPin,
+		PeerName:  g.SelfName,
+		Expires:   time.Now().Add(time.Hour),
+	}
+	hasRelayToken := false
+	if g.UseRelay {
+		a.mu.Lock()
+		token, ok, tokenErr := a.friendRelayTokenLocked(g.HostGroupID)
+		a.mu.Unlock()
+		if tokenErr != nil {
+			return tokenErr
+		}
+		if !ok {
+			return permanentReconnect(errors.New("this relay group has no reconnect access yet. Ask the host for a new invite."))
+		}
+		reconnectInvite.Version = invite.RelayVersion
+		reconnectInvite.Endpoint = ""
+		reconnectInvite.RelayHost = g.RelayHost
+		reconnectInvite.RelayPort = g.RelayPort
+		reconnectInvite.RelayID = g.RelayID
+		reconnectInvite.RelayToken = token
+		hasRelayToken = true
+	}
+
 	log.Printf("reconnect: dialing group %s", groupID)
 	friend, err := session.Join(ctx, session.JoinConfig{
-		Identity:   identity,
-		Invite:     invite.Invite{Version: invite.CurrentVersion, GroupID: g.HostGroupID, GroupName: g.Name, HostName: g.HostName, Endpoint: g.Endpoint, HostPin: g.HostPin, PeerName: g.SelfName},
-		DeviceName: a.DeviceName(),
-		MemberID:   g.SelfID,
+		Identity:      identity,
+		Invite:        reconnectInvite,
+		DeviceName:    a.DeviceName(),
+		MemberID:      g.SelfID,
+		HasRelayToken: hasRelayToken,
 	})
 	if err != nil {
 		log.Printf("reconnect: failed: %v", err)
@@ -1671,6 +2102,13 @@ func (a *App) reconnect(ctx context.Context, groupID string) error {
 		a.mu.Unlock()
 		_ = friend.Close()
 		return permanentReconnect(errors.New("group not found"))
+	}
+	if token := friend.RelayToken(); token != "" {
+		if err := a.storeFriendRelayTokenLocked(g.HostGroupID, token); err != nil {
+			a.mu.Unlock()
+			_ = friend.Close()
+			return err
+		}
 	}
 	a.groups[idx].SelfID = friend.MemberID
 	a.groups[idx].Services = friendServices(friend.Services())
@@ -1744,25 +2182,43 @@ func (a *App) RemoveMember(groupID, memberID string) error {
 		a.mu.Unlock()
 		return errors.New("only the host can remove members")
 	}
-	a.mu.Unlock()
-
-	a.mu.Lock()
+	hash, _, err := a.relayReconnectHashLocked(groupID, memberID)
+	if err != nil {
+		a.mu.Unlock()
+		return err
+	}
 	host := a.host
 	a.mu.Unlock()
+
 	if host != nil {
 		_ = host.Revoke(memberID)
 	}
 
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	idx = a.groupIndexLocked(groupID)
 	if idx < 0 {
+		a.mu.Unlock()
 		return errors.New("group not found")
 	}
+	oldGroup := cloneGroup(a.groups[idx])
 	if !a.groups[idx].RemoveMember(memberID) {
+		a.mu.Unlock()
 		return errors.New("member not found")
 	}
-	return a.saveLocked()
+	if err := a.saveLocked(); err != nil {
+		a.groups[idx] = oldGroup
+		a.mu.Unlock()
+		return err
+	}
+	_ = a.clearRelayReconnectHashLocked(groupID, memberID)
+	a.mu.Unlock()
+
+	if host != nil && hash != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		_ = host.RevokeRelayReconnect(ctx, hash)
+		cancel()
+	}
+	return nil
 }
 
 func (a *App) saveLocked() error {

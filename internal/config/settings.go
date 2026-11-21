@@ -33,6 +33,7 @@ type Settings struct {
 	RelayHost         string `json:"relayHost,omitempty"`
 	RelayPort         int    `json:"relayPort,omitempty"`
 	RelayID           string `json:"relayID,omitempty"`
+	ForgetFriendsDays int    `json:"forgetFriendsDays,omitempty"`
 }
 
 // DefaultSettings returns the first-run values.
@@ -43,6 +44,7 @@ func DefaultSettings() Settings {
 		ApproveNewDevices: true,
 		AppPort:           DefaultAppPort,
 		RelayPort:         DefaultRelayPort,
+		ForgetFriendsDays: 5,
 	}
 }
 
@@ -101,6 +103,9 @@ func (s Settings) Validate() error {
 	}
 	if err := ValidateAddress(s.PublicAddress); err != nil {
 		return err
+	}
+	if s.ForgetFriendsDays < 0 || s.ForgetFriendsDays > 365 {
+		return errors.New("the inactive friend limit must be between 0 and 365 days")
 	}
 	if s.UseRelay {
 		return ValidateRelayConnection(s.RelayHost, s.RelayPort, s.RelayID)

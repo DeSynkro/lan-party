@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/desynkro/lan-party/internal/group"
@@ -131,7 +132,9 @@ func (a *App) startAutoReconnectLocked(groupID string, started time.Time) {
 		return
 	}
 	if a.groups[idx].UseRelay {
-		return
+		if _, ok, err := a.friendRelayTokenLocked(a.groups[idx].HostGroupID); err != nil || !ok {
+			return
+		}
 	}
 	if a.friend != nil {
 		if a.friend.Presence().Live || a.friend.Revoked() {
@@ -248,4 +251,108 @@ func (a *App) watchFriend(friend *session.Friend, groupID string) {
 	}
 	a.startAutoReconnectLocked(groupID, time.Now())
 	a.mu.Unlock()
+}
+
+type hostRecoveryState struct {
+	groupID string
+	started time.Time
+	next    time.Time
+	cancel  context.CancelFunc
+}
+
+func (a *App) stopHostRecovery() {
+	a.mu.Lock()
+	state := a.hostRecovery
+	a.hostRecovery = nil
+	if state != nil && state.cancel != nil {
+		state.cancel()
+	}
+	a.mu.Unlock()
+}
+
+func (a *App) startHostRecoveryLocked(groupID string) {
+	if a.hostRecovery != nil {
+		a.hostRecovery.cancel()
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	state := &hostRecoveryState{groupID: groupID, started: time.Now(), cancel: cancel}
+	a.hostRecovery = state
+	a.hostNote = "Relay connection lost. Reconnecting…"
+	log.Printf("relay recovery: scheduling group %s", groupID)
+	go a.runHostRecovery(ctx, state)
+}
+
+func (a *App) runHostRecovery(ctx context.Context, state *hostRecoveryState) {
+	for {
+		a.mu.Lock()
+		if a.hostRecovery != state {
+			a.mu.Unlock()
+			return
+		}
+		delay, ok := hostRecoveryDelay(time.Since(state.started))
+		if !ok {
+			a.hostNote = "Automatic relay reconnect stopped. Start the session again when the relay is back."
+			a.hostRecovery = nil
+			a.mu.Unlock()
+			return
+		}
+		state.next = time.Now().Add(delay)
+		a.mu.Unlock()
+
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return
+		case <-timer.C:
+		}
+
+		a.mu.Lock()
+		if a.hostRecovery != state {
+			a.mu.Unlock()
+			return
+		}
+		state.next = time.Time{}
+		a.mu.Unlock()
+
+		err := a.startSession(state.groupID, true)
+		if err == nil {
+			return
+		}
+		if isPermanentHostRecovery(err) {
+			a.mu.Lock()
+			if a.hostRecovery == state {
+				a.hostNote = "Relay reconnect failed: " + err.Error()
+				a.hostRecovery = nil
+			}
+			a.mu.Unlock()
+			return
+		}
+	}
+}
+
+func hostRecoveryDelay(elapsed time.Duration) (time.Duration, bool) {
+	switch {
+	case elapsed < time.Minute:
+		return 5 * time.Second, true
+	case elapsed < 6*time.Minute:
+		return 10 * time.Second, true
+	case elapsed < 16*time.Minute:
+		return 30 * time.Second, true
+	default:
+		return 0, false
+	}
+}
+
+func isPermanentHostRecovery(err error) bool {
+	message := strings.ToLower(err.Error())
+	for _, phrase := range []string{
+		"password", "not configured", "group not found", "host key", "app port",
+		"only a group you host", "relay host is empty", "relay id",
+	} {
+		if strings.Contains(message, phrase) {
+			return true
+		}
+	}
+	return false
 }

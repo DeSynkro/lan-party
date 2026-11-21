@@ -15,15 +15,16 @@ import (
 
 // ClientConfig is the friend's half of the handshake.
 type ClientConfig struct {
-	Identity   secure.Identity
-	Endpoint   string
-	PacketConn net.PacketConn // optional; the client takes ownership
-	HostPin    string
-	GroupID    string
-	MemberID   string
-	PeerName   string
-	DeviceName string
-	Token      string
+	Identity      secure.Identity
+	Endpoint      string
+	PacketConn    net.PacketConn // optional; the client takes ownership
+	HostPin       string
+	GroupID       string
+	MemberID      string
+	PeerName      string
+	DeviceName    string
+	Token         string
+	HasRelayToken bool
 }
 
 // Dial connects, verifies the host pin, and waits for the host's answer.
@@ -96,13 +97,14 @@ func Dial(ctx context.Context, cfg ClientConfig) (*Conn, error) {
 	reader := bufio.NewReader(stream)
 
 	hello := ControlMessage{
-		Type:       MsgHello,
-		Version:    ProtocolVersion,
-		GroupID:    cfg.GroupID,
-		MemberID:   cfg.MemberID,
-		PeerName:   cfg.PeerName,
-		DeviceName: cfg.DeviceName,
-		Token:      cfg.Token,
+		Type:          MsgHello,
+		Version:       ProtocolVersion,
+		GroupID:       cfg.GroupID,
+		MemberID:      cfg.MemberID,
+		PeerName:      cfg.PeerName,
+		DeviceName:    cfg.DeviceName,
+		Token:         cfg.Token,
+		HasRelayToken: cfg.HasRelayToken,
 	}
 	if err := enc.Encode(hello); err != nil {
 		_ = qc.CloseWithError(1, "hello failed")
@@ -139,6 +141,7 @@ func Dial(ctx context.Context, cfg ClientConfig) (*Conn, error) {
 	c.packetConn = cfg.PacketConn
 	c.MemberID = reply.MemberID
 	c.Services = reply.Services
+	c.RelayToken = reply.RelayToken
 	c.start()
 	return c, nil
 }

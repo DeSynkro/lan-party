@@ -1640,6 +1640,8 @@ func freeRelayPort(t *testing.T) int {
 type testRelayServer struct {
 	profile relay.HostProfile
 	server  *relay.Server
+	dir     string
+	mu      sync.Mutex
 }
 
 func startTestRelayServer(t *testing.T, password string) *testRelayServer {
@@ -1671,8 +1673,39 @@ func startTestRelayServer(t *testing.T, password string) *testRelayServer {
 	if err := server.Start(); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = server.Close() })
-	return &testRelayServer{profile: profile, server: server}
+	relayServer := &testRelayServer{profile: profile, server: server, dir: dir}
+	t.Cleanup(func() {
+		relayServer.mu.Lock()
+		current := relayServer.server
+		relayServer.server = nil
+		relayServer.mu.Unlock()
+		if current != nil {
+			_ = current.Close()
+		}
+	})
+	return relayServer
+}
+
+func (r *testRelayServer) restart(t *testing.T) {
+	t.Helper()
+	cfg, err := relay.LoadConfig(relay.ConfigPath(r.dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cert, fingerprint, err := relay.LoadIdentity(relay.KeyPath(relay.ConfigPath(r.dir), cfg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, err := relay.NewServer(cfg, cert, fingerprint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := server.Start(); err != nil {
+		t.Fatal(err)
+	}
+	r.mu.Lock()
+	r.server = server
+	r.mu.Unlock()
 }
 
 func enableSettingsRelay(t *testing.T, a *App, relayServer *testRelayServer) {
@@ -1758,6 +1791,9 @@ func TestAppRelayHostAndFriend(t *testing.T) {
 	if !friendApp.FriendPresence().Live {
 		t.Fatal("the friend is not live")
 	}
+	if !friendApp.FriendRelayTokenSet(joined.ID) {
+		t.Fatal("the friend did not receive a reconnect token")
+	}
 	waitFor(t, 3*time.Second, func() bool {
 		return len(hostApp.HostPresence()) > 0
 	})
@@ -1765,14 +1801,16 @@ func TestAppRelayHostAndFriend(t *testing.T) {
 	if err := friendApp.StopSession(); err != nil {
 		t.Fatal(err)
 	}
-	err = friendApp.Reconnect(ctx, joined.ID)
-	if err == nil || !strings.Contains(err.Error(), "new invite") {
-		t.Fatalf("reconnect error = %v", err)
+	if err := friendApp.Reconnect(ctx, joined.ID); err != nil {
+		t.Fatalf("relay reconnect failed: %v", err)
 	}
-	if status := friendApp.ReconnectStatus(joined.ID); status.Active {
-		t.Fatal("relay reconnect was scheduled")
+	if !friendApp.FriendPresence().Live {
+		t.Fatal("the reconnected friend is not live")
 	}
 
+	if err := friendApp.StopSession(); err != nil {
+		t.Fatal(err)
+	}
 	newCode, err := hostApp.CreateInvite(g.ID, "Ash again")
 	if err != nil {
 		t.Fatal(err)
@@ -1790,8 +1828,14 @@ func TestAppRelayHostAndFriend(t *testing.T) {
 		t.Fatal("the reconnected friend is not live")
 	}
 
-	if err := relayServer.server.Close(); err != nil {
-		t.Fatal(err)
+	relayServer.mu.Lock()
+	current := relayServer.server
+	relayServer.server = nil
+	relayServer.mu.Unlock()
+	if current != nil {
+		if err := current.Close(); err != nil {
+			t.Fatal(err)
+		}
 	}
 	waitFor(t, 3*time.Second, func() bool {
 		return hostApp.LiveGroupID() == "" && hostApp.HostNote() != ""
@@ -2202,5 +2246,214 @@ func TestRelayInvitesFromPreviousRunAreDropped(t *testing.T) {
 	}
 	if len(saved.Invites) != 1 || saved.Invites[0].ID != "direct" {
 		t.Fatalf("invites = %+v", saved.Invites)
+	}
+}
+
+func addTestMember(a *App, groupID string, member group.Member) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	idx := a.groupIndexLocked(groupID)
+	a.groups[idx].Members = append(a.groups[idx].Members, member)
+}
+
+func TestForgetInactiveFriends(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	addTestMember(a, g.ID, group.Member{
+		ID: "old", Name: "Ash", State: group.MemberApproved,
+		FirstSeen: now.Add(-30 * 24 * time.Hour),
+		LastSeen:  now.Add(-6 * 24 * time.Hour),
+	})
+	a.mu.Lock()
+	if err := a.storeRelayReconnectHashLocked(g.ID, "old", strings.Repeat("ab", 32)); err != nil {
+		a.mu.Unlock()
+		t.Fatal(err)
+	}
+	a.mu.Unlock()
+	s := a.Settings()
+	s.ForgetFriendsDays = 5
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+
+	a.cleanupInactiveFriends(now)
+	saved, ok := a.Group(g.ID)
+	if !ok || len(saved.Members) != 0 {
+		t.Fatalf("members = %+v", saved.Members)
+	}
+	a.mu.Lock()
+	_, hasHash, err := a.relayReconnectHashLocked(g.ID, "old")
+	a.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasHash {
+		t.Fatal("the forgotten member's reconnect token was kept")
+	}
+}
+
+func TestForgetInactiveFriendsKeepsRecentAndUnknown(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	addTestMember(a, g.ID, group.Member{ID: "recent", Name: "Ash", State: group.MemberApproved, LastSeen: now.Add(-time.Hour)})
+	addTestMember(a, g.ID, group.Member{ID: "unknown", Name: "Blair", State: group.MemberApproved})
+	a.cleanupInactiveFriends(now)
+	saved, _ := a.Group(g.ID)
+	if len(saved.Members) != 2 {
+		t.Fatalf("members = %+v", saved.Members)
+	}
+}
+
+func TestRemoveMemberClearsReconnectToken(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addTestMember(a, g.ID, group.Member{ID: "m1", Name: "Ash", State: group.MemberApproved})
+	a.mu.Lock()
+	if err := a.storeRelayReconnectHashLocked(g.ID, "m1", strings.Repeat("ab", 32)); err != nil {
+		a.mu.Unlock()
+		t.Fatal(err)
+	}
+	a.mu.Unlock()
+	if err := a.RemoveMember(g.ID, "m1"); err != nil {
+		t.Fatal(err)
+	}
+	a.mu.Lock()
+	_, hasHash, err := a.relayReconnectHashLocked(g.ID, "m1")
+	a.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasHash {
+		t.Fatal("the removed member's reconnect token was kept")
+	}
+}
+
+func TestHostRelayAutoRecovers(t *testing.T) {
+	relayServer := startTestRelayServer(t, "relay test password")
+	a := newTestApp(t)
+	enableSettingsRelay(t, a, relayServer)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.StartSession(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	defer a.StopSession()
+
+	relayServer.mu.Lock()
+	current := relayServer.server
+	relayServer.server = nil
+	relayServer.mu.Unlock()
+	if current != nil {
+		if err := current.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	waitFor(t, 3*time.Second, func() bool {
+		return a.LiveGroupID() == "" && strings.Contains(a.HostNote(), "Reconnecting")
+	})
+	relayServer.restart(t)
+	waitFor(t, 8*time.Second, func() bool { return a.LiveGroupID() == g.ID })
+	if note := a.HostNote(); note != "" {
+		t.Fatalf("host note after recovery = %q", note)
+	}
+}
+
+func TestRelayFriendIsEligibleForAutoReconnect(t *testing.T) {
+	a := newTestApp(t)
+	g := group.CreateFriendGroup("Friday Night", "Desynkro", "", "pin", "self", "Ash", nil)
+	g.HostGroupID = "host-1"
+	g.OverrideSettings = true
+	g.UseRelay = true
+	g.RelayCustom = true
+	g.RelayHost = "relay.example.net"
+	g.RelayPort = 7443
+	g.RelayID = strings.Repeat("ab", 32)
+	a.mu.Lock()
+	a.groups = append(a.groups, g)
+	a.mu.Unlock()
+
+	a.mu.Lock()
+	a.startAutoReconnectLocked(g.ID, time.Now())
+	if a.autoReconnect != nil {
+		a.stopAutoReconnectLocked()
+		a.mu.Unlock()
+		t.Fatal("a relay friend without a token was scheduled")
+	}
+	a.stopAutoReconnectLocked()
+	a.mu.Unlock()
+
+	a.mu.Lock()
+	if err := a.storeFriendRelayTokenLocked(g.HostGroupID, "reconnect-token"); err != nil {
+		a.mu.Unlock()
+		t.Fatal(err)
+	}
+	a.startAutoReconnectLocked(g.ID, time.Now())
+	scheduled := a.autoReconnect != nil
+	a.stopAutoReconnectLocked()
+	a.mu.Unlock()
+	if !scheduled {
+		t.Fatal("a relay friend with a token was not scheduled")
+	}
+}
+
+func TestRelayReconnectSurvivesHostSessionRestart(t *testing.T) {
+	relayServer := startTestRelayServer(t, "relay test password")
+	hostApp := newTestApp(t)
+	s := hostApp.Settings()
+	s.ApproveNewDevices = false
+	if err := hostApp.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	enableSettingsRelay(t, hostApp, relayServer)
+	g, err := hostApp.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := hostApp.StartSession(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	code, err := hostApp.CreateInvite(g.ID, "Ash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	friendApp := newTestApp(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	joined, err := friendApp.JoinInvite(ctx, code, "ash-desktop")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !friendApp.FriendRelayTokenSet(joined.ID) {
+		t.Fatal("no reconnect token")
+	}
+	if err := friendApp.StopSession(); err != nil {
+		t.Fatal(err)
+	}
+	if err := hostApp.StopSession(); err != nil {
+		t.Fatal(err)
+	}
+	if err := hostApp.StartSession(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = hostApp.StopSession() })
+
+	if err := friendApp.Reconnect(ctx, joined.ID); err != nil {
+		t.Fatalf("reconnect after host restart: %v", err)
+	}
+	if !friendApp.FriendPresence().Live {
+		t.Fatal("the friend is not live after the host restart")
 	}
 }

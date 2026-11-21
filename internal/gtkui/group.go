@@ -38,6 +38,7 @@ type groupLive struct {
 	friendHostDot    *gtk.Label
 	friendHostDetail *gtk.Label
 	friendAction     *gtk.Button
+	friendReconnect  bool
 }
 
 func (u *probeUI) buildGroupContent(g group.Group) (*gtk.Box, *groupLive) {
@@ -351,16 +352,24 @@ func (u *probeUI) friendSessionCard(g group.Group, showError func(error), state 
 	spacer.SetHExpand(true)
 	top.Append(spacer)
 
+	hasReconnect := g.UseRelay && u.state.FriendRelayTokenSet(g.ID)
+	state.friendReconnect = hasReconnect
 	actionLabel := "Reconnect"
 	if live {
 		actionLabel = "Disconnect"
+	} else if g.UseRelay && !hasReconnect {
+		actionLabel = "New invite"
 	} else if reconnect.Active {
 		actionLabel = "Reconnect now"
 	}
 	action := gtk.NewButtonWithLabel(actionLabel)
 	action.AddCSSClass("primary")
-	if g.UseRelay && !live {
-		action.SetTooltipText("Paste a new invite from the host to reconnect")
+	if g.UseRelay {
+		if hasReconnect {
+			action.SetTooltipText("Reconnect through the relay")
+		} else {
+			action.SetTooltipText("Paste a new invite from the host")
+		}
 	}
 	state.friendAction = action
 	action.ConnectClicked(func() {
@@ -369,7 +378,7 @@ func (u *probeUI) friendSessionCard(g group.Group, showError func(error), state 
 			u.confirmDisconnect(g)
 			return
 		}
-		if g.UseRelay {
+		if g.UseRelay && !hasReconnect {
 			u.showJoinDialog()
 			return
 		}
@@ -385,7 +394,11 @@ func (u *probeUI) friendSessionCard(g group.Group, showError func(error), state 
 	card.Append(cardText("Hosted by "+g.HostName, "desc"))
 	detail := "Start the session on the host, then reconnect."
 	if g.UseRelay {
-		detail = "Ask the host for a new invite, then join with it."
+		if hasReconnect {
+			detail = "Reconnecting through the relay."
+		} else {
+			detail = "Ask the host for a new invite."
+		}
 	}
 	switch {
 	case live:
@@ -653,7 +666,7 @@ func (u *probeUI) groupSignature(g group.Group) string {
 
 	presence := u.state.FriendPresence()
 	live := u.state.LiveGroupID() == g.ID && presence.Live
-	fmt.Fprintf(&b, "|live=%t|note=%s", live, u.state.FriendNote())
+	fmt.Fprintf(&b, "|live=%t|note=%s|reconnect=%t", live, u.state.FriendNote(), u.state.FriendRelayTokenSet(g.ID))
 	if live {
 		for _, bound := range u.state.FriendBounds() {
 			fmt.Fprintf(&b, "|bound=%s,%s,%s,%d,%d,%s,%s,%s", bound.ServiceID, bound.Service, bound.Proto, bound.PublishedPort, bound.Port, bound.Address, bound.Error, bound.Hint)
@@ -741,6 +754,7 @@ func (state *groupLive) refresh(u *probeUI, g group.Group) {
 	presence := u.state.FriendPresence()
 	reconnect := u.state.ReconnectStatus(g.ID)
 	live := u.state.LiveGroupID() == g.ID && presence.Live
+	hasReconnect := state.friendReconnect
 	setStatusDot(state.friendDot, live)
 	if state.friendStatus != nil {
 		switch {
@@ -753,14 +767,18 @@ func (state *groupLive) refresh(u *probeUI, g group.Group) {
 		}
 	}
 	if state.friendAction != nil {
-		if g.UseRelay && !live {
-			state.friendAction.SetTooltipText("Paste a new invite from the host to reconnect")
+		if g.UseRelay && !live && !hasReconnect {
+			state.friendAction.SetTooltipText("Paste a new invite from the host")
+		} else if g.UseRelay && !live {
+			state.friendAction.SetTooltipText("Reconnect through the relay")
 		} else {
 			state.friendAction.SetTooltipText("")
 		}
 		switch {
 		case live:
 			state.friendAction.SetLabel("Disconnect")
+		case g.UseRelay && !hasReconnect:
+			state.friendAction.SetLabel("New invite")
 		case reconnect.Active:
 			state.friendAction.SetLabel("Reconnect now")
 		default:
@@ -777,8 +795,10 @@ func (state *groupLive) refresh(u *probeUI, g group.Group) {
 			state.friendDetail.SetText(u.state.FriendNote())
 		case reconnect.Stopped:
 			state.friendDetail.SetText(reconnectStoppedText(reconnect))
+		case g.UseRelay && hasReconnect:
+			state.friendDetail.SetText("Reconnecting through the relay.")
 		case g.UseRelay:
-			state.friendDetail.SetText("Ask the host for a new invite, then join with it.")
+			state.friendDetail.SetText("Ask the host for a new invite.")
 		default:
 			state.friendDetail.SetText("Start the session on the host, then reconnect.")
 		}
