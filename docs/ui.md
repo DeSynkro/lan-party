@@ -91,9 +91,10 @@ defined in the stylesheet.
 
 - App bar: back, group name, help, settings.
 - Session panel: status dot and `Session live` / `Session off`, start/end
-  button, `Hosting as …`, public address with a `Default`/`Custom` tag (or an
-  amber “no public address” warning), app port, `Change` opening the group-only
-  connection dialog, and a truthful connected count.
+  button, `Hosting as …`, the effective address with a `Default`/`Custom` tag
+  and a `Relay` tag when relay mode is active (or an amber “no public address”
+  warning), app port or relay route, `Change` opening the group-only connection
+  dialog, and a truthful connected count.
 - Published: count, `Add service`, one card per service with the name, protocol,
   `Friends open 127.0.0.1:<ports>`, `Game server <address>` and the hint.
   Tapping a card opens details with Edit and Remove.
@@ -131,13 +132,17 @@ defined in the stylesheet.
   with the title. There is no `?` on individual settings. The description is
   always visible. Descriptions are smaller text under the title, not beside the
   tickbox.
-- Network defaults: public address and app port, with a live preview of the
-  endpoint that will go into invites, a Save button and inline errors. These are
-  the defaults for host groups without their own connection. The public address
-  is usually just a hostname or IP. A `:port` suffix is only for an outside port
-  that differs from the app port. A host group can override either value in its
-  own connection dialog. Changing a live group's app port stops and restarts the
-  session after confirmation.
+- Network defaults: a `Use Relay` tickbox swaps between the direct fields
+  (public address, app port) and the relay fields (relay host, relay port,
+  Relay ID, relay password). Both sets stay saved while hidden. The preview
+  says which address or relay goes into invites. `Test relay`, `Import relay
+  profile…` and Save sit under the fields, with inline errors. The relay
+  password is never shown after saving; leave the password field blank to keep
+  it. Importing a profile fills the fields and saves the password. These are the
+  defaults for host groups without their own connection. A host group can
+  override them in its own connection dialog. Changing a live group's app port
+  or relay stops and restarts the session after confirmation. Open invites whose
+  effective connection changed are cancelled.
 - Connection: Reconnect automatically, on by default. It retries a dropped
   friend connection for up to 30 minutes.
 - Security: Approve new devices.
@@ -151,8 +156,8 @@ LAN address, an encrypted hop, and the friend-side loopback address, with a note
 that only published ports cross. Then Hosting, Joining, Problems and Security.
 The hosting section reads the current app port and local IPv4 address so the
 router line is concrete, for example `Forward UDP 51820 to 192.168.1.20`, with
-Copy. It says plainly that only the app port is forwarded and that a CGNAT host
-cannot be reached without a relay, which this version does not have.
+Copy. It says plainly that only the app port is forwarded and points a CGNAT
+host at the self-hosted relay.
 
 ### Dialogs
 
@@ -161,8 +166,15 @@ cannot be reached without a relay, which this version does not have.
   followed by a read-only detected device name and the waiting card while the
   host decides.
 - Invite: when the session is off, a warning and `Start session and invite`
-  action. Otherwise friend's name, then the full code with Copy. Another group's
-  live session blocks the action instead of switching sessions.
+  action. Otherwise friend's name, the direct endpoint or relay route, then the
+  full code with Copy. Another group's live session blocks the action instead of
+  switching sessions.
+- Group connection: an `Override Settings` tickbox. Off shows a read-only
+  summary of the inherited direct or relay connection. On shows `Use Relay`, an
+  optional custom relay for the group, direct fields when relay is off, a live
+  preview and inline errors. `Reset` clears all group connection overrides and
+  the custom relay password; it is a form action committed by Save. The dialog
+  warns before a live restart and when open invites will be cancelled.
 - Publish a service: preset picker, name, protocol, game server IP, game server
   port(s), optional friend port, hint, and a live route preview. The IP starts
   at `127.0.0.1` with a visible helper explaining when to use another PC's LAN

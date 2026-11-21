@@ -120,9 +120,30 @@ without a new invite.
 The transport is a standard library, not homemade crypto. The app's own crypto
 code generates keys, builds certificates, hashes pins and hashes invite tokens.
 
+### Through a relay
+
+The optional self-hosted relay forwards UDP packets. It does not terminate the
+QUIC/TLS connection, so the host pin and the host/friend encryption stay end to
+end. The relay sees source addresses, timing, packet sizes and the fact that a
+session exists; it cannot read game traffic.
+
+- The host connects to the relay over TLS 1.3 on TCP, authenticates with the
+  relay password, and pins the relay public-key fingerprint (the Relay ID).
+- The host also opens one UDP socket to the same relay port and keeps the NAT
+  mapping alive. All friend traffic shares that socket.
+- Each invite carries a single-use 16-byte friend token. The relay stores only
+  its SHA-256 hash and expires it within one hour.
+- The relay assigns a 16-bit friend ID. The host app presents a synthetic UDP
+  address per friend to QUIC, so no per-friend port range is needed.
+- A changed relay key does not match the pinned Relay ID and the host refuses
+  the connection until the user enters the new Relay ID.
+
+The relay password authorizes a host to create a session. It is never put in an
+invite and is stored in the owner-only secret store, not in `settings.json`.
+
 ## Network surface
 
-Host:
+Host, direct mode:
 
 - one UDP socket for QUIC, default port 51820
 - nothing bound to the LAN or to a wildcard address for game services
@@ -130,10 +151,22 @@ Host:
   service configuration
 - for each UDP flow, a UDP socket to that same fixed target
 
+Host, relay mode:
+
+- one outbound TLS control connection to the relay on TCP
+- one outbound UDP socket to the relay's data port
+- no inbound port on the host PC
+
 Friend:
 
 - one or two loopback listeners per published service, on `127.0.0.1` only
-- one outgoing QUIC connection to the host
+- one outgoing QUIC connection to the host, directly or through the relay
+
+Relay:
+
+- one TCP port for the control channel, `7443` by default
+- one UDP port for data, the same number
+- no inbound connection to the host PC and no per-friend port range
 
 The app never asks for root, never creates a TUN device, and never changes a
 route or firewall rule.
@@ -154,9 +187,11 @@ Target validation:
 
 - Group data is JSON at `~/.local/share/lan-party/groups.json`, mode `0600`,
   directory `0700`.
-- Settings are JSON at `~/.config/lan-party/settings.json`, mode `0600`.
-- Private keys are separate files in `~/.local/share/lan-party/keys/` on Linux
-  or `%LocalAppData%\lan-party\keys\` on Windows, mode `0600` where the OS
+- Settings are JSON at `~/.config/lan-party/settings.json`, mode `0600`. Relay
+  host, port and Relay ID live here; relay passwords do not.
+- Private keys and relay passwords are separate files in
+  `~/.local/share/lan-party/keys/` on Linux or
+  `%LocalAppData%\lan-party\keys\` on Windows, mode `0600` where the OS
   supports it, in an owner-only directory. They are never written to the JSON,
   the invite, a log or the clipboard.
 - On Windows, settings live under `%AppData%\lan-party` and group data, keys and
@@ -202,6 +237,9 @@ The app writes no secrets to logs. It has no telemetry and no auto-update.
 | Stolen device key | Can impersonate that member until the host revokes it. A changed source address may be visible, but the key is the credential. Revoke and issue a new invite. |
 | Stolen host key | Can impersonate the host to friends who already have the pin. Owner-only file permissions and full-disk encryption are the protection. |
 | Malicious host | The host is the gateway and can see the traffic it publishes. That is inherent in the design. |
+| Malicious relay | Can drop, delay, reorder or observe packet metadata, but cannot read the end-to-end QUIC/TLS traffic or impersonate the host. |
+| Leaked Relay ID | Identifies the relay but grants no access. The relay password and friend tokens are separate. |
+| Stolen relay password | Can create host sessions on that relay, but cannot impersonate the real host to friends who pinned its key. Change the relay password and create new invites. |
 | Same-user malware | Can read the key files, settings and groups as your user. A desktop app cannot defend against a compromised desktop. |
 | Supply chain | Few dependencies, pinned versions, `govulncheck` in CI, no runtime downloads. |
 | Game server vulnerability | Not fixed by this app. An offline-mode Minecraft server is still an offline-mode Minecraft server. |
@@ -210,7 +248,8 @@ The app writes no secrets to logs. It has no telemetry and no auto-update.
 
 - The game server's own bugs, weak passwords or missing whitelists.
 - A machine that is already compromised as your user.
-- A host behind carrier-grade NAT. This version has no relay.
+- A relay that is down or refuses service. The host session fails instead of
+  silently falling back to a direct connection.
 - Someone who reads the invite before the intended friend redeems it. The
   approval card is the last chance to deny a stranger.
 - The host seeing which game traffic crosses the tunnel. That is the job.

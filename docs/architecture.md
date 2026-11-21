@@ -5,7 +5,7 @@ go, and which package owns which part.
 
 ## The short version
 
-The host listens on one UDP port. A friend connects over QUIC, verifies the
+In direct mode the host listens on one UDP port. A friend connects over QUIC, verifies the
 host's public key against the pin in the invite, and presents a device key. The
 host approves that key once. For every published service, the friend app opens
 a listener on `127.0.0.1`. A game connection becomes a QUIC stream, and the
@@ -111,6 +111,30 @@ maps `(published port, flow id)` to a UDP socket towards the target. Flows
 expire after 60 seconds of silence. The payload cap is 1190 bytes, which keeps
 the whole datagram under 1200 bytes.
 
+## Relay mode
+
+The relay is an optional separate binary. It forwards UDP packets and never
+terminates the inner QUIC/TLS connection.
+
+```text
+friend app -> relay:7443/tcp  TLS control + friend token (first UDP packet)
+friend app -> relay:7443/udp  [0x01][16-byte token][inner QUIC]
+relay      -> host UDP       [0x03][2-byte friend id][inner QUIC]
+host       -> relay UDP      [0x02][16-byte data token][2-byte friend id][inner QUIC]
+```
+
+- The host authenticates to the relay over a TLS 1.3 control channel with the
+  relay password and pins the Relay ID (the relay public-key fingerprint).
+- The host opens one UDP socket to the relay. `internal/relay.HostPacketConn`
+  strips the relay header and presents a stable synthetic `*net.UDPAddr` per
+  friend ID, so quic-go sees separate clients on one socket.
+- The friend uses `internal/relay.FriendPacketConn`, which prepends the friend
+  token to every packet. Each token is short-lived and single-use.
+- `internal/tunnel` accepts a supplied `net.PacketConn`, so the host and friend
+  reuse the existing QUIC/TLS stack unchanged.
+- Invite v2 carries the relay host, port, Relay ID and friend token. Invite v1
+  remains the direct format.
+
 ## Data on disk
 
 | Data | Where | Mode |
@@ -148,8 +172,10 @@ These are guards against a broken or malicious client, not billing limits.
 - It does not route IP packets.
 - It does not create a network interface.
 - It does not forward between friends.
-- It does not run a relay. A host behind carrier-grade NAT needs a reachable
-  address, and this version cannot provide one.
+- It does not run a public relay. The optional self-hosted relay is a separate
+  binary that forwards encrypted UDP packets; it never terminates the QUIC/TLS
+  connection. A host behind carrier-grade NAT runs its own relay on a reachable
+  machine.
 - It does not resolve hostnames for LAN targets. The host dials exactly the IP
   it configured.
 - It does not update itself. Download a new AppImage or replace the Windows folder.

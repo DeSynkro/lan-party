@@ -23,6 +23,8 @@ LAN Party is a small desktop app that gives your friends one local port onto a g
 
 Your friend pastes a one-time invite, you approve their device once. Their game then connects to `127.0.0.1:<port>` as if the server were on their own machine.
 
+If you cannot forward a port, run the optional self-hosted relay on a VPS or spare machine. It forwards encrypted packets and cannot read the game traffic. See [relay/README.md](relay/README.md).
+
 The traffic crosses one encrypted QUIC connection to your PC, where the app dials the real LAN target. There is no virtual network, no route, and no peer-to-peer path. Your router, your NAS and the rest of your LAN are never reachable from the friend's machine.
 
 <p align="center">
@@ -43,8 +45,8 @@ It is deliberately lightweight and to the point. If you need a whole virtual net
 
 - **Linux on x86-64** with X11 or Wayland. The AppImage is built on Ubuntu 22.04 against a deliberately low baseline: **GTK 4.6**, **GLib 2.72** and **glibc 2.34** so it supports older LTS releases, not just current distros. Any distro shipping GTK 4.6, GLib 2.72 and glibc 2.34 or newer should work. Officially tested with **CachyOS** and **SteamOS** please provide me feedback on your personal experience.
 - **Windows 10 or 11 on x86-64.** The portable zip includes the GTK4 runtime. No installer, admin rights or account is needed.
-- **One UDP port forwarded** on the host's router. Friends do not need a forward.
-- **A public address** that reaches the host: a hostname, a static IP, or a dynamic DNS name.
+- **One UDP port forwarded** on the host's router, or a self-hosted relay when a forward is not possible. Friends do not need a forward.
+- **A public address** that reaches the host: a hostname, a static IP, or a dynamic DNS name, or a relay for a host behind carrier-grade NAT.
 - No keyring daemon, no account and no telemetry.
 
 ### For the AppImage
@@ -172,7 +174,7 @@ The host is the only peer a friend connects to. Friends never see or connect to 
 
 1. Add the game server as a service: protocol, LAN IP, game port(s), and optionally, custom port(s) for your friends to use.
 2. Forward one UDP port on the router to the host PC.
-3. Set the public address in **Settings**.
+3. Set the public address in **Settings**, or enable **Use Relay** and enter the relay details.
 4. Start the session and create an invite.
 5. Approve the friend when they connect.
 
@@ -190,13 +192,13 @@ The in-app guide has the full walkthrough with your current ports and addresses 
 | --- | --- |
 | `~/.config/lan-party/settings.json` | Public address, app port, startup preferences |
 | `~/.local/share/lan-party/groups.json` | Groups, services, members, invite hashes |
-| `~/.local/share/lan-party/keys/` | Long-lived private keys (`0600`) |
+| `~/.local/share/lan-party/keys/` | Long-lived private keys and relay passwords (`0600`) |
 | `~/.config/autostart/lan-party.desktop` | Autostart entry when enabled |
 | `~/.local/share/lan-party/lan-party.log` | Application log. `%LocalAppData%\lan-party\lan-party.log` on Windows |
 
 On Windows, settings live under `%AppData%\lan-party`. Groups, keys and the log live under `%LocalAppData%\lan-party`. Start on login uses the per-user `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` key, not Task Scheduler or an admin service.
 
-The JSON files and key files are owner-only (`0600`). The data and key directories are `0700`. Invites contain no private keys. No traffic or telemetry leaves your machine except the encrypted tunnel between the host and an approved friend.
+The JSON files and key files are owner-only (`0600`). The data and key directories are `0700`. Invites contain no private keys. No telemetry leaves your machine. The only traffic is the encrypted tunnel between the host and an approved friend, plus encrypted packets to the relay when relay mode is enabled.
 
 ## Tech stack
 

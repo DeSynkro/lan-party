@@ -9,12 +9,13 @@ with your current port and local address filled in.
   installed.
 - The friend: a Linux or Windows PC with LAN Party installed. Windows 10 or 11
   on x86-64, or Linux on x86-64 with X11 or Wayland.
-- One UDP port forwarded on the host's router.
+- One UDP port forwarded on the host's router, or a self-hosted relay when a
+  forward is not possible (for example behind carrier-grade NAT).
 - A public address that reaches the host. A hostname is better than an IP
   address because it survives a changing home IP.
 
-The host is the only person who needs a router change. Friends do not forward
-anything.
+The host is the only person who needs a router change or a relay. Friends do
+not forward anything.
 
 On Windows, extract the portable zip and run `lan-party.cmd`. The first launch
 may show a SmartScreen warning because the build is not signed. Allow LAN Party
@@ -102,8 +103,35 @@ unless its effective endpoint also changes.
 
 If the router's WAN address is different from the public address your ISP gives
 you, you may be behind carrier-grade NAT. In that case a direct connection will
-not work. This version has no relay, so there is no workaround inside the app.
-Try a different connection or a public host.
+not work. Use the self-hosted relay described below instead of forwarding a
+port.
+
+### Host through a relay
+
+A relay lets friends join when you cannot forward a port. The relay is a small
+server you run on a VPS or spare machine. It forwards encrypted UDP packets and
+cannot read the game traffic. Your host key and the friend's connection stay end
+to end.
+
+1. Follow [relay/README.md](../relay/README.md) to start the relay. Docker and
+   native systemd installs both work. Note the relay host, port (`7443` by
+   default), Relay ID and password printed by the relay setup.
+2. In **Settings → Network defaults**, tick **Use Relay**. Enter the relay host,
+   relay port, Relay ID and password, or choose **Import relay profile…** and
+   pick the `relay-profile.json` file. The profile contains the password, so
+   delete it after importing.
+3. Choose **Test relay** to check the address, Relay ID pin and password.
+4. Start the session and create an invite as usual. The relay needs only TCP and
+   UDP on its one public port; the host PC needs no inbound port.
+
+The relay is private infrastructure. Friends never see the relay password; an
+invite carries a short-lived friend token instead. Do not post the Relay ID.
+The app has no **Share relay** action, and lending the relay to another host
+means giving them the password, which is not supported in the UI.
+
+If the relay changes its key, its Relay ID changes. Enter the new Relay ID and
+create new invites. Old invites stop working. Use `relayctl` on the relay host
+to change the password or rotate the key; see the relay README.
 
 ### Use a different address or port for one group
 
@@ -111,12 +139,17 @@ Settings holds the defaults for every group. A host group can override them for
 itself:
 
 1. Open the group and click **Change** next to the endpoint.
-2. Enter a public address, an app port, or both.
-3. Leave a field blank to use the default from Settings.
+2. Tick **Override Settings**.
+3. Choose **Use Relay** or direct mode, then enter the group's own values.
+   Leave direct fields blank to use the Settings defaults. A custom relay can
+   use its own host, port, Relay ID and password.
+4. Choose **Reset** to clear every group connection override and return to
+   Settings. Reset is a form action: choose **Save** to commit it.
 
-The card shows **Default** or **Custom** next to the endpoint. The address can
-include an outside port, just like the default. The app port is the UDP port on
-this PC.
+The card shows **Default** or **Custom** next to the endpoint, plus a **Relay**
+tag when the group uses one. The app port is the UDP port on this PC when direct
+mode is active. Changing the connection while a session is live restarts it;
+everyone disconnects briefly.
 
 Changing the app port while the session is live restarts it. Everyone
 disconnects briefly. If the advertised endpoint changes, open invites are
@@ -224,8 +257,8 @@ Check, in this order:
 4. A VPN on the host is not hiding the public address. Try excluding LAN Party
    from the VPN if the client supports per-app exclusions.
 5. The host is behind carrier-grade NAT. Compare the router's WAN address with
-   the address your ISP shows. If they differ, direct hosting will not work
-   without a relay, which this version does not have.
+   the address your ISP shows. If they differ, use the self-hosted relay and
+   check **Test relay** in Settings.
 
 ### The public address changed
 
