@@ -136,7 +136,12 @@ the invite.
   data directory or volume. Use `show-info` to view the values; keep that
   terminal private.
 - The relay is private host infrastructure. There is no share-relay action;
-  friends join through invites.
+  friends join through invites. After the first approved join, the host issues
+  a per-device reconnect token; the relay stores only its hash and accepts it
+  as reusable only while a host session exists.
+- The UDP data port is bound only while at least one host session is active.
+  When the host is offline, only the TLS control port remains, so a UDP port
+  checker may say closed. That is expected.
 - The Relay ID is a public identifier, not a secret and not an access grant.
   The password and private key are the secrets.
 - Do not give friends the relay password. Lending the relay to another host is

@@ -66,6 +66,11 @@ restarting the container updates `relay.json` and `relay-profile.json` without
 rotating the relay identity or password. Run `sudo ./relayctl showinfo` again
 and update the values in LAN Party.
 
+The UDP data port is only bound while a host session is active. When the host is
+offline, the container exposes just the TCP control port. A UDP port check may
+therefore report 7443 closed while the relay is idle; that is intended. Health
+checks should use the TCP port.
+
 ## Show the app values
 
 The relay ships with `relayctl` in this directory. On a source checkout it is

@@ -127,6 +127,10 @@ raw `lan-party-relay` commands below still work for scripts and advanced use.
 
 ## Show the values for the host app
 
+The UDP data port is bound only while a host session is active. When the host is
+offline, only the TLS control port remains. A UDP port check may report the port
+closed while the relay is idle; health checks should use TCP.
+
 The profile stays root-only on the relay. Display the values instead of copying
 the file:
 
