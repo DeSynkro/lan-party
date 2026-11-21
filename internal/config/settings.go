@@ -33,7 +33,7 @@ type Settings struct {
 	RelayHost         string `json:"relayHost,omitempty"`
 	RelayPort         int    `json:"relayPort,omitempty"`
 	RelayID           string `json:"relayID,omitempty"`
-	ForgetFriendsDays int    `json:"forgetFriendsDays,omitempty"`
+	ForgetFriendsDays int    `json:"forgetFriendsDays"`
 }
 
 // DefaultSettings returns the first-run values.

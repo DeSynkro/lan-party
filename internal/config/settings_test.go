@@ -136,6 +136,22 @@ func TestLoadSettingsFillsRelayPort(t *testing.T) {
 	}
 }
 
+func TestSettingsKeepsNeverForget(t *testing.T) {
+	p := testPaths(t)
+	s := DefaultSettings()
+	s.ForgetFriendsDays = 0
+	if err := SaveSettings(p, s); err != nil {
+		t.Fatal(err)
+	}
+	got, err := LoadSettings(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ForgetFriendsDays != 0 {
+		t.Fatalf("ForgetFriendsDays = %d, want 0", got.ForgetFriendsDays)
+	}
+}
+
 func TestSettingsInactiveFriendValidation(t *testing.T) {
 	for _, days := range []int{1, 5, 365, 0} {
 		s := DefaultSettings()
