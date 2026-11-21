@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -19,6 +20,12 @@ func TestSettingsDefaults(t *testing.T) {
 	s := DefaultSettings()
 	if s.AppPort != DefaultAppPort {
 		t.Fatalf("AppPort = %d", s.AppPort)
+	}
+	if s.RelayPort != DefaultRelayPort {
+		t.Fatalf("RelayPort = %d", s.RelayPort)
+	}
+	if s.UseRelay {
+		t.Fatal("UseRelay should be off by default")
 	}
 	if !s.ApproveNewDevices {
 		t.Fatal("ApproveNewDevices should be on by default")
@@ -85,6 +92,92 @@ func TestSaveSettingsRejectsBadPort(t *testing.T) {
 		if err := SaveSettings(testPaths(t), s); err == nil {
 			t.Fatalf("port %d was accepted", port)
 		}
+	}
+}
+
+func TestSettingsRelayRoundTrip(t *testing.T) {
+	p := testPaths(t)
+	want := DefaultSettings()
+	want.UseRelay = true
+	want.RelayHost = "relay.example.net"
+	want.RelayPort = 9443
+	want.RelayID = strings.Repeat("ab", 32)
+
+	if err := SaveSettings(p, want); err != nil {
+		t.Fatal(err)
+	}
+	got, err := LoadSettings(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Fatalf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestLoadSettingsFillsRelayPort(t *testing.T) {
+	p := testPaths(t)
+	if err := os.MkdirAll(p.ConfigDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	data := `{"appPort":51820,"relayHost":"relay.example.net","relayID":"` + strings.Repeat("ab", 32) + `"}`
+	if err := os.WriteFile(filepath.Join(p.ConfigDir, "settings.json"), []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := LoadSettings(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.RelayPort != DefaultRelayPort {
+		t.Fatalf("RelayPort = %d", got.RelayPort)
+	}
+}
+
+func TestSettingsRelayValidation(t *testing.T) {
+	valid := DefaultSettings()
+	valid.UseRelay = true
+	valid.RelayHost = "relay.example.net"
+	valid.RelayID = strings.Repeat("ab", 32)
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("valid relay settings = %v", err)
+	}
+
+	for _, host := range []string{"192.0.2.10", "2001:db8::10", "[2001:db8::10]"} {
+		s := valid
+		s.RelayHost = host
+		if err := s.Validate(); err != nil {
+			t.Errorf("relay host %q = %v", host, err)
+		}
+	}
+
+	for _, host := range []string{"", "relay example", "https://relay.example.net", "relay.example.net:7443"} {
+		s := valid
+		s.RelayHost = host
+		if err := s.Validate(); err == nil {
+			t.Errorf("relay host %q was accepted", host)
+		}
+	}
+
+	for _, port := range []int{0, -1, 65536} {
+		s := valid
+		s.RelayPort = port
+		if err := s.Validate(); err == nil {
+			t.Errorf("relay port %d was accepted", port)
+		}
+	}
+
+	for _, id := range []string{"", "abcd", strings.Repeat("zz", 32)} {
+		s := valid
+		s.RelayID = id
+		if err := s.Validate(); err == nil {
+			t.Errorf("Relay ID %q was accepted", id)
+		}
+	}
+
+	// Turning relay off keeps the saved values but stops requiring them.
+	off := DefaultSettings()
+	if err := off.Validate(); err != nil {
+		t.Fatalf("relay-off defaults = %v", err)
 	}
 }
 

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +16,9 @@ import (
 // DefaultAppPort is the UDP port the host listens on unless it is changed.
 const DefaultAppPort = 51820
 
+// DefaultRelayPort is the public TCP and UDP port of a relay.
+const DefaultRelayPort = 7443
+
 // Settings are machine-level preferences. They are not secret and do not
 // include group membership.
 type Settings struct {
@@ -25,6 +29,10 @@ type Settings struct {
 	ApproveNewDevices bool   `json:"approveNewDevices"`
 	PublicAddress     string `json:"publicAddress"`
 	AppPort           int    `json:"appPort"`
+	UseRelay          bool   `json:"useRelay,omitempty"`
+	RelayHost         string `json:"relayHost,omitempty"`
+	RelayPort         int    `json:"relayPort,omitempty"`
+	RelayID           string `json:"relayID,omitempty"`
 }
 
 // DefaultSettings returns the first-run values.
@@ -34,6 +42,7 @@ func DefaultSettings() Settings {
 		AutoReconnect:     true,
 		ApproveNewDevices: true,
 		AppPort:           DefaultAppPort,
+		RelayPort:         DefaultRelayPort,
 	}
 }
 
@@ -53,6 +62,9 @@ func LoadSettings(p Paths) (Settings, error) {
 	}
 	if s.AppPort == 0 {
 		s.AppPort = DefaultAppPort
+	}
+	if s.RelayPort == 0 {
+		s.RelayPort = DefaultRelayPort
 	}
 	return s, nil
 }
@@ -87,7 +99,44 @@ func (s Settings) Validate() error {
 	if s.AppPort < 1 || s.AppPort > 65535 {
 		return errors.New("the app port must be between 1 and 65535")
 	}
-	return ValidateAddress(s.PublicAddress)
+	if err := ValidateAddress(s.PublicAddress); err != nil {
+		return err
+	}
+	if s.UseRelay || strings.TrimSpace(s.RelayHost) != "" || strings.TrimSpace(s.RelayID) != "" {
+		if err := validateRelayHost(s.RelayHost); err != nil {
+			return err
+		}
+		if s.RelayPort < 1 || s.RelayPort > 65535 {
+			return errors.New("the relay port must be between 1 and 65535")
+		}
+		if len(s.RelayID) != 64 {
+			return errors.New("the Relay ID must be 64 hex characters")
+		}
+		if _, err := hex.DecodeString(s.RelayID); err != nil {
+			return errors.New("the Relay ID must be 64 hex characters")
+		}
+	}
+	return nil
+}
+
+func validateRelayHost(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return errors.New("the relay host is empty")
+	}
+	if strings.ContainsAny(value, " \t\r\n") {
+		return errors.New("the relay host cannot contain spaces")
+	}
+	if strings.Contains(value, "://") {
+		return errors.New("use a hostname or address, not a URL")
+	}
+	if ip := net.ParseIP(strings.Trim(value, "[]")); ip != nil {
+		return nil
+	}
+	if strings.Contains(value, ":") {
+		return errors.New("store the relay port separately from the relay host")
+	}
+	return validateHost(value)
 }
 
 // ValidateAddress accepts an empty value, a hostname, an IP address, or a
