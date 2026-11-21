@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/diamondburned/gotk4/pkg/core/glib"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 	"github.com/diamondburned/gotk4/pkg/pango"
 
@@ -131,11 +132,20 @@ func (u *probeUI) hostSessionCard(g group.Group, showError func(error), state *g
 			u.confirmEndSession(g)
 			return
 		}
-		if err := u.state.StartSession(g.ID); err != nil {
-			showError(err)
-			return
-		}
-		u.showGroup(g.ID)
+		action.SetSensitive(false)
+		action.SetLabel("Starting…")
+		go func() {
+			err := u.state.StartSession(g.ID)
+			glib.IdleAdd(func() {
+				if err != nil {
+					action.SetLabel("Start session")
+					action.SetSensitive(true)
+					showError(err)
+					return
+				}
+				u.showGroup(g.ID)
+			})
+		}()
 	})
 	top.Append(action)
 	card.Append(top)
