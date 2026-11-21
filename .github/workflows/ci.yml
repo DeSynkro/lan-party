@@ -302,7 +302,8 @@ jobs:
           port=$((20000 + RANDOM % 20000))
           cd relay/docker
           cp .env.example .env
-          sed -i "s/^LANPARTY_RELAY_PUBLIC_ADDRESS=.*/LANPARTY_RELAY_PUBLIC_ADDRESS=relay.test:${port}/" .env
+          sed -i "s/^LANPARTY_RELAY_PUBLIC_HOST=.*/LANPARTY_RELAY_PUBLIC_HOST=relay.test/" .env
+          sed -i "s/^LANPARTY_RELAY_PUBLIC_PORT=.*/LANPARTY_RELAY_PUBLIC_PORT=${port}/" .env
           sed -i "s/^LANPARTY_RELAY_PORT=.*/LANPARTY_RELAY_PORT=${port}/" .env
           echo "LANPARTY_RELAY_VERSION=source-ci" >> .env
 
@@ -318,7 +319,7 @@ jobs:
           docker compose logs --no-color | grep -q 'relay: created config'
           docker compose run --rm relay fingerprint
           docker compose run --rm relay show-profile | grep -q '"fingerprint"'
-          ./relayctl showinfo | grep -q 'Relay fingerprint:'
+          ./relayctl showinfo | grep -q 'Relay ID:'
           docker compose down -v
           rm -f .env
       - name: Smoke test release Compose
@@ -335,7 +336,8 @@ jobs:
           port=$((20000 + RANDOM % 20000))
           cd "${pkg}/docker"
           cp .env.example .env
-          sed -i "s/^LANPARTY_RELAY_PUBLIC_ADDRESS=.*/LANPARTY_RELAY_PUBLIC_ADDRESS=relay.test:${port}/" .env
+          sed -i "s/^LANPARTY_RELAY_PUBLIC_HOST=.*/LANPARTY_RELAY_PUBLIC_HOST=relay.test/" .env
+          sed -i "s/^LANPARTY_RELAY_PUBLIC_PORT=.*/LANPARTY_RELAY_PUBLIC_PORT=${port}/" .env
           sed -i "s/^LANPARTY_RELAY_PORT=.*/LANPARTY_RELAY_PORT=${port}/" .env
           echo "LANPARTY_RELAY_IMAGE=lan-party-relay:ci" >> .env
 
@@ -350,7 +352,7 @@ jobs:
           docker compose logs --no-color | grep -q 'relay: listening'
           docker compose logs --no-color | grep -q 'relay: created config'
           docker compose run --rm relay show-profile | grep -q '"fingerprint"'
-          ./relayctl showinfo | grep -q 'Relay fingerprint:'
+          ./relayctl showinfo | grep -q 'Relay ID:'
           docker compose down -v
       - name: Publish relay image
         if: startsWith(github.ref, 'refs/tags/v')

@@ -32,24 +32,25 @@ sudo install -m 0644 native/lan-party-relay.service /etc/systemd/system/lan-part
 sudo install -d -m 0700 /etc/lan-party-relay
 ```
 
-Run setup. It asks for the public address. Use the hostname or IP that friends
-will connect to, optionally with the port:
+Run setup. It asks for the public host and port. Use the hostname or IP that
+friends will connect to:
 
 ```sh
 sudo lan-party-relay setup --dir /etc/lan-party-relay
 ```
 
-Examples of the public address:
+Examples:
 
 ```text
-relay.example.com
-relay.example.com:7443
-203.0.113.10
-203.0.113.10:8443
+Host: relay.example.com
+Port: 7443
+
+Host: 203.0.113.10
+Port: 8443
 ```
 
-By default the relay listens on `7443` even when the public address uses
-another port, such as `relay.example.com:8443` behind a firewall redirect. To
+The port defaults to `7443`. By default the relay listens on `7443` even when
+the public port is another port, such as `8443` behind a firewall redirect. To
 bind the public port directly instead, pass `--listen`:
 
 ```sh

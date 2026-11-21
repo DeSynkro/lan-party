@@ -23,6 +23,9 @@ func TestSetupCreatesRelayAndProfile(t *testing.T) {
 	if profile.Address != "relay.example.net:7443" || profile.Password != password {
 		t.Fatalf("profile = %+v", profile)
 	}
+	if profile.Host != "relay.example.net" || profile.Port != 7443 {
+		t.Fatalf("profile host/port = %q/%d", profile.Host, profile.Port)
+	}
 	cfg, err := LoadConfig(ConfigPath(dir))
 	if err != nil {
 		t.Fatal(err)
@@ -51,6 +54,56 @@ func TestSetupCreatesRelayAndProfile(t *testing.T) {
 				t.Fatalf("%s mode = %o, want 600", filepath.Base(path), mode)
 			}
 		}
+	}
+}
+
+func TestSetupSeparateHostPort(t *testing.T) {
+	dir := t.TempDir()
+	profile, err := Setup(SetupOptions{
+		Dir:        dir,
+		PublicHost: "relay.example.net",
+		PublicPort: 8443,
+		Password:   "secret",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if profile.Host != "relay.example.net" || profile.Port != 8443 {
+		t.Fatalf("profile host/port = %q/%d", profile.Host, profile.Port)
+	}
+	if profile.Address != "relay.example.net:8443" {
+		t.Fatalf("profile address = %q", profile.Address)
+	}
+	cfg, err := LoadConfig(ConfigPath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.PublicAddress != "relay.example.net:8443" {
+		t.Fatalf("config public address = %q", cfg.PublicAddress)
+	}
+
+	ipv6, err := Setup(SetupOptions{
+		Dir:        t.TempDir(),
+		PublicHost: "2001:db8::1",
+		PublicPort: 7443,
+		Password:   "secret",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ipv6.Host != "2001:db8::1" || ipv6.Port != 7443 || ipv6.Address != "[2001:db8::1]:7443" {
+		t.Fatalf("IPv6 profile = %+v", ipv6)
+	}
+}
+
+func TestHostProfileHostPortFallback(t *testing.T) {
+	profile := HostProfile{Address: "relay.example.net:8443"}
+	host, port, err := profile.HostPort()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if host != "relay.example.net" || port != 8443 {
+		t.Fatalf("host/port = %q/%d", host, port)
 	}
 }
 

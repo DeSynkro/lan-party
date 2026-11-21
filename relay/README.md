@@ -62,7 +62,7 @@ For a VPS with Docker. Use the files in `docker/`.
 ```sh
 cd docker
 cp .env.example .env
-# edit LANPARTY_RELAY_PUBLIC_ADDRESS for your public address
+# edit LANPARTY_RELAY_PUBLIC_HOST and LANPARTY_RELAY_PUBLIC_PORT
 sudo docker compose up -d
 sudo ./relayctl showinfo
 ```
@@ -84,13 +84,14 @@ Then install the binary and unit from `native/`. See
 
 ## Setup flow
 
-`lan-party-relay setup` asks for the public relay address, then generates:
+`lan-party-relay setup` asks for the public relay host and port, then
+generates:
 
 - the relay identity key (`relay.key`)
 - the relay config and salted password hash (`relay.json`)
 - the host profile (`relay-profile.json`)
 
-The host profile contains the relay address, Relay ID and relay password. It
+The host profile contains the relay host, port, Relay ID and relay password. It
 stays in the relay data directory or volume. Run
 `lan-party-relay show-info --dir <relay-dir>` (or `sudo ./relayctl showinfo` for
 Docker) to display the three values, enter them in LAN Party under **Settings >
@@ -233,7 +234,8 @@ registered. Treat it as idempotent.
 ```
 
 - `listen` is the local TCP and UDP bind address.
-- `publicAddress` is written to the host profile for the app.
+- `publicAddress` is the canonical internal `host:port`; the host profile also
+  stores `host` and `port` separately for the app.
 - `maxSessions` defaults to 16 host sessions. The desktop app currently uses one
   live session, so the default is generous.
 - `maxFriends` defaults to 64 per session.

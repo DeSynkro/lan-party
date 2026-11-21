@@ -137,8 +137,8 @@ Spike status:
   second friend after the first one idles out or disconnects.
 - Tokens are stored as SHA-256 hashes. Raw tokens and the relay password are
   never stored or logged.
-- Relay address is `host:port`. The address includes the port. No separate relay
-  port field.
+- Relay host and port are separate fields in the UI, CLI and profile. The
+  profile also stores a canonical `address` (`host:port`) for compatibility.
 - The Relay ID (public-key fingerprint) is printed by setup and in the relay
   logs, and is written into the host profile.
 
@@ -174,14 +174,15 @@ Host groups use these defaults unless they set their own connection.
 
 [x] Use Relay
 
-Relay Address     [ relay.example.net:7443 ]
-Relay ID [ ABCD…                  ]
-Relay Password    [ ••••••••               ]
+Relay Host        [ relay.example.net       ]
+Relay Port        [ 7443                    ]
+Relay ID          [ ABCD…                   ]
+Relay Password    [ ••••••••                ]
 
 The relay is a server you run. Friends do not need the relay
 password. The invite carries a short-lived token.
 
-Friends connect through relay.example.net:7443.
+Friends connect through relay.example.net on port 7443.
 No port forward is needed.
 
 [ Test Relay ]
@@ -207,7 +208,7 @@ This changes only this group.
 
 [ ] Override Settings
     Using Settings: Relay
-    Relay: relay.example.net:7443 · Relay ID ABCD…
+    Relay: relay.example.net · port 7443 · Relay ID ABCD…
     Friends connect through the relay.
 
 [ Cancel ]  [ Save ]
@@ -220,12 +221,13 @@ Override on: editable connection.
 
 [x] Use Relay
     [ ] Custom relay for this group
-        Relay Address     [ … ]
-        Relay ID [ … ]
+        Relay Host        [ … ]
+        Relay Port        [ … ]
+        Relay ID          [ … ]
         Relay Password    [ … ]
 
     Relay: from Settings / custom
-    Friends connect through relay.example.net:7443.
+    Friends connect through relay.example.net on port 7443.
 
 [ Reset ]  [ Cancel ]  [ Save ]
 ```
@@ -263,8 +265,8 @@ Rules:
 
 ## State and migration
 
-- Settings gains relay address, Relay ID (profile fingerprint), relay password
-  secret, and a `UseRelay` default flag. Default is off.
+- Settings gains relay host and port, Relay ID (profile fingerprint), relay
+  password secret, and a `UseRelay` default flag. Default is off.
 - Group gains:
   - `OverrideSettings bool`
   - `UseRelay bool`
@@ -285,7 +287,7 @@ Relay binary: Go, no GTK, separate `cmd/lan-party-relay`. See
 
 - TCP control port and UDP data port share the same number, `7443`.
 - The container's first `run` auto-creates the relay key, config, password and
-  host profile if the config is missing and `LANPARTY_RELAY_PUBLIC_ADDRESS` is
+  host profile if the config is missing and `LANPARTY_RELAY_PUBLIC_HOST` is
   set. The relay prints its Relay ID in its logs. No separate setup command is
   needed.
 - No default credentials. No password in a committed env file. The generated
@@ -321,7 +323,8 @@ services:
         condition: service_completed_successfully
     environment:
       LANPARTY_RELAY_CONFIG: /data/relay.json
-      LANPARTY_RELAY_PUBLIC_ADDRESS: "${LANPARTY_RELAY_PUBLIC_ADDRESS:-127.0.0.1:7443}"
+      LANPARTY_RELAY_PUBLIC_HOST: "${LANPARTY_RELAY_PUBLIC_HOST:-127.0.0.1}"
+      LANPARTY_RELAY_PUBLIC_PORT: "${LANPARTY_RELAY_PUBLIC_PORT:-7443}"
     ports:
       - "${LANPARTY_RELAY_PORT:-7443}:7443/tcp"
       - "${LANPARTY_RELAY_PORT:-7443}:7443/udp"
@@ -404,16 +407,16 @@ Native path:
 sudo lan-party-relay setup --dir /etc/lan-party-relay
 ```
 
-The setup asks for the public relay address (port defaults to `7443`), generates
-the relay identity key and password, writes `relay.json`, `relay.key` and
-`relay-profile.json`, and prints the profile path and Relay ID.
+The setup asks for the public relay host and port (port defaults to `7443`),
+generates the relay identity key and password, writes `relay.json`, `relay.key`
+and `relay-profile.json`, and prints the profile path and Relay ID.
 
 Docker path:
 
 ```sh
 cd relay/docker
 cp .env.example .env
-# set LANPARTY_RELAY_PUBLIC_ADDRESS
+# set LANPARTY_RELAY_PUBLIC_HOST and LANPARTY_RELAY_PUBLIC_PORT
 sudo docker compose up --build -d
 ```
 
@@ -425,11 +428,11 @@ sudo ./relayctl showinfo
 ```
 
 The container is the same relay binary. The profile stays in the protected
-volume; the admin copies the address, Relay ID and password from the terminal
+volume; the admin copies the host, port, Relay ID and password from the terminal
 instead of exporting a plaintext profile file. The relay private key never
 leaves the relay machine and is never in the profile or an invite.
 
-The main app does not generate relay bundles. It accepts the relay address,
+The main app does not generate relay bundles. It accepts the relay host, port,
 Relay ID and password manually (and may import a profile file later), pins the
 Relay ID and offers **Test relay**.
 
@@ -455,7 +458,7 @@ Relay ID alone does not grant access.
 config path for `run` and `relay-id`.
 
 Friends never configure the relay. They paste the invite, which carries the
-relay address, pin and short-lived friend token.
+relay host, port, Relay ID and a short-lived friend token.
 
 No public relay and no automatic deployment over SSH in 1.2.
 
@@ -545,7 +548,7 @@ Resolved:
 The relay is ready for its Docker Compose test. After that, start app
 integration in this order:
 
-1. Invite v2 with relay address, Relay ID and friend token.
+1. Invite v2 with relay host, port, Relay ID and friend token.
 2. Host/friend relay transport hook around the existing QUIC socket:
    token/header wrapper on the friend side and a synthetic per-friend address
    wrapper on the host side.

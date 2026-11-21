@@ -14,7 +14,7 @@ From a source checkout, `compose.override.yaml` builds the image locally:
 ```sh
 cd relay/docker
 cp .env.example .env
-# edit LANPARTY_RELAY_PUBLIC_ADDRESS for your public address
+# edit LANPARTY_RELAY_PUBLIC_HOST and LANPARTY_RELAY_PUBLIC_PORT
 sudo docker compose up --build -d
 sudo docker compose logs -f
 ```
@@ -24,7 +24,7 @@ From a release zip, the published image is used:
 ```sh
 cd docker
 cp .env.example .env
-# edit LANPARTY_RELAY_PUBLIC_ADDRESS for your public address
+# edit LANPARTY_RELAY_PUBLIC_HOST and LANPARTY_RELAY_PUBLIC_PORT
 sudo docker compose up -d
 sudo docker compose logs -f
 ```
@@ -38,23 +38,30 @@ Then show the values for the host app:
 sudo ./relayctl showinfo
 ```
 
-Set `LANPARTY_RELAY_PUBLIC_ADDRESS` to the hostname or IP that friends and the
-host app use, with the public port:
+Set `LANPARTY_RELAY_PUBLIC_HOST` to the hostname or IP that friends and the
+host app use, and `LANPARTY_RELAY_PUBLIC_PORT` to the public port:
 
 ```text
-relay.example.com
-relay.example.com:7443
-203.0.113.10
-203.0.113.10:8443
+LANPARTY_RELAY_PUBLIC_HOST=relay.example.com
+LANPARTY_RELAY_PUBLIC_PORT=7443
 ```
 
-If the public port is not `7443`, set `LANPARTY_RELAY_PORT` in `.env` to the
-same public port. The container listens on `7443` internally.
+For example, `203.0.113.10` on port `8443`:
 
-The address is written into the host profile on the first start. Changing it
-afterwards does not update the existing profile; recreate the relay with
-`sudo docker compose down -v` if you need to change it (this rotates the relay
-identity).
+```text
+LANPARTY_RELAY_PUBLIC_HOST=203.0.113.10
+LANPARTY_RELAY_PUBLIC_PORT=8443
+LANPARTY_RELAY_PORT=8443
+```
+
+`LANPARTY_RELAY_PORT` is the host port mapped to the container's internal
+`7443`. Keep it equal to the public port unless you have an external port
+mapping.
+
+The host and port are written into the host profile on the first start.
+Changing them afterwards does not update the existing profile; recreate the
+relay with `sudo docker compose down -v` if you need to change them (this
+rotates the relay identity).
 
 ## Show the app values
 
@@ -65,12 +72,13 @@ The relay ships with `relayctl` in this directory. On a source checkout it is
 sudo ./relayctl showinfo
 ```
 
-It prints the three values the host app needs:
+It prints the four values the host app needs:
 
 ```text
-Relay address:     relay.example.com:7443
-Relay ID:          774e2e…
-Relay password:    …
+Relay host:       relay.example.com
+Relay port:       7443
+Relay ID:         774e2e…
+Relay password:   …
 ```
 
 Enter them in LAN Party under **Settings > Relay**. The app pins the Relay ID.
@@ -221,7 +229,7 @@ sudo docker compose up --build -d
 
 **Address already in use.** Another process on the relay machine owns the host
 port. Check with `sudo ss -lntup | grep 7443` or change
-`LANPARTY_RELAY_PORT` in `.env` and `LANPARTY_RELAY_PUBLIC_ADDRESS` together.
+`LANPARTY_RELAY_PORT` and `LANPARTY_RELAY_PUBLIC_PORT` together.
 
 **Friends cannot connect.** Confirm both TCP and UDP are open on the relay
 machine and at the VPS provider. The relay also needs outbound UDP to reach

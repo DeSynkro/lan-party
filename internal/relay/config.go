@@ -42,14 +42,30 @@ type Config struct {
 type HostProfile struct {
 	Version     int    `json:"version"`
 	Address     string `json:"address"`
+	Host        string `json:"host,omitempty"`
+	Port        int    `json:"port,omitempty"`
 	Fingerprint string `json:"fingerprint"`
 	Password    string `json:"password"`
+}
+
+// HostPort returns the profile's separate host and port, falling back to the
+// canonical Address for profiles created before the fields were split.
+func (p HostProfile) HostPort() (string, int, error) {
+	if p.Host != "" && p.Port > 0 {
+		return p.Host, p.Port, nil
+	}
+	if p.Address == "" {
+		return "", 0, errors.New("host profile has no relay address")
+	}
+	return hostPortFromAddress(p.Address)
 }
 
 // SetupOptions are the inputs to a first-run relay setup.
 type SetupOptions struct {
 	Dir           string
 	PublicAddress string
+	PublicHost    string
+	PublicPort    int
 	Listen        string
 	Password      string
 }
@@ -66,7 +82,11 @@ func Setup(options SetupOptions) (HostProfile, error) {
 	if dir == "" {
 		return HostProfile{}, errors.New("a relay data directory is required")
 	}
-	public, _, err := normalizePublicAddress(options.PublicAddress)
+	public, err := publicAddressFor(options.PublicHost, options.PublicPort, options.PublicAddress)
+	if err != nil {
+		return HostProfile{}, err
+	}
+	host, port, err := hostPortFromAddress(public)
 	if err != nil {
 		return HostProfile{}, err
 	}
@@ -133,6 +153,8 @@ func Setup(options SetupOptions) (HostProfile, error) {
 	profile := HostProfile{
 		Version:     Version,
 		Address:     public,
+		Host:        host,
+		Port:        port,
 		Fingerprint: fingerprint,
 		Password:    password,
 	}
@@ -227,6 +249,11 @@ func SetPassword(dir, password string) error {
 		if err := json.Unmarshal(data, &profile); err != nil {
 			return fmt.Errorf("parse host profile: %w", err)
 		}
+		if profile.Host == "" || profile.Port == 0 {
+			if host, port, hostPortErr := profile.HostPort(); hostPortErr == nil {
+				profile.Host, profile.Port = host, port
+			}
+		}
 		profile.Password = password
 		if err := SaveProfile(profilePath, profile); err != nil {
 			return err
@@ -236,9 +263,15 @@ func SetPassword(dir, password string) error {
 		if idErr != nil {
 			return idErr
 		}
+		host, port, hostPortErr := hostPortFromAddress(cfg.PublicAddress)
+		if hostPortErr != nil {
+			return hostPortErr
+		}
 		profile := HostProfile{
 			Version:     Version,
 			Address:     cfg.PublicAddress,
+			Host:        host,
+			Port:        port,
 			Fingerprint: fingerprint,
 			Password:    password,
 		}
@@ -285,6 +318,37 @@ func (cfg Config) validate() error {
 		return errors.New("relay limits cannot be negative")
 	}
 	return nil
+}
+
+func publicAddressFor(host string, port int, address string) (string, error) {
+	host = strings.TrimSpace(host)
+	if host != "" {
+		host = strings.TrimPrefix(strings.TrimSuffix(host, "]"), "[")
+		if port == 0 {
+			port = DefaultPort
+		}
+		if port < 1 || port > 65535 {
+			return "", errors.New("the public relay port must be between 1 and 65535")
+		}
+		if strings.ContainsAny(host, " /") || (strings.Contains(host, ":") && net.ParseIP(host) == nil) {
+			return "", errors.New("the public relay host is invalid")
+		}
+		return net.JoinHostPort(host, strconv.Itoa(port)), nil
+	}
+	value, _, err := normalizePublicAddress(address)
+	return value, err
+}
+
+func hostPortFromAddress(address string) (string, int, error) {
+	host, portText, err := net.SplitHostPort(address)
+	if err != nil {
+		return "", 0, fmt.Errorf("public relay address: %w", err)
+	}
+	port, err := strconv.Atoi(portText)
+	if err != nil || port < 1 || port > 65535 {
+		return "", 0, errors.New("the public relay port must be between 1 and 65535")
+	}
+	return host, port, nil
 }
 
 func normalizePublicAddress(value string) (address string, port int, err error) {

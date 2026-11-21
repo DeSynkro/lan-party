@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -74,7 +75,9 @@ func configDefault() string {
 func runSetup(args []string) {
 	flags := flag.NewFlagSet("setup", flag.ExitOnError)
 	dir := flags.String("dir", workingDir(), "relay data directory")
-	address := flags.String("address", "", "public relay address as host or host:port")
+	host := flags.String("host", "", "public relay host or IP")
+	port := flags.Int("port", 0, "public relay port (default 7443)")
+	address := flags.String("address", "", "legacy public relay address as host:port")
 	listen := flags.String("listen", "", "local listen address as host:port")
 	password := flags.String("password", "", "relay password (or LANPARTY_RELAY_PASSWORD)")
 	nonInteractive := flags.Bool("non-interactive", false, "do not prompt")
@@ -83,21 +86,45 @@ func runSetup(args []string) {
 	if *password == "" {
 		*password = os.Getenv("LANPARTY_RELAY_PASSWORD")
 	}
+	*host = strings.TrimSpace(*host)
 	*address = strings.TrimSpace(*address)
-	for *address == "" {
+	if *address != "" && (*host != "" || *port != 0) {
+		log.Fatal("setup: use --host and --port, or --address, not both")
+	}
+	if *host == "" && *address == "" {
 		if *nonInteractive {
-			log.Fatal("setup: --address is required in non-interactive mode")
+			log.Fatal("setup: --host (and optional --port) or --address is required in non-interactive mode")
 		}
-		answer, err := prompt("Public relay address (host or host:port, default port 7443): ")
+		answer, err := prompt("Public relay host or IP: ")
 		if err != nil {
 			log.Fatal(err)
 		}
-		*address = answer
+		*host = answer
+		for *host == "" {
+			answer, err = prompt("Public relay host or IP: ")
+			if err != nil {
+				log.Fatal(err)
+			}
+			*host = answer
+		}
+		portText, err := prompt("Public relay port [7443]: ")
+		if err != nil {
+			log.Fatal(err)
+		}
+		if strings.TrimSpace(portText) != "" {
+			parsed, err := strconv.Atoi(strings.TrimSpace(portText))
+			if err != nil {
+				log.Fatal("setup: the public relay port must be a number")
+			}
+			*port = parsed
+		}
 	}
 
 	profile, err := relay.Setup(relay.SetupOptions{
 		Dir:           *dir,
 		PublicAddress: *address,
+		PublicHost:    *host,
+		PublicPort:    *port,
 		Listen:        *listen,
 		Password:      *password,
 	})
@@ -106,10 +133,15 @@ func runSetup(args []string) {
 	}
 	configPath := relay.ConfigPath(*dir)
 	profilePath := relay.ProfilePath(*dir)
+	profileHost, profilePort, err := profile.HostPort()
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Printf(`Relay configured in %s
 
-Public address: %s
-Fingerprint:    %s
+Relay host:     %s
+Relay port:     %d
+Relay ID:       %s
 Host profile:   %s
 
 The host profile contains the relay password. Keep it private.
@@ -117,7 +149,7 @@ Run "lan-party-relay show-info --dir %s" to display the values for the host app.
 
 Start the relay with:
   lan-party-relay run --config %s
-`, *dir, profile.Address, profile.Fingerprint, profilePath, *dir, configPath)
+`, *dir, profileHost, profilePort, profile.Fingerprint, profilePath, *dir, configPath)
 }
 
 func runRelay(args []string) {
@@ -130,14 +162,24 @@ func runRelay(args []string) {
 		if !errors.Is(err, os.ErrNotExist) {
 			log.Fatal(err)
 		}
-		public := strings.TrimSpace(os.Getenv("LANPARTY_RELAY_PUBLIC_ADDRESS"))
-		if public == "" {
-			log.Fatalf("relay is not configured at %s; set LANPARTY_RELAY_PUBLIC_ADDRESS to create it automatically, or run `lan-party-relay setup --dir %s`",
+		publicHost := strings.TrimSpace(os.Getenv("LANPARTY_RELAY_PUBLIC_HOST"))
+		publicAddress := strings.TrimSpace(os.Getenv("LANPARTY_RELAY_PUBLIC_ADDRESS"))
+		publicPort := 0
+		if portText := strings.TrimSpace(os.Getenv("LANPARTY_RELAY_PUBLIC_PORT")); portText != "" {
+			publicPort, err = strconv.Atoi(portText)
+			if err != nil {
+				log.Fatalf("relay auto-setup: LANPARTY_RELAY_PUBLIC_PORT is not a number: %q", portText)
+			}
+		}
+		if publicHost == "" && publicAddress == "" {
+			log.Fatalf("relay is not configured at %s; set LANPARTY_RELAY_PUBLIC_HOST (and optional LANPARTY_RELAY_PUBLIC_PORT), or run `lan-party-relay setup --dir %s`",
 				*configPath, filepath.Dir(*configPath))
 		}
 		profile, setupErr := relay.Setup(relay.SetupOptions{
 			Dir:           filepath.Dir(*configPath),
-			PublicAddress: public,
+			PublicHost:    publicHost,
+			PublicPort:    publicPort,
+			PublicAddress: publicAddress,
 			Password:      os.Getenv("LANPARTY_RELAY_PASSWORD"),
 		})
 		if setupErr != nil {
@@ -265,16 +307,23 @@ func runShowInfo(args []string) {
 	if err := json.Unmarshal(data, &profile); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Relay address:     %s\n", profile.Address)
-	fmt.Printf("Relay ID:          %s\n", profile.Fingerprint)
-	fmt.Printf("Relay password:    %s\n", profile.Password)
+	profileHost, profilePort, err := profile.HostPort()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Relay host:       %s\n", profileHost)
+	fmt.Printf("Relay port:       %d\n", profilePort)
+	fmt.Printf("Relay ID:         %s\n", profile.Fingerprint)
+	fmt.Printf("Relay password:   %s\n", profile.Password)
 	fmt.Println("\nEnter these in LAN Party under Settings > Relay.")
 	fmt.Println("The relay is host-only: keep this terminal private, and share invites instead of the Relay ID or password.")
 }
 
+var inputReader = bufio.NewReader(os.Stdin)
+
 func prompt(label string) (string, error) {
 	fmt.Print(label)
-	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
+	line, err := inputReader.ReadString('\n')
 	if err != nil && line == "" {
 		return "", err
 	}
