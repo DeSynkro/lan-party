@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/desynkro/lan-party/internal/relay"
 )
 
 func testPin() string {
@@ -28,6 +30,21 @@ func testInvite(now time.Time) Invite {
 		PeerName:  "Ash",
 		Expires:   now.Add(time.Hour),
 	}
+}
+
+func testRelayInvite(now time.Time) Invite {
+	inv := testInvite(now)
+	inv.Version = RelayVersion
+	inv.Endpoint = ""
+	inv.RelayHost = "relay.example.net"
+	inv.RelayPort = 7443
+	inv.RelayID = strings.Repeat("ab", 32)
+	_, token, err := relay.NewFriendToken()
+	if err != nil {
+		panic(err)
+	}
+	inv.RelayToken = token
+	return inv
 }
 
 func rawCode(t *testing.T, inv Invite) string {
@@ -103,6 +120,46 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 	}
 	if got.PeerName != inv.PeerName || !got.Expires.Equal(inv.Expires) {
 		t.Fatalf("decoded = %+v", got)
+	}
+}
+
+func TestRelayInviteRoundTrip(t *testing.T) {
+	now := time.Now().UTC()
+	inv := testRelayInvite(now)
+	code, err := Encode(inv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := Decode(code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Version != RelayVersion || got.RelayHost != inv.RelayHost || got.RelayPort != inv.RelayPort {
+		t.Fatalf("decoded relay invite = %+v", got)
+	}
+	if got.RelayID != inv.RelayID || got.RelayToken != inv.RelayToken {
+		t.Fatalf("decoded relay details = %+v", got)
+	}
+	if got.Endpoint != "" {
+		t.Fatalf("relay invite endpoint = %q", got.Endpoint)
+	}
+}
+
+func TestRelayInviteRejectsBadFields(t *testing.T) {
+	now := time.Now().UTC()
+	cases := []func(*Invite){
+		func(inv *Invite) { inv.RelayHost = "" },
+		func(inv *Invite) { inv.RelayPort = 0 },
+		func(inv *Invite) { inv.RelayID = "short" },
+		func(inv *Invite) { inv.RelayID = strings.Repeat("zz", 32) },
+		func(inv *Invite) { inv.RelayToken = "not a token" },
+	}
+	for i, mutate := range cases {
+		inv := testRelayInvite(now)
+		mutate(&inv)
+		if _, err := Decode(rawCode(t, inv)); err == nil {
+			t.Errorf("case %d accepted a bad relay invite", i)
+		}
 	}
 }
 

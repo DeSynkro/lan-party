@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/base32"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,10 +17,17 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/desynkro/lan-party/internal/relay"
 )
 
-// CurrentVersion is the only invite format this build understands.
-const CurrentVersion = 1
+const (
+	// CurrentVersion is the direct-connect invite format. It stays compatible
+	// with 1.1 clients.
+	CurrentVersion = 1
+	// RelayVersion adds relay host, port, Relay ID and friend token fields.
+	RelayVersion = 2
+)
 
 const (
 	codePrefix   = "lp1_"
@@ -31,15 +39,19 @@ const (
 // Invite is the decoded payload. The token is the one-time secret; the pin is
 // the host's public-key fingerprint. No private key is ever part of it.
 type Invite struct {
-	Version   int       `json:"v"`
-	GroupID   string    `json:"group"`
-	GroupName string    `json:"groupName"`
-	HostName  string    `json:"hostName"`
-	Endpoint  string    `json:"endpoint"`
-	HostPin   string    `json:"hostPin"`
-	Token     string    `json:"token"`
-	PeerName  string    `json:"peerName"`
-	Expires   time.Time `json:"expires"`
+	Version    int       `json:"v"`
+	GroupID    string    `json:"group"`
+	GroupName  string    `json:"groupName"`
+	HostName   string    `json:"hostName"`
+	Endpoint   string    `json:"endpoint,omitempty"`
+	HostPin    string    `json:"hostPin"`
+	Token      string    `json:"token"`
+	RelayHost  string    `json:"relayHost,omitempty"`
+	RelayPort  int       `json:"relayPort,omitempty"`
+	RelayID    string    `json:"relayID,omitempty"`
+	RelayToken string    `json:"relayToken,omitempty"`
+	PeerName   string    `json:"peerName"`
+	Expires    time.Time `json:"expires"`
 }
 
 // NewToken returns a formatted one-time token and the hash the host stores.
@@ -122,7 +134,9 @@ func Decode(code string) (Invite, error) {
 // Validate checks the shape of an invite. A zero now skips the expiry check,
 // which is only useful in tests.
 func Validate(inv Invite, now time.Time) error {
-	if inv.Version != CurrentVersion {
+	switch inv.Version {
+	case CurrentVersion, RelayVersion:
+	default:
 		return fmt.Errorf("invite version %d is not supported", inv.Version)
 	}
 	if strings.TrimSpace(inv.GroupID) == "" || strings.TrimSpace(inv.GroupName) == "" || strings.TrimSpace(inv.HostName) == "" {
@@ -131,8 +145,29 @@ func Validate(inv Invite, now time.Time) error {
 	if strings.TrimSpace(inv.PeerName) == "" {
 		return errors.New("the invite is missing your name")
 	}
-	if err := validateEndpoint(inv.Endpoint); err != nil {
-		return err
+	if inv.Version == CurrentVersion {
+		if err := validateEndpoint(inv.Endpoint); err != nil {
+			return err
+		}
+	} else {
+		if strings.TrimSpace(inv.RelayHost) == "" {
+			return errors.New("the invite is missing the relay host")
+		}
+		if inv.RelayPort < 1 || inv.RelayPort > 65535 {
+			return errors.New("the invite has a bad relay port")
+		}
+		if err := validateEndpoint(net.JoinHostPort(inv.RelayHost, strconv.Itoa(inv.RelayPort))); err != nil {
+			return errors.New("the invite has a bad relay address")
+		}
+		if len(inv.RelayID) != 64 {
+			return errors.New("the invite has a bad Relay ID")
+		}
+		if _, err := hex.DecodeString(inv.RelayID); err != nil {
+			return errors.New("the invite has a bad Relay ID")
+		}
+		if _, err := relay.DecodeFriendToken(inv.RelayToken); err != nil {
+			return errors.New("the invite has a bad relay token")
+		}
 	}
 	if _, err := tokenBody(inv.Token); err != nil {
 		return errors.New("the invite has a bad token")

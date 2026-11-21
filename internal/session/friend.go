@@ -3,14 +3,17 @@ package session
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/desynkro/lan-party/internal/forward"
 	"github.com/desynkro/lan-party/internal/group"
 	"github.com/desynkro/lan-party/internal/invite"
+	"github.com/desynkro/lan-party/internal/relay"
 	"github.com/desynkro/lan-party/internal/secure"
 	"github.com/desynkro/lan-party/internal/tunnel"
 )
@@ -64,9 +67,29 @@ func Join(ctx context.Context, cfg JoinConfig) (*Friend, error) {
 		return nil, errResumeDetails
 	}
 
+	endpoint := cfg.Invite.Endpoint
+	var packetConn net.PacketConn
+	if cfg.Invite.Version == invite.RelayVersion {
+		endpoint = net.JoinHostPort(cfg.Invite.RelayHost, strconv.Itoa(cfg.Invite.RelayPort))
+		relayAddr, err := net.ResolveUDPAddr("udp", endpoint)
+		if err != nil {
+			return nil, fmt.Errorf("relay address: %w", err)
+		}
+		token, err := relay.DecodeFriendToken(cfg.Invite.RelayToken)
+		if err != nil {
+			return nil, err
+		}
+		friendConn, err := relay.NewFriendPacketConn(nil, relayAddr, token)
+		if err != nil {
+			return nil, fmt.Errorf("relay data: %w", err)
+		}
+		packetConn = friendConn
+	}
+
 	conn, err := tunnel.Dial(ctx, tunnel.ClientConfig{
 		Identity:   cfg.Identity,
-		Endpoint:   cfg.Invite.Endpoint,
+		Endpoint:   endpoint,
+		PacketConn: packetConn,
 		HostPin:    cfg.Invite.HostPin,
 		GroupID:    cfg.Invite.GroupID,
 		MemberID:   cfg.MemberID,

@@ -13,6 +13,7 @@ import (
 
 	"github.com/desynkro/lan-party/internal/group"
 	"github.com/desynkro/lan-party/internal/invite"
+	"github.com/desynkro/lan-party/internal/relay"
 	"github.com/desynkro/lan-party/internal/secure"
 	"github.com/desynkro/lan-party/internal/tunnel"
 )
@@ -477,4 +478,120 @@ func TestHostClose(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitFor(t, 2*time.Second, func() bool { return !friend.Presence().Live })
+}
+
+func freeRelayPort(t *testing.T) int {
+	t.Helper()
+	for attempt := 0; attempt < 20; attempt++ {
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		port := ln.Addr().(*net.TCPAddr).Port
+		_ = ln.Close()
+		udp, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: port})
+		if err == nil {
+			_ = udp.Close()
+			return port
+		}
+	}
+	t.Fatal("could not find a free relay port")
+	return 0
+}
+
+func TestHostFriendThroughRelay(t *testing.T) {
+	const relayPassword = "relay test password"
+	port := freeRelayPort(t)
+	dir := t.TempDir()
+	profile, err := relay.Setup(relay.SetupOptions{
+		Dir:           dir,
+		PublicAddress: net.JoinHostPort("127.0.0.1", strconv.Itoa(port)),
+		Listen:        net.JoinHostPort("127.0.0.1", strconv.Itoa(port)),
+		Password:      relayPassword,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := relay.LoadConfig(relay.ConfigPath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cert, fingerprint, err := relay.LoadIdentity(relay.KeyPath(relay.ConfigPath(dir), cfg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	relayServer, err := relay.NewServer(cfg, cert, fingerprint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := relayServer.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = relayServer.Close() })
+
+	hostID := testIdentity(t, "relay-host")
+	appPort := freeUDPPort(t)
+	auth := testAuth(func(context.Context, tunnel.AuthRequest) (tunnel.AuthDecision, error) {
+		return tunnel.AuthDecision{Allow: true, MemberID: "member-1"}, nil
+	})
+	host, err := StartHost(context.Background(), HostConfig{
+		Identity:     hostID,
+		GroupID:      "relay-group",
+		AppPort:      appPort,
+		Authenticate: auth,
+		Relay: &RelayHostConfig{
+			Address:     profile.Address,
+			Fingerprint: profile.Fingerprint,
+			Password:    relayPassword,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = host.Close() })
+
+	hostToken, _, err := invite.NewToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, relayToken, err := relay.NewFriendToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	expires := time.Now().Add(time.Hour)
+	if err := host.AuthorizeRelayToken(context.Background(), relayToken, expires); err != nil {
+		t.Fatal(err)
+	}
+	inv := invite.Invite{
+		Version:    invite.RelayVersion,
+		GroupID:    "relay-group",
+		GroupName:  "Relay Group",
+		HostName:   "Host",
+		HostPin:    secure.Pin(hostID.Public),
+		Token:      hostToken,
+		RelayHost:  "127.0.0.1",
+		RelayPort:  port,
+		RelayID:    profile.Fingerprint,
+		RelayToken: relayToken,
+		PeerName:   "Ash",
+		Expires:    expires,
+	}
+	friend, err := Join(context.Background(), JoinConfig{
+		Identity:   testIdentity(t, "relay-device"),
+		Invite:     inv,
+		DeviceName: "ash-desktop",
+		Token:      hostToken,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer friend.Close()
+
+	if !friend.Presence().Live {
+		t.Fatal("the friend does not see the relayed host as live")
+	}
+	waitFor(t, 3*time.Second, func() bool {
+		presence, ok := host.Presence()["member-1"]
+		return ok && presence.Live
+	})
 }

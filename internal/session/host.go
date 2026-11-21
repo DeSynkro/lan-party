@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"sort"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/desynkro/lan-party/internal/forward"
 	"github.com/desynkro/lan-party/internal/group"
+	"github.com/desynkro/lan-party/internal/relay"
 	"github.com/desynkro/lan-party/internal/secure"
 	"github.com/desynkro/lan-party/internal/tunnel"
 )
@@ -28,6 +30,13 @@ const (
 	maxPeersPerMember = 8
 )
 
+// RelayHostConfig is the host's relay control connection.
+type RelayHostConfig struct {
+	Address     string
+	Fingerprint string
+	Password    string
+}
+
 // HostConfig is everything needed to publish a group.
 type HostConfig struct {
 	Identity     secure.Identity
@@ -35,16 +44,18 @@ type HostConfig struct {
 	AppPort      int
 	Services     []group.Service
 	Authenticate tunnel.Authenticator
+	Relay        *RelayHostConfig
 }
 
 // Host is a running session on the host.
 type Host struct {
-	server   *tunnel.Server
-	ctx      context.Context
-	cancel   context.CancelFunc
-	mu       sync.Mutex
-	services serviceIndex
-	peers    map[*hostPeer]struct{}
+	server      *tunnel.Server
+	relayClient *relay.Client
+	ctx         context.Context
+	cancel      context.CancelFunc
+	mu          sync.Mutex
+	services    serviceIndex
+	peers       map[*hostPeer]struct{}
 }
 
 type hostPeer struct {
@@ -67,25 +78,106 @@ func StartHost(ctx context.Context, cfg HostConfig) (*Host, error) {
 	if cfg.AppPort < 1 || cfg.AppPort > 65535 {
 		return nil, fmt.Errorf("the app port must be between 1 and 65535")
 	}
-	server, err := tunnel.Listen(tunnel.ServerConfig{
-		Identity:     cfg.Identity,
-		ListenAddr:   net.JoinHostPort("0.0.0.0", strconv.Itoa(cfg.AppPort)),
-		Authenticate: cfg.Authenticate,
-	})
-	if err != nil {
-		return nil, err
+	var server *tunnel.Server
+	var relayClient *relay.Client
+	var relayConn *relay.HostPacketConn
+	var err error
+	if cfg.Relay != nil {
+		relayAddr, resolveErr := net.ResolveUDPAddr("udp", cfg.Relay.Address)
+		if resolveErr != nil {
+			return nil, fmt.Errorf("relay address: %w", resolveErr)
+		}
+		relayClient, err = relay.DialClient(ctx, relay.ClientConfig{
+			Address:     cfg.Relay.Address,
+			Fingerprint: cfg.Relay.Fingerprint,
+			Password:    cfg.Relay.Password,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("relay control: %w", err)
+		}
+		relayConn, err = relay.NewHostPacketConn(nil, relayAddr, relayClient.DataToken)
+		if err != nil {
+			_ = relayClient.Close()
+			return nil, fmt.Errorf("relay data: %w", err)
+		}
+		if err := relayConn.SendKeepalive(); err != nil {
+			_ = relayConn.Close()
+			_ = relayClient.Close()
+			return nil, fmt.Errorf("relay keepalive: %w", err)
+		}
+		server, err = tunnel.Listen(tunnel.ServerConfig{
+			Identity:     cfg.Identity,
+			PacketConn:   relayConn,
+			Authenticate: cfg.Authenticate,
+		})
+		if err != nil {
+			_ = relayConn.Close()
+			_ = relayClient.Close()
+			return nil, err
+		}
+	} else {
+		server, err = tunnel.Listen(tunnel.ServerConfig{
+			Identity:     cfg.Identity,
+			ListenAddr:   net.JoinHostPort("0.0.0.0", strconv.Itoa(cfg.AppPort)),
+			Authenticate: cfg.Authenticate,
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	hctx, cancel := context.WithCancel(ctx)
 	h := &Host{
-		server:   server,
-		ctx:      hctx,
-		cancel:   cancel,
-		services: newServiceIndex(cfg.Services),
-		peers:    map[*hostPeer]struct{}{},
+		server:      server,
+		relayClient: relayClient,
+		ctx:         hctx,
+		cancel:      cancel,
+		services:    newServiceIndex(cfg.Services),
+		peers:       map[*hostPeer]struct{}{},
+	}
+	if relayClient != nil && relayConn != nil {
+		go h.relayKeepalive(relayClient, relayConn)
+		go h.relayEvents(relayClient)
 	}
 	go h.acceptLoop()
 	return h, nil
+}
+
+// AuthorizeRelayToken registers a friend token with the live relay session.
+func (h *Host) AuthorizeRelayToken(ctx context.Context, token string, expires time.Time) error {
+	if h.relayClient == nil {
+		return errors.New("the relay is not enabled for this session")
+	}
+	return h.relayClient.Authorize(ctx, token, expires)
+}
+
+func (h *Host) relayKeepalive(client *relay.Client, conn *relay.HostPacketConn) {
+	ticker := time.NewTicker(20 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-h.ctx.Done():
+			return
+		case <-client.Done():
+			return
+		case <-ticker.C:
+			if err := conn.SendKeepalive(); err != nil {
+				return
+			}
+		}
+	}
+}
+
+func (h *Host) relayEvents(client *relay.Client) {
+	for {
+		select {
+		case <-h.ctx.Done():
+			return
+		case <-client.Done():
+			return
+		case <-client.Events():
+		}
+	}
 }
 
 // UpdateServices publishes a new service list and tells every connected peer.
@@ -171,6 +263,9 @@ func (h *Host) Revoke(memberID string) error {
 func (h *Host) Close() error {
 	h.cancel()
 	_ = h.server.Close()
+	if h.relayClient != nil {
+		_ = h.relayClient.Close()
+	}
 
 	h.mu.Lock()
 	for p := range h.peers {
