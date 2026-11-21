@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const storeVersion = 1
@@ -53,6 +54,18 @@ func (s *Store) Load() ([]Group, error) {
 	if file.Version != storeVersion {
 		return nil, fmt.Errorf("group store version %d is not supported", file.Version)
 	}
+	for i := range file.Groups {
+		g := &file.Groups[i]
+		if g.ConnectionVersion != 0 {
+			continue
+		}
+		// 1.1 stored direct group overrides without an explicit switch. A
+		// group that had one keeps behaving the same after the upgrade.
+		if g.IsHost() && (strings.TrimSpace(g.PublicAddress) != "" || g.AppPort != 0) {
+			g.OverrideSettings = true
+		}
+		g.ConnectionVersion = 1
+	}
 	return file.Groups, nil
 }
 
@@ -69,7 +82,14 @@ func (s *Store) Save(groups []Group) error {
 	if groups == nil {
 		groups = []Group{}
 	}
-	data, err := json.MarshalIndent(diskFile{Version: storeVersion, Groups: groups}, "", "  ")
+	stored := make([]Group, len(groups))
+	copy(stored, groups)
+	for i := range stored {
+		if stored[i].ConnectionVersion == 0 {
+			stored[i].ConnectionVersion = 1
+		}
+	}
+	data, err := json.MarshalIndent(diskFile{Version: storeVersion, Groups: stored}, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode groups: %w", err)
 	}

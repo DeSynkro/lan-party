@@ -79,6 +79,80 @@ func TestStoreRoundTrip(t *testing.T) {
 	}
 }
 
+func TestStoreRelayConnectionRoundTrip(t *testing.T) {
+	store := testStore(t)
+	want := CreateHostGroup("Friday Night", "Desynkro")
+	want.OverrideSettings = true
+	want.UseRelay = true
+	want.RelayCustom = true
+	want.RelayHost = "relay.example.net"
+	want.RelayPort = 9443
+	want.RelayID = strings.Repeat("ab", 32)
+
+	if err := store.Save([]Group{want}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("loaded %d groups", len(got))
+	}
+	if !got[0].OverrideSettings || !got[0].UseRelay || !got[0].RelayCustom {
+		t.Fatalf("relay flags = %+v", got[0])
+	}
+	if got[0].RelayHost != want.RelayHost || got[0].RelayPort != want.RelayPort || got[0].RelayID != want.RelayID {
+		t.Fatalf("relay connection = %+v", got[0])
+	}
+}
+
+func TestStoreMigratesLegacyDirectOverrides(t *testing.T) {
+	store := testStore(t)
+	if err := os.MkdirAll(filepath.Dir(store.Path()), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	data := `{"version":1,"groups":[
+		{"id":"overridden","name":"A","role":"host","hostName":"Desynkro","publicAddress":"home.example.net","appPort":41000},
+		{"id":"inherited","name":"B","role":"host","hostName":"Desynkro"},
+		{"id":"joined","name":"C","role":"friend","hostName":"Desynkro","endpoint":"home.example.net:51820"}
+	]}`
+	if err := os.WriteFile(store.Path(), []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got[0].OverrideSettings {
+		t.Fatalf("legacy direct override was not migrated: %+v", got[0])
+	}
+	if got[1].OverrideSettings || got[2].OverrideSettings {
+		t.Fatalf("groups without an override were migrated: %+v", got)
+	}
+}
+
+func TestStoreKeepsExplicitOverrideOff(t *testing.T) {
+	store := testStore(t)
+	want := CreateHostGroup("Friday Night", "Desynkro")
+	want.PublicAddress = "group.example.net"
+	want.AppPort = 41000
+
+	if err := store.Save([]Group{want}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got[0].OverrideSettings {
+		t.Fatalf("an explicit override-off group was migrated: %+v", got[0])
+	}
+	if got[0].PublicAddress != "group.example.net" || got[0].AppPort != 41000 {
+		t.Fatalf("inactive values were lost: %+v", got[0])
+	}
+}
+
 func TestStoreBadJSON(t *testing.T) {
 	store := testStore(t)
 	if err := os.MkdirAll(filepath.Dir(store.Path()), 0o700); err != nil {

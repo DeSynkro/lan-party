@@ -116,12 +116,20 @@ func (a *App) Settings() config.Settings {
 
 // SaveSettings validates and writes the settings.
 func (a *App) SaveSettings(s config.Settings) error {
+	s.RelayHost = strings.TrimSpace(s.RelayHost)
+	s.RelayID = strings.ToLower(strings.TrimSpace(s.RelayID))
+
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
 	if a.host != nil && s.AppPort != a.settings.AppPort {
 		idx := a.groupIndexLocked(a.liveGroupID)
-		if idx < 0 || a.groups[idx].AppPort == 0 {
+		if idx < 0 {
+			return errors.New("end the session before changing the app port")
+		}
+		oldConnection := resolveGroupConnection(a.settings, a.groups[idx])
+		newConnection := resolveGroupConnection(s, a.groups[idx])
+		if !oldConnection.UseRelay && !newConnection.UseRelay && oldConnection.AppPort != newConnection.AppPort {
 			return errors.New("end the session before changing the app port")
 		}
 	}
@@ -401,11 +409,29 @@ func (a *App) CurrentEndpoint() (string, error) {
 	return publicEndpoint(public, appPort)
 }
 
-// GroupConnection is a host group's effective connection values.
+// GroupConnection is a group's effective connection values. Secrets are not
+// included.
 type GroupConnection struct {
+	UseRelay      bool
 	PublicAddress string
 	AppPort       int
+	RelayHost     string
+	RelayPort     int
+	RelayID       string
+	RelayCustom   bool
 	Custom        bool
+}
+
+// GroupConnectionInput is the editable connection form for one host group.
+type GroupConnectionInput struct {
+	Override      bool
+	UseRelay      bool
+	PublicAddress string
+	AppPort       int
+	RelayCustom   bool
+	RelayHost     string
+	RelayPort     int
+	RelayID       string
 }
 
 // ValidateConnection checks a group's optional public address and app port.
@@ -419,6 +445,42 @@ func ValidateConnection(publicAddress string, appPort int) error {
 	return nil
 }
 
+// resolveGroupConnection applies one group's overrides to the saved defaults.
+func resolveGroupConnection(settings config.Settings, g group.Group) GroupConnection {
+	c := GroupConnection{
+		UseRelay:      settings.UseRelay,
+		PublicAddress: settings.PublicAddress,
+		AppPort:       settings.AppPort,
+		RelayHost:     settings.RelayHost,
+		RelayPort:     settings.RelayPort,
+		RelayID:       settings.RelayID,
+	}
+	if !g.OverrideSettings {
+		return c
+	}
+	c.Custom = true
+	c.UseRelay = g.UseRelay
+	if !g.UseRelay {
+		if strings.TrimSpace(g.PublicAddress) != "" {
+			c.PublicAddress = strings.TrimSpace(g.PublicAddress)
+		}
+		if g.AppPort != 0 {
+			c.AppPort = g.AppPort
+		}
+		return c
+	}
+	if g.RelayCustom {
+		c.RelayCustom = true
+		c.RelayHost = g.RelayHost
+		c.RelayPort = g.RelayPort
+		if c.RelayPort == 0 {
+			c.RelayPort = config.DefaultRelayPort
+		}
+		c.RelayID = g.RelayID
+	}
+	return c
+}
+
 // EffectiveConnection resolves a group's overrides against the saved defaults.
 func (a *App) EffectiveConnection(groupID string) (GroupConnection, error) {
 	a.mu.Lock()
@@ -428,13 +490,7 @@ func (a *App) EffectiveConnection(groupID string) (GroupConnection, error) {
 	if idx < 0 {
 		return GroupConnection{}, errors.New("group not found")
 	}
-	g := a.groups[idx]
-	public, appPort := a.effectiveConnectionLocked(g)
-	return GroupConnection{
-		PublicAddress: public,
-		AppPort:       appPort,
-		Custom:        g.PublicAddress != "" || g.AppPort != 0,
-	}, nil
+	return resolveGroupConnection(a.settings, a.groups[idx]), nil
 }
 
 // GroupEndpoint resolves the endpoint friends use for this group.
@@ -442,6 +498,9 @@ func (a *App) GroupEndpoint(groupID string) (string, error) {
 	connection, err := a.EffectiveConnection(groupID)
 	if err != nil {
 		return "", err
+	}
+	if connection.UseRelay {
+		return net.JoinHostPort(connection.RelayHost, strconv.Itoa(connection.RelayPort)), nil
 	}
 	return publicEndpoint(connection.PublicAddress, connection.AppPort)
 }
@@ -455,12 +514,38 @@ func (a *App) GroupAppPort(groupID string) (int, error) {
 	return connection.AppPort, nil
 }
 
-// SetGroupConnection saves a host group's optional connection overrides.
-// Empty address and appPort zero both mean "use the saved defaults".
+// SetGroupConnection saves a host group's direct connection override. Empty
+// address and appPort zero both mean "use the saved defaults".
 func (a *App) SetGroupConnection(groupID, publicAddress string, appPort int) error {
-	publicAddress = strings.TrimSpace(publicAddress)
-	if err := ValidateConnection(publicAddress, appPort); err != nil {
-		return err
+	if strings.TrimSpace(publicAddress) == "" && appPort == 0 {
+		return a.SetGroupConnectionOptions(groupID, GroupConnectionInput{})
+	}
+	return a.SetGroupConnectionOptions(groupID, GroupConnectionInput{
+		Override:      true,
+		PublicAddress: publicAddress,
+		AppPort:       appPort,
+	})
+}
+
+// SetGroupConnectionOptions saves the group's Override Settings form. Values
+// that are inactive stay stored so the user can switch back without retyping.
+func (a *App) SetGroupConnectionOptions(groupID string, in GroupConnectionInput) error {
+	in.PublicAddress = strings.TrimSpace(in.PublicAddress)
+	in.RelayHost = strings.TrimSpace(in.RelayHost)
+	in.RelayID = strings.ToLower(strings.TrimSpace(in.RelayID))
+	if in.Override {
+		if in.UseRelay {
+			if in.RelayCustom {
+				if in.RelayPort == 0 {
+					in.RelayPort = config.DefaultRelayPort
+				}
+				if err := config.ValidateRelayConnection(in.RelayHost, in.RelayPort, in.RelayID); err != nil {
+					return err
+				}
+			}
+		} else if err := ValidateConnection(in.PublicAddress, in.AppPort); err != nil {
+			return err
+		}
 	}
 
 	a.mu.Lock()
@@ -475,38 +560,50 @@ func (a *App) SetGroupConnection(groupID, publicAddress string, appPort int) err
 		return errors.New("only a hosted group can change its connection")
 	}
 
-	oldPublic, oldPort := a.effectiveConnectionLocked(*g)
-	newPublic := publicAddress
-	if newPublic == "" {
-		newPublic = a.settings.PublicAddress
-	}
-	newPort := appPort
-	if newPort == 0 {
-		newPort = a.settings.AppPort
-	}
-	if a.host != nil && a.liveGroupID == groupID && newPort != oldPort {
+	oldGroup := *g
+	oldConnection := resolveGroupConnection(a.settings, oldGroup)
+	g.OverrideSettings = in.Override
+	g.UseRelay = in.UseRelay
+	g.PublicAddress = in.PublicAddress
+	g.AppPort = in.AppPort
+	g.RelayCustom = in.RelayCustom
+	g.RelayHost = in.RelayHost
+	g.RelayPort = in.RelayPort
+	g.RelayID = in.RelayID
+	newConnection := resolveGroupConnection(a.settings, *g)
+
+	if a.host != nil && a.liveGroupID == groupID && !newConnection.UseRelay && !oldConnection.UseRelay && newConnection.AppPort != oldConnection.AppPort {
+		*g = oldGroup
 		return errors.New("end the session before changing this group's app port")
 	}
 
-	oldEndpoint, oldErr := publicEndpoint(oldPublic, oldPort)
-	newEndpoint, newErr := publicEndpoint(newPublic, newPort)
-	endpointChanged := oldErr == nil && (newErr != nil || oldEndpoint != newEndpoint)
-
-	oldPublicOverride, oldPortOverride := g.PublicAddress, g.AppPort
 	var cancelled []inviteSnapshot
-	if endpointChanged {
+	if !sameInviteConnection(oldConnection, newConnection) {
 		cancelled = append(cancelled, a.cancelOpenInvitesLocked(g, time.Now().UTC()))
 	}
-
-	g.PublicAddress = publicAddress
-	g.AppPort = appPort
 	if err := a.saveLocked(); err != nil {
-		g.PublicAddress = oldPublicOverride
-		g.AppPort = oldPortOverride
+		*g = oldGroup
 		a.restoreInvitesLocked(cancelled)
 		return err
 	}
 	return nil
+}
+
+// sameInviteConnection reports whether two resolved connections put the same
+// relay and host identity on the other end of an invite.
+func sameInviteConnection(a, b GroupConnection) bool {
+	if a.UseRelay != b.UseRelay {
+		return false
+	}
+	if a.UseRelay {
+		return a.RelayHost == b.RelayHost && a.RelayPort == b.RelayPort && a.RelayID == b.RelayID
+	}
+	aEndpoint, aErr := publicEndpoint(a.PublicAddress, a.AppPort)
+	bEndpoint, bErr := publicEndpoint(b.PublicAddress, b.AppPort)
+	if aErr != nil || bErr != nil {
+		return a.PublicAddress == b.PublicAddress && a.AppPort == b.AppPort
+	}
+	return aEndpoint == bEndpoint
 }
 
 // inviteSnapshot records a group's invites and the codes that are only kept
@@ -550,9 +647,9 @@ func (a *App) restoreInvitesLocked(snapshots []inviteSnapshot) {
 	}
 }
 
-// cancelInheritedInvitesLocked removes invites whose endpoint changes because
-// the network defaults change. Groups with a full connection override are
-// unaffected. Callers hold a.mu.
+// cancelInheritedInvitesLocked removes invites whose effective connection
+// changes because the network defaults change. Groups with Override Settings
+// are unaffected unless the defaults they inherit change. Callers hold a.mu.
 func (a *App) cancelInheritedInvitesLocked(next config.Settings) []inviteSnapshot {
 	now := time.Now().UTC()
 	var cancelled []inviteSnapshot
@@ -561,30 +658,9 @@ func (a *App) cancelInheritedInvitesLocked(next config.Settings) []inviteSnapsho
 		if !g.IsHost() {
 			continue
 		}
-		if strings.TrimSpace(g.PublicAddress) != "" && g.AppPort != 0 {
-			continue
-		}
-
-		oldPublic := g.PublicAddress
-		if strings.TrimSpace(oldPublic) == "" {
-			oldPublic = a.settings.PublicAddress
-		}
-		oldPort := g.AppPort
-		if oldPort == 0 {
-			oldPort = a.settings.AppPort
-		}
-		newPublic := g.PublicAddress
-		if strings.TrimSpace(newPublic) == "" {
-			newPublic = next.PublicAddress
-		}
-		newPort := g.AppPort
-		if newPort == 0 {
-			newPort = next.AppPort
-		}
-
-		oldEndpoint, oldErr := publicEndpoint(oldPublic, oldPort)
-		newEndpoint, newErr := publicEndpoint(newPublic, newPort)
-		if oldErr != nil || (newErr == nil && oldEndpoint == newEndpoint) {
+		oldConnection := resolveGroupConnection(a.settings, *g)
+		newConnection := resolveGroupConnection(next, *g)
+		if sameInviteConnection(oldConnection, newConnection) {
 			continue
 		}
 		if len(g.OpenInvites(now)) == 0 {
@@ -593,20 +669,6 @@ func (a *App) cancelInheritedInvitesLocked(next config.Settings) []inviteSnapsho
 		cancelled = append(cancelled, a.cancelOpenInvitesLocked(g, now))
 	}
 	return cancelled
-}
-
-// effectiveConnectionLocked applies the group override or the saved default.
-// Callers hold a.mu.
-func (a *App) effectiveConnectionLocked(g group.Group) (string, int) {
-	public := g.PublicAddress
-	if strings.TrimSpace(public) == "" {
-		public = a.settings.PublicAddress
-	}
-	appPort := g.AppPort
-	if appPort == 0 {
-		appPort = a.settings.AppPort
-	}
-	return public, appPort
 }
 
 // CreateInvite issues a one-time code for a named friend.
@@ -623,16 +685,19 @@ func (a *App) CreateInvite(groupID, peerName string) (string, error) {
 		return "", errors.New("group not found")
 	}
 	g := cloneGroup(a.groups[idx])
-	public, appPort := a.effectiveConnectionLocked(g)
+	connection := resolveGroupConnection(a.settings, g)
 	a.mu.Unlock()
 
 	if g.Role != group.RoleHost {
 		return "", errors.New("only the host can create invites")
 	}
-	if strings.TrimSpace(public) == "" {
+	if connection.UseRelay {
+		return "", errors.New("relay invites are not implemented yet")
+	}
+	if strings.TrimSpace(connection.PublicAddress) == "" {
 		return "", errors.New("set your public address first")
 	}
-	endpoint, err := publicEndpoint(public, appPort)
+	endpoint, err := publicEndpoint(connection.PublicAddress, connection.AppPort)
 	if err != nil {
 		return "", err
 	}
@@ -747,7 +812,7 @@ func (a *App) StartSession(groupID string) error {
 		return errors.New("a session is already running")
 	}
 	services := append([]group.Service(nil), a.groups[idx].Services...)
-	_, appPort := a.effectiveConnectionLocked(a.groups[idx])
+	appPort := resolveGroupConnection(a.settings, a.groups[idx]).AppPort
 	a.mu.Unlock()
 	if stale != nil {
 		_ = stale.Close()

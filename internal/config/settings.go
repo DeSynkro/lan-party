@@ -103,18 +103,24 @@ func (s Settings) Validate() error {
 		return err
 	}
 	if s.UseRelay || strings.TrimSpace(s.RelayHost) != "" || strings.TrimSpace(s.RelayID) != "" {
-		if err := validateRelayHost(s.RelayHost); err != nil {
-			return err
-		}
-		if s.RelayPort < 1 || s.RelayPort > 65535 {
-			return errors.New("the relay port must be between 1 and 65535")
-		}
-		if len(s.RelayID) != 64 {
-			return errors.New("the Relay ID must be 64 hex characters")
-		}
-		if _, err := hex.DecodeString(s.RelayID); err != nil {
-			return errors.New("the Relay ID must be 64 hex characters")
-		}
+		return ValidateRelayConnection(s.RelayHost, s.RelayPort, s.RelayID)
+	}
+	return nil
+}
+
+// ValidateRelayConnection checks one relay's host, port and pinned Relay ID.
+func ValidateRelayConnection(host string, port int, relayID string) error {
+	if err := validateRelayHost(host); err != nil {
+		return err
+	}
+	if port < 1 || port > 65535 {
+		return errors.New("the relay port must be between 1 and 65535")
+	}
+	if len(relayID) != 64 {
+		return errors.New("the Relay ID must be 64 hex characters")
+	}
+	if _, err := hex.DecodeString(relayID); err != nil {
+		return errors.New("the Relay ID must be 64 hex characters")
 	}
 	return nil
 }

@@ -46,6 +46,21 @@ type Group struct {
 	Services      []Service `json:"services,omitempty"`
 	Members       []Member  `json:"members,omitempty"`
 	Invites       []Invite  `json:"invites,omitempty"`
+
+	// Connection choices. OverrideSettings makes the group use its own values
+	// instead of the saved network defaults. RelayCustom selects the group's
+	// relay instead of the one in Settings.
+	//
+	// ConnectionVersion is 1 once a 1.2 build has saved this group. It keeps
+	// the legacy migration below from re-enabling an override the user turned
+	// off while the old values were still stored.
+	OverrideSettings  bool   `json:"overrideSettings,omitempty"`
+	ConnectionVersion int    `json:"connectionVersion,omitempty"`
+	UseRelay          bool   `json:"useRelay,omitempty"`
+	RelayCustom       bool   `json:"relayCustom,omitempty"`
+	RelayHost         string `json:"relayHost,omitempty"`
+	RelayPort         int    `json:"relayPort,omitempty"`
+	RelayID           string `json:"relayID,omitempty"`
 }
 
 // NewID returns a short random identifier for a group, service or member.

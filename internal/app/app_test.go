@@ -623,6 +623,207 @@ func TestEffectiveConnectionFallsBackToSettings(t *testing.T) {
 	if got.PublicAddress != "home.example.net" || got.AppPort != 51820 || got.Custom {
 		t.Fatalf("connection = %+v", got)
 	}
+	if got.UseRelay {
+		t.Fatalf("connection uses the relay by default: %+v", got)
+	}
+}
+
+func TestEffectiveConnectionInheritsRelayFromSettings(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := a.Settings()
+	s.UseRelay = true
+	s.RelayHost = "relay.example.net"
+	s.RelayPort = 7443
+	s.RelayID = strings.Repeat("ab", 32)
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := a.EffectiveConnection(g.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.UseRelay || got.RelayCustom {
+		t.Fatalf("relay flags = %+v", got)
+	}
+	if got.RelayHost != "relay.example.net" || got.RelayPort != 7443 || got.RelayID != s.RelayID {
+		t.Fatalf("relay connection = %+v", got)
+	}
+	if got.Custom {
+		t.Fatalf("an inherited connection is marked custom: %+v", got)
+	}
+	endpoint, err := a.GroupEndpoint(g.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if endpoint != "relay.example.net:7443" {
+		t.Fatalf("endpoint = %q", endpoint)
+	}
+}
+
+func TestEffectiveConnectionUsesGroupRelayOverride(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := a.Settings()
+	s.UseRelay = true
+	s.RelayHost = "relay.example.net"
+	s.RelayPort = 7443
+	s.RelayID = strings.Repeat("ab", 32)
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	groupRelayID := strings.Repeat("cd", 32)
+
+	if err := a.SetGroupConnectionOptions(g.ID, GroupConnectionInput{
+		Override:    true,
+		UseRelay:    true,
+		RelayCustom: true,
+		RelayHost:   "private.example.net",
+		RelayPort:   9443,
+		RelayID:     groupRelayID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := a.EffectiveConnection(g.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.UseRelay || !got.RelayCustom || !got.Custom {
+		t.Fatalf("relay flags = %+v", got)
+	}
+	if got.RelayHost != "private.example.net" || got.RelayPort != 9443 || got.RelayID != groupRelayID {
+		t.Fatalf("relay connection = %+v", got)
+	}
+
+	// Unchecking the custom relay falls back to the relay in Settings but
+	// keeps the group's custom values saved.
+	if err := a.SetGroupConnectionOptions(g.ID, GroupConnectionInput{
+		Override:    true,
+		UseRelay:    true,
+		RelayCustom: false,
+		RelayHost:   "private.example.net",
+		RelayPort:   9443,
+		RelayID:     groupRelayID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got, err = a.EffectiveConnection(g.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.RelayCustom || got.RelayHost != "relay.example.net" || got.RelayID != s.RelayID {
+		t.Fatalf("inherited relay = %+v", got)
+	}
+	saved, ok := a.Group(g.ID)
+	if !ok || saved.RelayHost != "private.example.net" || saved.RelayID != groupRelayID {
+		t.Fatalf("saved custom relay = %+v", saved)
+	}
+
+	// Turning the override off uses Settings and ignores the saved values.
+	if err := a.SetGroupConnectionOptions(g.ID, GroupConnectionInput{}); err != nil {
+		t.Fatal(err)
+	}
+	got, err = a.EffectiveConnection(g.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Custom || !got.UseRelay || got.RelayHost != "relay.example.net" {
+		t.Fatalf("inherited connection = %+v", got)
+	}
+}
+
+func TestEffectiveConnectionIgnoresValuesWithoutOverride(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := a.Settings()
+	s.PublicAddress = "home.example.net"
+	s.AppPort = 51820
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := a.SetGroupConnectionOptions(g.ID, GroupConnectionInput{
+		Override:      false,
+		PublicAddress: "group.example.net",
+		AppPort:       41000,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := a.EffectiveConnection(g.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Custom || got.PublicAddress != "home.example.net" || got.AppPort != 51820 {
+		t.Fatalf("connection = %+v", got)
+	}
+	saved, ok := a.Group(g.ID)
+	if !ok || saved.PublicAddress != "group.example.net" || saved.AppPort != 41000 {
+		t.Fatalf("inactive values were not kept: %+v", saved)
+	}
+
+	if err := a.SetGroupConnectionOptions(g.ID, GroupConnectionInput{
+		Override:      true,
+		PublicAddress: saved.PublicAddress,
+		AppPort:       saved.AppPort,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got, err = a.EffectiveConnection(g.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Custom || got.PublicAddress != "group.example.net" || got.AppPort != 41000 {
+		t.Fatalf("connection after override = %+v", got)
+	}
+}
+
+func TestSetGroupConnectionOptionsValidates(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	validID := strings.Repeat("ab", 32)
+	bad := []GroupConnectionInput{
+		{Override: true, UseRelay: true, RelayCustom: true, RelayPort: 7443, RelayID: validID},
+		{Override: true, UseRelay: true, RelayCustom: true, RelayHost: "relay.example.net", RelayPort: 7443, RelayID: "abcd"},
+		{Override: true, UseRelay: true, RelayCustom: true, RelayHost: "https://relay.example.net", RelayPort: 7443, RelayID: validID},
+		{Override: true, PublicAddress: "https://example.net"},
+		{Override: true, AppPort: 70000},
+	}
+	for i, input := range bad {
+		if err := a.SetGroupConnectionOptions(g.ID, input); err == nil {
+			t.Errorf("case %d was accepted", i)
+		}
+	}
+
+	// A blank custom relay port uses the relay default.
+	if err := a.SetGroupConnectionOptions(g.ID, GroupConnectionInput{
+		Override:    true,
+		UseRelay:    true,
+		RelayCustom: true,
+		RelayHost:   "relay.example.net",
+		RelayID:     validID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := a.EffectiveConnection(g.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.RelayPort != config.DefaultRelayPort {
+		t.Fatalf("relay port = %d", got.RelayPort)
+	}
 }
 
 func TestEffectiveConnectionUsesGroupOverrides(t *testing.T) {
