@@ -2457,3 +2457,52 @@ func TestRelayReconnectSurvivesHostSessionRestart(t *testing.T) {
 		t.Fatal("the friend is not live after the host restart")
 	}
 }
+
+func TestRelayFriendAutoReconnectsAfterRelayRestart(t *testing.T) {
+	relayServer := startTestRelayServer(t, "relay test password")
+	hostApp := newTestApp(t)
+	s := hostApp.Settings()
+	s.ApproveNewDevices = false
+	if err := hostApp.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	enableSettingsRelay(t, hostApp, relayServer)
+	g, err := hostApp.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := hostApp.StartSession(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = hostApp.StopSession() })
+	code, err := hostApp.CreateInvite(g.ID, "Ash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	friendApp := newTestApp(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	joined, err := friendApp.JoinInvite(ctx, code, "ash-desktop")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !friendApp.FriendRelayTokenSet(joined.ID) {
+		t.Fatal("no reconnect token")
+	}
+
+	relayServer.mu.Lock()
+	current := relayServer.server
+	relayServer.server = nil
+	relayServer.mu.Unlock()
+	if current != nil {
+		if err := current.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	time.Sleep(500 * time.Millisecond)
+	relayServer.restart(t)
+
+	waitFor(t, 20*time.Second, func() bool {
+		return hostApp.LiveGroupID() == g.ID && friendApp.FriendPresence().Live
+	})
+}
