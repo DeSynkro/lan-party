@@ -133,12 +133,38 @@ func (c *Client) Ping() error {
 	return c.send(controlMessage{Type: "ping"})
 }
 
-// Authorize registers a friend token with the relay. The expiry is capped by
-// the relay. The token text is the value that goes into the invite.
+// Authorize registers a one-time friend token with the relay. The expiry is
+// capped by the relay. The token text is the value that goes into the invite.
 func (c *Client) Authorize(ctx context.Context, token string, expires time.Time) error {
 	if token == "" {
 		return errors.New("the friend token is empty")
 	}
+	return c.request(ctx, controlMessage{Type: "authorize", Token: token, Expires: expires})
+}
+
+// AuthorizeHash registers a reusable reconnect token by its SHA-256 hash. The
+// host keeps only the hash and never needs the raw token after issuing it.
+func (c *Client) AuthorizeHash(ctx context.Context, hash string, reusable bool, expires time.Time) error {
+	if hash == "" {
+		return errors.New("the reconnect token hash is empty")
+	}
+	return c.request(ctx, controlMessage{
+		Type:      "authorize",
+		TokenHash: hash,
+		Reusable:  reusable,
+		Expires:   expires,
+	})
+}
+
+// RevokeHash removes a token by its SHA-256 hash.
+func (c *Client) RevokeHash(ctx context.Context, hash string) error {
+	if hash == "" {
+		return errors.New("the reconnect token hash is empty")
+	}
+	return c.request(ctx, controlMessage{Type: "revoke", TokenHash: hash})
+}
+
+func (c *Client) request(ctx context.Context, message controlMessage) error {
 	c.authorizeMu.Lock()
 	defer c.authorizeMu.Unlock()
 
@@ -154,7 +180,7 @@ func (c *Client) Authorize(ctx context.Context, token string, expires time.Time)
 		c.replyMu.Unlock()
 	}()
 
-	if err := c.send(controlMessage{Type: "authorize", Token: token, Expires: expires}); err != nil {
+	if err := c.send(message); err != nil {
 		return err
 	}
 	select {

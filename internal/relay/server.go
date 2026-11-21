@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,6 +25,8 @@ const (
 	friendIDLength = 2
 
 	defaultTokenTTL        = time.Hour
+	defaultReusableTTL     = 365 * 24 * time.Hour
+	defaultRebindGrace     = 10 * time.Second
 	defaultFriendIdle      = 5 * time.Minute
 	defaultControlIdle     = 90 * time.Second
 	defaultHostRebind      = 90 * time.Second
@@ -49,15 +52,18 @@ type controlMessage struct {
 	SessionID string    `json:"sessionId,omitempty"`
 	DataToken string    `json:"dataToken,omitempty"`
 	Token     string    `json:"token,omitempty"`
+	TokenHash string    `json:"tokenHash,omitempty"`
+	Reusable  bool      `json:"reusable,omitempty"`
 	FriendID  uint16    `json:"friendId,omitempty"`
 	Expires   time.Time `json:"expires,omitempty"`
 	Message   string    `json:"message,omitempty"`
 }
 
 type tokenEntry struct {
-	session *session
-	expires time.Time
-	friend  *friendState
+	session  *session
+	expires  time.Time
+	reusable bool
+	friend   *friendState
 }
 
 type friendState struct {
@@ -134,6 +140,8 @@ type Server struct {
 	handshakeSlots chan struct{}
 
 	tokenTTL            time.Duration
+	reusableTTL         time.Duration
+	rebindGrace         time.Duration
 	friendIdle          time.Duration
 	controlIdle         time.Duration
 	hostRebind          time.Duration
@@ -169,6 +177,8 @@ func NewServer(cfg Config, cert tls.Certificate, fingerprint string) (*Server, e
 		pending:             map[net.Conn]struct{}{},
 		connsByIP:           map[string]int{},
 		tokenTTL:            defaultTokenTTL,
+		reusableTTL:         defaultReusableTTL,
+		rebindGrace:         defaultRebindGrace,
 		friendIdle:          defaultFriendIdle,
 		controlIdle:         defaultControlIdle,
 		hostRebind:          defaultHostRebind,
@@ -183,25 +193,15 @@ func NewServer(cfg Config, cert tls.Certificate, fingerprint string) (*Server, e
 // Fingerprint returns the relay public-key fingerprint.
 func (s *Server) Fingerprint() string { return s.fingerprint }
 
-// Start opens the control listener and data socket and starts serving.
+// Start opens the control listener and starts serving. The UDP data plane is
+// opened only while at least one host session is active.
 func (s *Server) Start() error {
 	tcp, err := net.Listen("tcp", s.cfg.Listen)
 	if err != nil {
 		return fmt.Errorf("listen control: %w", err)
 	}
-	udpAddr, err := net.ResolveUDPAddr("udp", s.cfg.Listen)
-	if err != nil {
-		_ = tcp.Close()
-		return fmt.Errorf("resolve data address: %w", err)
-	}
-	udp, err := net.ListenUDP("udp", udpAddr)
-	if err != nil {
-		_ = tcp.Close()
-		return fmt.Errorf("listen data: %w", err)
-	}
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.tcp = tcp
-	s.udp = udp
 	slots := s.maxHandshakes
 	if slots <= 0 {
 		slots = defaultHandshakeSlots
@@ -210,8 +210,6 @@ func (s *Server) Start() error {
 
 	s.wg.Add(1)
 	go s.acceptLoop()
-	s.wg.Add(1)
-	go s.dataLoop()
 	s.wg.Add(1)
 	go s.janitorLoop()
 	return nil
@@ -230,6 +228,8 @@ func (s *Server) Close() error {
 		for conn := range s.pending {
 			pending = append(pending, conn)
 		}
+		udp := s.udp
+		s.udp = nil
 		s.mu.Unlock()
 
 		if s.cancel != nil {
@@ -238,8 +238,8 @@ func (s *Server) Close() error {
 		if s.tcp != nil {
 			_ = s.tcp.Close()
 		}
-		if s.udp != nil {
-			_ = s.udp.Close()
+		if udp != nil {
+			_ = udp.Close()
 		}
 		for _, conn := range pending {
 			_ = conn.Close()
@@ -392,6 +392,12 @@ func (s *Server) handleControl(conn net.Conn) {
 		_ = writeControl(tlsConn, controlMessage{Type: "error", Message: "relay is at its session limit"})
 		return
 	}
+	if err := s.ensureDataLocked(); err != nil {
+		s.mu.Unlock()
+		_ = writeControl(tlsConn, controlMessage{Type: "error", Message: "relay data plane is unavailable"})
+		log.Printf("relay: start data plane: %v", err)
+		return
+	}
 	s.sessions[sessionID] = session
 	s.hostSessions[session.dataToken] = session
 	s.mu.Unlock()
@@ -419,6 +425,8 @@ func (s *Server) handleControl(conn net.Conn) {
 		switch message.Type {
 		case "authorize":
 			s.authorizeFriend(session, message)
+		case "revoke":
+			s.revokeFriend(session, message)
 		case "ping":
 			_ = session.send(controlMessage{Type: "pong"})
 		case "bye":
@@ -430,18 +438,42 @@ func (s *Server) handleControl(conn net.Conn) {
 }
 
 func (s *Server) authorizeFriend(session *session, message controlMessage) {
-	if len(message.Token) > 512 {
-		_ = session.send(controlMessage{Type: "error", Message: "friend token is too large"})
+	var hash [32]byte
+	switch {
+	case message.TokenHash != "":
+		if message.Token != "" {
+			_ = session.send(controlMessage{Type: "error", Message: "send a friend token or a token hash, not both"})
+			return
+		}
+		decoded, err := hex.DecodeString(message.TokenHash)
+		if err != nil || len(decoded) != len(hash) {
+			_ = session.send(controlMessage{Type: "error", Message: "the friend token hash is invalid"})
+			return
+		}
+		copy(hash[:], decoded)
+	case message.Token != "":
+		if len(message.Token) > 512 {
+			_ = session.send(controlMessage{Type: "error", Message: "friend token is too large"})
+			return
+		}
+		raw, err := DecodeFriendToken(message.Token)
+		if err != nil {
+			_ = session.send(controlMessage{Type: "error", Message: err.Error()})
+			return
+		}
+		hash = TokenHash(raw)
+	default:
+		_ = session.send(controlMessage{Type: "error", Message: "the friend token is empty"})
 		return
 	}
-	raw, err := DecodeFriendToken(message.Token)
-	if err != nil {
-		_ = session.send(controlMessage{Type: "error", Message: err.Error()})
-		return
-	}
+
 	now := time.Now()
+	ttl := s.tokenTTL
+	if message.Reusable {
+		ttl = s.reusableTTL
+	}
 	expires := message.Expires
-	latest := now.Add(s.tokenTTL)
+	latest := now.Add(ttl)
 	if expires.IsZero() || expires.After(latest) {
 		expires = latest
 	}
@@ -449,7 +481,6 @@ func (s *Server) authorizeFriend(session *session, message controlMessage) {
 		_ = session.send(controlMessage{Type: "error", Message: "friend token already expired"})
 		return
 	}
-	hash := TokenHash(raw)
 
 	s.mu.Lock()
 	if session.closed || s.closing {
@@ -457,12 +488,18 @@ func (s *Server) authorizeFriend(session *session, message controlMessage) {
 		return
 	}
 	if entry, exists := s.tokens[hash]; exists {
-		if entry.friend != nil || entry.session != session || entry.session.closed {
+		if entry.session != session || entry.session.closed {
+			s.mu.Unlock()
+			_ = session.send(controlMessage{Type: "error", Message: "friend token is already in use"})
+			return
+		}
+		if !entry.reusable && entry.friend != nil {
 			s.mu.Unlock()
 			_ = session.send(controlMessage{Type: "error", Message: "friend token is already in use"})
 			return
 		}
 		entry.expires = expires
+		entry.reusable = message.Reusable
 		s.mu.Unlock()
 		_ = session.send(controlMessage{Type: "ok"})
 		return
@@ -480,16 +517,75 @@ func (s *Server) authorizeFriend(session *session, message controlMessage) {
 			return
 		}
 	}
-	s.tokens[hash] = &tokenEntry{session: session, expires: expires}
+	s.tokens[hash] = &tokenEntry{session: session, expires: expires, reusable: message.Reusable}
 	s.mu.Unlock()
 	_ = session.send(controlMessage{Type: "ok"})
 }
 
-func (s *Server) dataLoop() {
+func (s *Server) revokeFriend(session *session, message controlMessage) {
+	decoded, err := hex.DecodeString(message.TokenHash)
+	if err != nil || len(decoded) != 32 {
+		_ = session.send(controlMessage{Type: "error", Message: "the friend token hash is invalid"})
+		return
+	}
+	var hash [32]byte
+	copy(hash[:], decoded)
+
+	s.mu.Lock()
+	entry := s.tokens[hash]
+	if entry == nil || entry.session != session {
+		s.mu.Unlock()
+		_ = session.send(controlMessage{Type: "ok"})
+		return
+	}
+	delete(s.tokens, hash)
+	var left *friendState
+	if entry.friend != nil {
+		left = entry.friend
+		left.closed = true
+		delete(session.friends, left.id)
+	}
+	s.mu.Unlock()
+
+	if left != nil {
+		_ = session.send(controlMessage{Type: "friendLeft", FriendID: left.id})
+	}
+	_ = session.send(controlMessage{Type: "ok"})
+}
+
+func (s *Server) ensureDataLocked() error {
+	if s.udp != nil {
+		return nil
+	}
+	addr, err := net.ResolveUDPAddr("udp", s.cfg.Listen)
+	if err != nil {
+		return fmt.Errorf("resolve data address: %w", err)
+	}
+	udp, err := net.ListenUDP("udp", addr)
+	if err != nil {
+		return fmt.Errorf("listen data: %w", err)
+	}
+	s.udp = udp
+	s.wg.Add(1)
+	go s.dataLoop(udp)
+	log.Printf("relay: data plane active on %s", s.cfg.Listen)
+	return nil
+}
+
+func (s *Server) stopDataLocked() {
+	if s.udp == nil {
+		return
+	}
+	_ = s.udp.Close()
+	s.udp = nil
+	log.Printf("relay: data plane asleep")
+}
+
+func (s *Server) dataLoop(conn *net.UDPConn) {
 	defer s.wg.Done()
 	buf := make([]byte, maxDatagramSize)
 	for {
-		n, addr, err := s.udp.ReadFromUDP(buf)
+		n, addr, err := conn.ReadFromUDP(buf)
 		if err != nil {
 			return
 		}
@@ -525,6 +621,18 @@ func (s *Server) handleFriendPacket(packet []byte, addr *net.UDPAddr) {
 	session := entry.session
 	friend := entry.friend
 	newFriend := false
+	var left *friendState
+	if friend != nil && (friend.closed || !sameUDPAddr(friend.addr, addr)) {
+		if !entry.reusable || now.Sub(friend.lastSeen) < s.rebindGrace {
+			s.mu.Unlock()
+			return
+		}
+		delete(session.friends, friend.id)
+		friend.closed = true
+		left = friend
+		entry.friend = nil
+		friend = nil
+	}
 	if friend == nil {
 		if !entry.expires.After(now) {
 			delete(s.tokens, hash)
@@ -551,9 +659,6 @@ func (s *Server) handleFriendPacket(packet []byte, addr *net.UDPAddr) {
 		session.friends[id] = friend
 		entry.friend = friend
 		newFriend = true
-	} else if friend.closed || !sameUDPAddr(friend.addr, addr) {
-		s.mu.Unlock()
-		return
 	}
 	friend.lastSeen = now
 	if !friend.limiter.allow(now, maxFriendPacketsPerSec, maxFriendPacketBurst) {
@@ -572,6 +677,12 @@ func (s *Server) handleFriendPacket(packet []byte, addr *net.UDPAddr) {
 	friendID := friend.id
 	s.mu.Unlock()
 
+	if left != nil {
+		if err := session.send(controlMessage{Type: "friendLeft", FriendID: left.id}); err != nil {
+			s.closeSession(session)
+			return
+		}
+	}
 	if notify {
 		if err := session.send(controlMessage{Type: "friend", FriendID: friendID}); err != nil {
 			s.closeSession(session)
@@ -637,13 +748,14 @@ func (s *Server) handleHostPacket(packet []byte, addr *net.UDPAddr) {
 			dest = cloneUDPAddr(friend.addr)
 		}
 	}
+	udp := s.udp
 	s.mu.Unlock()
 
 	s.flushToHost(host, pending)
-	if dest == nil || len(payload) == 0 {
+	if udp == nil || dest == nil || len(payload) == 0 {
 		return
 	}
-	if _, err := s.udp.WriteToUDP(payload, dest); err != nil {
+	if _, err := udp.WriteToUDP(payload, dest); err != nil {
 		log.Printf("relay: forward to friend: %v", err)
 	}
 }
@@ -658,7 +770,13 @@ func (s *Server) sendToHost(host *net.UDPAddr, friendID uint16, payload []byte) 
 	binary.BigEndian.PutUint16(id[:], friendID)
 	packet = append(packet, id[:]...)
 	packet = append(packet, payload...)
-	if _, err := s.udp.WriteToUDP(packet, host); err != nil {
+	s.mu.Lock()
+	udp := s.udp
+	s.mu.Unlock()
+	if udp == nil {
+		return
+	}
+	if _, err := udp.WriteToUDP(packet, host); err != nil {
 		log.Printf("relay: forward to host: %v", err)
 	}
 }
@@ -707,7 +825,13 @@ func (s *Server) janitorLoop() {
 				for id, friend := range session.friends {
 					if now.Sub(friend.lastSeen) > s.friendIdle {
 						delete(session.friends, id)
-						delete(s.tokens, friend.token)
+						if entry := s.tokens[friend.token]; entry != nil {
+							if entry.reusable {
+								entry.friend = nil
+							} else {
+								delete(s.tokens, friend.token)
+							}
+						}
 						friend.closed = true
 						expired = append(expired, expiredFriend{session: session, friend: friend})
 					}
@@ -744,6 +868,9 @@ func (s *Server) closeSession(session *session) {
 	for id, friend := range session.friends {
 		delete(session.friends, id)
 		friend.closed = true
+	}
+	if !s.closing && len(s.sessions) == 0 {
+		s.stopDataLocked()
 	}
 	s.mu.Unlock()
 

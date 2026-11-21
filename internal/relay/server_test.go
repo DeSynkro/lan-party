@@ -5,10 +5,13 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
+	"errors"
 	"net"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -228,7 +231,7 @@ func expectNoFriendPacket(t *testing.T, conn *net.UDPConn, wait time.Duration) {
 	t.Helper()
 	if payload, err := readFriend(conn, wait); err == nil {
 		t.Fatalf("friend received an unexpected packet %q", payload)
-	} else if !isTimeout(err) {
+	} else if !isTimeout(err) && !errors.Is(err, syscall.ECONNREFUSED) {
 		t.Fatalf("read friend: %v", err)
 	}
 }
@@ -826,4 +829,141 @@ func waitFor(t *testing.T, timeout time.Duration, check func() bool) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal("condition was not met before the deadline")
+}
+
+func tokenHashText(raw []byte) string {
+	hash := TokenHash(raw)
+	return hex.EncodeToString(hash[:])
+}
+
+func TestRelayReusableTokenRebindsAfterSilence(t *testing.T) {
+	relay := startTestRelay(t, func(server *Server) {
+		server.rebindGrace = 50 * time.Millisecond
+	})
+	host := dialTestHost(t, relay, testRelayPassword)
+	raw, token, err := NewFriendToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	host.send(t, controlMessage{Type: "authorize", TokenHash: tokenHashText(raw), Reusable: true})
+	host.expect(t, "ok")
+
+	hostData := newTestHostData(t)
+	friendA := newTestFriend(t, relay)
+	sendFriend(t, friendA, token, []byte("from A"))
+	noteA := host.expect(t, "friend")
+	hostKeepalive(t, hostData, relay, host.dataToken)
+	id, payload, _ := readHostData(t, hostData)
+	if id != noteA.FriendID || string(payload) != "from A" {
+		t.Fatalf("first packet = id %d %q", id, payload)
+	}
+
+	time.Sleep(100 * time.Millisecond)
+	friendB := newTestFriend(t, relay)
+	sendFriend(t, friendB, token, []byte("from B"))
+
+	seen := map[string]uint16{}
+	for len(seen) < 2 {
+		msg := host.read(t)
+		seen[msg.Type] = msg.FriendID
+	}
+	if seen["friendLeft"] != noteA.FriendID {
+		t.Fatalf("friendLeft = %d, want %d", seen["friendLeft"], noteA.FriendID)
+	}
+	if seen["friend"] == 0 || seen["friend"] == noteA.FriendID {
+		t.Fatalf("new friend id = %d", seen["friend"])
+	}
+
+	hostKeepalive(t, hostData, relay, host.dataToken)
+	id, payload, _ = readHostData(t, hostData)
+	if id != seen["friend"] || string(payload) != "from B" {
+		t.Fatalf("second packet = id %d %q", id, payload)
+	}
+}
+
+func TestRelayReusableTokenSurvivesFriendIdle(t *testing.T) {
+	relay := startTestRelay(t, func(server *Server) {
+		server.friendIdle = 80 * time.Millisecond
+		server.janitorInterval = 10 * time.Millisecond
+	})
+	host := dialTestHost(t, relay, testRelayPassword)
+	raw, token, err := NewFriendToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	host.send(t, controlMessage{Type: "authorize", TokenHash: tokenHashText(raw), Reusable: true})
+	host.expect(t, "ok")
+
+	friend := newTestFriend(t, relay)
+	sendFriend(t, friend, token, []byte("first"))
+	first := host.expect(t, "friend")
+	if left := host.expect(t, "friendLeft"); left.FriendID != first.FriendID {
+		t.Fatalf("friendLeft = %d, want %d", left.FriendID, first.FriendID)
+	}
+
+	sendFriend(t, friend, token, []byte("second"))
+	second := host.expect(t, "friend")
+	if second.FriendID == 0 || second.FriendID == first.FriendID {
+		t.Fatalf("second friend id = %d", second.FriendID)
+	}
+}
+
+func TestRelayRevokeReusableToken(t *testing.T) {
+	relay := startTestRelay(t, nil)
+	host := dialTestHost(t, relay, testRelayPassword)
+	raw, token, err := NewFriendToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	hashText := tokenHashText(raw)
+	host.send(t, controlMessage{Type: "authorize", TokenHash: hashText, Reusable: true})
+	host.expect(t, "ok")
+	host.send(t, controlMessage{Type: "revoke", TokenHash: hashText})
+	host.expect(t, "ok")
+
+	hostData := newTestHostData(t)
+	friend := newTestFriend(t, relay)
+	sendFriend(t, friend, token, []byte("after revoke"))
+	expectNoFriendPacket(t, friend, 200*time.Millisecond)
+	host.expectNone(t, 200*time.Millisecond)
+	_ = hostData
+}
+
+func canBindUDP(t *testing.T, address string) bool {
+	t.Helper()
+	addr, err := net.ResolveUDPAddr("udp", address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn, err := net.ListenUDP("udp", addr)
+	if err != nil {
+		return false
+	}
+	_ = conn.Close()
+	return true
+}
+
+func TestRelayDataPlaneSleepsBetweenSessions(t *testing.T) {
+	relay := startTestRelay(t, nil)
+	if !canBindUDP(t, relay.address) {
+		t.Fatal("UDP was open before any host session")
+	}
+
+	host := dialTestHost(t, relay, testRelayPassword)
+	if canBindUDP(t, relay.address) {
+		t.Fatal("UDP did not open for the host session")
+	}
+	_ = host.conn.Close()
+	waitFor(t, 3*time.Second, func() bool {
+		relay.server.mu.Lock()
+		defer relay.server.mu.Unlock()
+		return len(relay.server.sessions) == 0
+	})
+	waitFor(t, 3*time.Second, func() bool { return canBindUDP(t, relay.address) })
+
+	second := dialTestHost(t, relay, testRelayPassword)
+	if canBindUDP(t, relay.address) {
+		t.Fatal("UDP did not reopen for the next host session")
+	}
+	_ = second.conn.Close()
 }

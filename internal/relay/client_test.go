@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"encoding/hex"
 	"strings"
 	"testing"
 	"time"
@@ -65,5 +66,41 @@ func TestRelayClientRejectsWrongPassword(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "password") {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestRelayClientReusableHash(t *testing.T) {
+	relay := startTestRelay(t, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	client, err := DialClient(ctx, ClientConfig{
+		Address:     relay.address,
+		Fingerprint: relay.fingerprint,
+		Password:    testRelayPassword,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+
+	raw, token, err := NewFriendToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash := TokenHash(raw)
+	if err := client.AuthorizeHash(ctx, hex.EncodeToString(hash[:]), true, time.Now().Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.RevokeHash(ctx, hex.EncodeToString(hash[:])); err != nil {
+		t.Fatal(err)
+	}
+
+	friend := newTestFriend(t, relay)
+	sendFriend(t, friend, token, []byte("revoked"))
+	select {
+	case event := <-client.Events():
+		t.Fatalf("revoked token produced event %+v", event)
+	case <-time.After(300 * time.Millisecond):
 	}
 }
