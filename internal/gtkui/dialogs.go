@@ -621,8 +621,11 @@ func (u *probeUI) showInviteDialog(g group.Group) {
 		}
 	}
 	content.Append(gapBox(10))
+	status := textLabel("", "desc")
+	status.SetVisible(false)
 	errLabel := textLabel("", "error")
 	errLabel.SetVisible(false)
+	content.Append(status)
 	content.Append(errLabel)
 	content.Append(gapBox(10))
 
@@ -642,15 +645,27 @@ func (u *probeUI) showInviteDialog(g group.Group) {
 			errLabel.SetVisible(true)
 			return
 		}
-		code, err := u.createInvite(g, name)
-		if err != nil {
-			errLabel.SetText(err.Error())
-			errLabel.SetVisible(true)
-			return
-		}
-		win.Close()
-		u.showGroup(g.ID)
-		u.showInviteCodeDialog(g, name, code)
+		errLabel.SetVisible(false)
+		status.SetText("Preparing the invite…")
+		status.SetVisible(true)
+		create.SetSensitive(false)
+		cancel.SetSensitive(false)
+		go func() {
+			code, err := u.createInvite(g, name)
+			glib.IdleAdd(func() {
+				if err != nil {
+					status.SetVisible(false)
+					errLabel.SetText(err.Error())
+					errLabel.SetVisible(true)
+					create.SetSensitive(true)
+					cancel.SetSensitive(true)
+					return
+				}
+				win.Close()
+				u.showGroup(g.ID)
+				u.showInviteCodeDialog(g, name, code)
+			})
+		}()
 	})
 	buttons.Append(cancel)
 	buttons.Append(create)
