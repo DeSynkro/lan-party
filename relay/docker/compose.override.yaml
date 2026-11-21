@@ -1,0 +1,11 @@
+# Source-checkout override. Compose loads this automatically next to
+# compose.yaml. The release zip does not include it; it uses the published
+# image from compose.yaml.
+services:
+  relay:
+    image: "${LANPARTY_RELAY_IMAGE:-lan-party-relay:local}"
+    build:
+      context: ../..
+      dockerfile: relay/docker/Dockerfile.dev
+      args:
+        VERSION: "${LANPARTY_RELAY_VERSION:-dev}"

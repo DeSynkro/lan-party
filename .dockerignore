@@ -1,0 +1,11 @@
+.git
+.cache
+.tools
+.tmp
+.worktrees
+dist
+bin
+brand
+internal/gtkui/assets
+**/.env
+relay/docker/data

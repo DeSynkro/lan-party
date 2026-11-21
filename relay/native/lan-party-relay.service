@@ -1,0 +1,47 @@
+[Unit]
+Description=LAN Party relay
+Documentation=https://github.com/DeSynkro/lan-party/blob/main/relay/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lan-party-relay
+Group=lan-party-relay
+Environment=LANPARTY_RELAY_CONFIG=/etc/lan-party-relay/relay.json
+EnvironmentFile=-/etc/lan-party-relay/relay.env
+# Fail before starting if the config or key is missing, insecure or invalid.
+ExecStartPre=/usr/local/bin/lan-party-relay fingerprint
+ExecStart=/usr/local/bin/lan-party-relay run
+Restart=on-failure
+RestartSec=5s
+
+# Hardening. The relay only needs its config, its key and two sockets.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+UMask=0077
+CapabilityBoundingSet=
+AmbientCapabilities=
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

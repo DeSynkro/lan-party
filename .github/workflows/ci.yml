@@ -77,6 +77,9 @@ jobs:
         # Source mode cannot type-check gotk4's cgo bindings. Scan the real
         # binary instead so the linked code and dependencies are covered.
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -mode=binary /tmp/lan-party
+      - name: govulncheck relay
+        # The relay has no cgo dependencies, so source mode is precise here.
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./cmd/lan-party-relay ./internal/relay
 
   linux:
     name: Linux AppImage
@@ -237,10 +240,138 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  relay:
+    name: Relay release
+    # The relay is independent of the desktop app, but build it on the same
+    # pushes so its zips can join the release assets and checksums.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [test, vuln]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+      - name: Build relay zips
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="dev-${GITHUB_SHA::7}"
+          fi
+          VERSION="${version}" ARCHES="amd64 arm64" ./build/relay.sh
+      - name: Smoke test native relay
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="dev-${GITHUB_SHA::7}"
+          fi
+          work="$(mktemp -d)"
+          unzip -q "dist/lan-party-relay_${version}_linux_amd64.zip" -d "${work}"
+          pkg="${work}/lan-party-relay_${version}_linux_amd64"
+          install -d -m 0700 "${pkg}/data"
+          "${pkg}/lan-party-relay" setup --dir "${pkg}/data" --address relay.test:7443 --non-interactive
+          "${pkg}/lan-party-relay" fingerprint --config "${pkg}/data/relay.json"
+          "${pkg}/lan-party-relay" show-profile --dir "${pkg}/data" | grep -q '"fingerprint"'
+          test "$(stat -c %a "${pkg}/data/relay.key")" = "600"
+      - name: Build release image
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="dev-${GITHUB_SHA::7}"
+          fi
+          work="$(mktemp -d)"
+          unzip -q "dist/lan-party-relay_${version}_linux_amd64.zip" -d "${work}"
+          pkg="${work}/lan-party-relay_${version}_linux_amd64"
+          context="$(mktemp -d)"
+          cp "${pkg}/lan-party-relay" "${context}/lan-party-relay"
+          docker build --build-arg VERSION="${version}" \
+            -f relay/docker/Dockerfile -t lan-party-relay:ci "${context}"
+          docker run --rm lan-party-relay:ci version
+      - name: Smoke test source Compose
+        run: |
+          set -euo pipefail
+          port=$((20000 + RANDOM % 20000))
+          cd relay/docker
+          cp .env.example .env
+          sed -i "s/^LANPARTY_RELAY_PUBLIC_ADDRESS=.*/LANPARTY_RELAY_PUBLIC_ADDRESS=relay.test:${port}/" .env
+          sed -i "s/^LANPARTY_RELAY_PORT=.*/LANPARTY_RELAY_PORT=${port}/" .env
+          echo "LANPARTY_RELAY_VERSION=source-ci" >> .env
+
+          docker compose up --build -d
+          for i in $(seq 1 30); do
+            if docker compose logs --no-color 2>/dev/null | grep -q 'relay: listening'; then
+              break
+            fi
+            sleep 1
+          done
+          test "$(docker compose ps --status running --services | grep -c '^relay$')" = "1"
+          docker compose logs --no-color | grep -q 'relay: listening'
+          docker compose logs --no-color | grep -q 'relay: created config'
+          docker compose run --rm relay fingerprint
+          docker compose run --rm relay show-profile | grep -q '"fingerprint"'
+          docker compose down -v
+          rm -f .env
+      - name: Smoke test release Compose
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="dev-${GITHUB_SHA::7}"
+          fi
+          work="$(mktemp -d)"
+          unzip -q "dist/lan-party-relay_${version}_linux_amd64.zip" -d "${work}"
+          pkg="${work}/lan-party-relay_${version}_linux_amd64"
+          port=$((20000 + RANDOM % 20000))
+          cd "${pkg}/docker"
+          cp .env.example .env
+          sed -i "s/^LANPARTY_RELAY_PUBLIC_ADDRESS=.*/LANPARTY_RELAY_PUBLIC_ADDRESS=relay.test:${port}/" .env
+          sed -i "s/^LANPARTY_RELAY_PORT=.*/LANPARTY_RELAY_PORT=${port}/" .env
+          echo "LANPARTY_RELAY_IMAGE=lan-party-relay:ci" >> .env
+
+          docker compose up -d
+          for i in $(seq 1 30); do
+            if docker compose logs --no-color 2>/dev/null | grep -q 'relay: listening'; then
+              break
+            fi
+            sleep 1
+          done
+          test "$(docker compose ps --status running --services | grep -c '^relay$')" = "1"
+          docker compose logs --no-color | grep -q 'relay: listening'
+          docker compose logs --no-color | grep -q 'relay: created config'
+          docker compose run --rm relay show-profile | grep -q '"fingerprint"'
+          docker compose down -v
+      - name: Publish relay image
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          minor="${version%.*}"
+          echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker tag lan-party-relay:ci "ghcr.io/desynkro/lan-party-relay:${version}"
+          docker tag lan-party-relay:ci "ghcr.io/desynkro/lan-party-relay:${minor}"
+          docker push "ghcr.io/desynkro/lan-party-relay:${version}"
+          docker push "ghcr.io/desynkro/lan-party-relay:${minor}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: relay-release
+          path: dist/lan-party-relay_*.zip
+          if-no-files-found: error
+          retention-days: 14
+
   release:
     name: Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [test, vuln, linux, windows]
+    needs: [test, vuln, linux, windows, relay]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
