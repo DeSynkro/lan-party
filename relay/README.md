@@ -107,8 +107,9 @@ the invite.
 
 - `LANPARTY_RELAY_PASSWORD` or `setup --password` chooses the initial relay
   password. If omitted, setup generates one.
-- `passwd` changes the password later without rotating the key. Restart the
-  relay and re-enter the new password in the app; the Relay ID stays the same.
+- `passwd` changes the password later without rotating the key.
+  `passwd --generate` creates a random one. Restart the relay and re-enter the
+  new password in the app; the Relay ID stays the same.
 - The Relay ID is not a secret, but this relay is private infrastructure. Do
   not post it. It is an identifier, not an access grant.
 - `rotate-key` replaces the private key and updates the profile Relay ID. Use it
@@ -273,6 +274,7 @@ Docker has friendlier wrappers for the same operations:
 
 ```sh
 sudo ./relayctl setpass
+sudo ./relayctl genpass
 sudo ./relayctl relayreset
 sudo ./relayctl showinfo
 ```

@@ -114,6 +114,15 @@ It prompts twice without echoing, updates the config and the host profile,
 restarts the relay, and leaves the Relay ID unchanged. Run `showinfo` to copy
 the new password into the app.
 
+To generate and set a strong random password instead:
+
+```sh
+sudo ./relayctl genpass
+```
+
+It asks for confirmation, generates a 192-bit password, updates the config and
+profile, restarts the relay, and prints the values to copy into the app.
+
 The Relay ID is not a secret, but this is private infrastructure. Do not post
 it. It is an identifier, not an access grant. If the **private** `relay.key` is
 compromised, or you want a new relay identity:
@@ -163,6 +172,7 @@ it unless you intend to change the relay identity and re-import the profile.
 
 ```sh
 sudo ./relayctl setpass
+sudo ./relayctl genpass
 sudo ./relayctl relayreset
 sudo ./relayctl showinfo
 sudo docker compose ps

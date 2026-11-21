@@ -319,6 +319,8 @@ jobs:
           docker compose run --rm relay fingerprint
           docker compose run --rm relay show-profile | grep -q '"fingerprint"'
           ./relayctl showinfo | grep -q 'Relay ID:'
+          docker compose run --rm -T relay passwd --generate --dir /data
+          docker compose run --rm relay show-info --dir /data | grep -q 'Relay password:'
           docker compose down -v
           rm -f .env
       - name: Smoke test release Compose

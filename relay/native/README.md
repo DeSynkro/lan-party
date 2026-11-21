@@ -144,6 +144,14 @@ sudo systemctl restart lan-party-relay
 sudo lan-party-relay show-info --dir /etc/lan-party-relay
 ```
 
+Or generate and set a strong random password:
+
+```sh
+sudo lan-party-relay passwd --generate --dir /etc/lan-party-relay
+sudo systemctl restart lan-party-relay
+sudo lan-party-relay show-info --dir /etc/lan-party-relay
+```
+
 The Relay ID stays the same. Enter the new password in the app.
 
 The Relay ID is not a secret, but this is private infrastructure. Do not post

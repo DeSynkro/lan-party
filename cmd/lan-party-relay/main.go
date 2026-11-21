@@ -237,22 +237,30 @@ func runPasswd(args []string) {
 	dir := flags.String("dir", workingDir(), "relay data directory")
 	password := flags.String("password", "", "new relay password (or LANPARTY_RELAY_PASSWORD)")
 	passwordStdin := flags.Bool("password-stdin", false, "read the new password from stdin")
+	generate := flags.Bool("generate", false, "generate a random password")
 	flags.Parse(args)
 
-	if *passwordStdin && *password != "" {
-		log.Fatal("passwd: use --password-stdin or --password, not both")
+	if *generate && (*password != "" || *passwordStdin) {
+		log.Fatal("passwd: use --generate alone or provide a password")
 	}
-	if *passwordStdin {
+	switch {
+	case *generate:
+		generated, err := relay.GeneratePassword()
+		if err != nil {
+			log.Fatal(err)
+		}
+		*password = generated
+	case *passwordStdin:
 		line, err := bufio.NewReader(os.Stdin).ReadString('\n')
 		if err != nil && line == "" {
 			log.Fatal(err)
 		}
 		*password = strings.TrimRight(line, "\r\n")
-	} else if *password == "" {
+	case *password == "":
 		*password = os.Getenv("LANPARTY_RELAY_PASSWORD")
 	}
 	if strings.TrimSpace(*password) == "" {
-		log.Fatal("passwd: set --password, --password-stdin or LANPARTY_RELAY_PASSWORD")
+		log.Fatal("passwd: set --password, --password-stdin, --generate or LANPARTY_RELAY_PASSWORD")
 	}
 	if err := relay.SetPassword(*dir, *password); err != nil {
 		log.Fatal(err)

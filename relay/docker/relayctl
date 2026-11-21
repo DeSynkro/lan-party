@@ -10,6 +10,7 @@ Usage: sudo ./relayctl <command>
 
 Commands:
   setpass     Set a new relay password (prompted, not echoed)
+  genpass     Generate and set a random relay password
   relayreset  Replace the relay key and fingerprint (asks for confirmation)
   showinfo    Show the address, Relay ID and password for the host app
 
@@ -62,6 +63,25 @@ setpass() {
     echo "Run: sudo ./relayctl showinfo"
 }
 
+genpass() {
+    echo "This replaces the relay password and restarts the relay." >&2
+    printf 'Type GENPASS to continue: ' >&2
+    read -r answer || true
+    if [ "$answer" != "GENPASS" ]; then
+        echo "Cancelled." >&2
+        exit 1
+    fi
+
+    docker compose run --rm -T relay passwd --generate --dir /data
+    if relay_running; then
+        docker compose restart relay
+    else
+        docker compose up -d relay
+    fi
+    echo
+    showinfo
+}
+
 relayreset() {
     echo "This replaces the relay key and fingerprint." >&2
     echo "Old pins and invites stop working. The relay password does not change." >&2
@@ -89,6 +109,10 @@ case "${1:-help}" in
     setpass)
         require_docker setpass
         setpass
+        ;;
+    genpass | generate)
+        require_docker genpass
+        genpass
         ;;
     relayreset | reset)
         require_docker relayreset
