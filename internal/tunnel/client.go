@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/desynkro/lan-party/internal/secure"
 	"github.com/quic-go/quic-go"
@@ -47,6 +48,14 @@ func Dial(ctx context.Context, cfg ClientConfig) (*Conn, error) {
 		}
 		return nil, err
 	}
+	quicConf := clientQUICConfig()
+	if cfg.PacketConn != nil {
+		// A relay connection has no transport-level feedback when the relay
+		// disappears. Keepalive sooner so the friend screen does not claim to
+		// be connected long after the path is gone.
+		quicConf.MaxIdleTimeout = 12 * time.Second
+		quicConf.KeepAlivePeriod = 3 * time.Second
+	}
 	var qc *quic.Conn
 	var transport *quic.Transport
 	if cfg.PacketConn != nil {
@@ -56,14 +65,14 @@ func Dial(ctx context.Context, cfg ClientConfig) (*Conn, error) {
 			return nil, fmt.Errorf("relay address: %w", err)
 		}
 		transport = &quic.Transport{Conn: cfg.PacketConn}
-		qc, err = transport.Dial(ctx, relayAddr, tlsConf, clientQUICConfig())
+		qc, err = transport.Dial(ctx, relayAddr, tlsConf, quicConf)
 		if err != nil {
 			_ = transport.Close()
 			_ = cfg.PacketConn.Close()
 			return nil, fmt.Errorf("connect: %w", err)
 		}
 	} else {
-		qc, err = quic.DialAddr(ctx, cfg.Endpoint, tlsConf, clientQUICConfig())
+		qc, err = quic.DialAddr(ctx, cfg.Endpoint, tlsConf, quicConf)
 		if err != nil {
 			return nil, fmt.Errorf("connect: %w", err)
 		}

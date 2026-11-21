@@ -215,10 +215,14 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	relayBox.Append(gapBox(10))
 	relayBox.Append(relayPreview)
 
+	var testRelay *gtk.Button
 	syncConnectionFields := func() {
 		relay := useRelay.Active()
 		directBox.SetVisible(!relay)
 		relayBox.SetVisible(relay)
+		if testRelay != nil {
+			testRelay.SetVisible(relay)
+		}
 	}
 	useRelay.ConnectToggled(func() {
 		feedback.hide()
@@ -232,7 +236,7 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	networkCard.Append(directBox)
 	networkCard.Append(relayBox)
 
-	testRelay := gtk.NewButtonWithLabel("Test relay")
+	testRelay = gtk.NewButtonWithLabel("Test relay")
 	testRelay.AddCSSClass("secondary")
 	testRelay.SetHAlign(gtk.AlignStart)
 	testRelay.ConnectClicked(func() {

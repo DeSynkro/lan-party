@@ -63,6 +63,21 @@ func TestLiveConnectionChange(t *testing.T) {
 	}
 }
 
+func TestConnectionDialogHeight(t *testing.T) {
+	if got := connectionDialogHeight(false, false, false); got != 330 {
+		t.Fatalf("inherited height = %d", got)
+	}
+	if got := connectionDialogHeight(true, false, false); got != 480 {
+		t.Fatalf("direct height = %d", got)
+	}
+	if got := connectionDialogHeight(true, true, false); got != 520 {
+		t.Fatalf("inherited relay height = %d", got)
+	}
+	if got := connectionDialogHeight(true, true, true); got != 620 {
+		t.Fatalf("custom relay height = %d", got)
+	}
+}
+
 func TestShortRelayID(t *testing.T) {
 	id := strings.Repeat("ab", 32)
 	if got := shortRelayID(id); got != id[:16]+"…" {

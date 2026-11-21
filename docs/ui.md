@@ -114,7 +114,9 @@ defined in the stylesheet.
 - Status panel: `Host live` / `Reconnecting` / `Host offline`, hosted-by line,
   RTT, a note when the host removed the device or the connection ended, the
   next retry while reconnecting, and a Disconnect/Reconnect now/Reconnect
-  button.
+  button. For a relay group, Reconnect opens the invite dialog because the old
+  relay token is single-use; automatic retry is disabled and the screen says a
+  new invite is needed.
 - Ready to play: one card per service. Each address is `127.0.0.1:<port>` with
   Copy. Multi-port services list each address. A local port that fell back from
   the published port says so. The host's hint is shown under the address.

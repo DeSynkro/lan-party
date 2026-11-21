@@ -84,7 +84,7 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 	live := func() bool { return u.state.LiveGroupID() == g.ID }
 
 	win, content := u.dialog("Connection for " + g.Name)
-	win.SetDefaultSize(400, 620)
+	win.SetDefaultSize(400, connectionDialogHeight(g.OverrideSettings, g.UseRelay, g.RelayCustom))
 
 	content.Append(textLabel("This changes only this group. The defaults live in Settings.", "help"))
 	content.Append(gapBox(10))
@@ -359,6 +359,7 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 		if reset != nil {
 			reset.SetVisible(override)
 		}
+		win.SetDefaultSize(400, connectionDialogHeight(override, relay, custom))
 		updatePasswordStatus()
 		updatePreview()
 	}

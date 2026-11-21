@@ -61,3 +61,18 @@ func shortRelayID(id string) string {
 func relayRoute(host string, port int, id string) string {
 	return host + " · port " + strconv.Itoa(port) + " · Relay ID " + shortRelayID(id)
 }
+
+// connectionDialogHeight keeps the group connection dialog compact when the
+// inherited summary is all that is shown.
+func connectionDialogHeight(override, relay, custom bool) int {
+	switch {
+	case !override:
+		return 330
+	case !relay:
+		return 480
+	case !custom:
+		return 520
+	default:
+		return 620
+	}
+}
