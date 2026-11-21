@@ -1,9 +1,10 @@
 # LAN Party 1.2 relay and connection UI
 
-Status: implementation in progress. The standalone relay server, setup CLI,
-native/Docker packaging, release zip build and relay tests are in place. Desktop
-app integration (invite v2, relay transport, host profile import, Settings and
-group UI) is next.
+Status: implementation complete. The standalone relay server, setup CLI,
+native/Docker packaging, relay transport, invite v2, app integration, relay
+secret storage, host-profile import, Settings and group UI are in place. What
+remains is manual deployment verification on a real VPS/CGNAT path and fuzzing
+the relay parsers.
 
 This document records the relay direction and the connection-UI decisions so the
 next session does not have to reconstruct them from chat.
@@ -371,10 +372,12 @@ Implemented:
 
 Still to do:
 
-- App-side relay invite v2, relay transport hook, host profile import and UI.
 - Fuzz the packet and control parsers.
-- End-to-end test through the desktop app, including a simulated CGNAT path.
-- Relay restart/re-registration test with the real host app.
+- Manual VPS test and a simulated CGNAT host that allows only outbound relay
+  traffic.
+- Decide whether the host session should reconnect its relay control channel
+  automatically when the relay restarts. Today the user stops and starts the
+  session again.
 - Optional bandwidth accounting if per-friend packet-rate caps are not enough.
 
 ## Approach order
@@ -512,17 +515,11 @@ Implemented:
 Remaining:
 
 - Setup CLI tests for the interactive prompt and generated password.
-- Host profile import and manual relay-config tests in the desktop app.
-- End-to-end host/friend relay test with the app's real QUIC transport.
-- Relay restart and host re-registration.
-- Manual Docker Compose test on the user's machine.
-- Manual VPS test and a simulated CGNAT host that allows only outbound relay
-  traffic.
-- Confirm the relay sees only ciphertext and never logs tokens or payloads in a
-  full app session.
+- Manual VPS/CGNAT verification.
+- Relay restart/re-registration with the real host app. Session stop/start
+  re-registers in-memory invites; a relay restart currently requires a manual
+  session restart.
 - Fuzz the packet and control parsers.
-- UI state tests for Settings direct/relay, group inheritance, Override
-  Settings, Reset and the custom relay path.
 
 ## Open questions
 
@@ -549,14 +546,7 @@ Resolved:
 
 ## Next step
 
-The relay is ready for its Docker Compose test. After that, start app
-integration in this order:
-
-1. Invite v2 with relay host, port, Relay ID and friend token.
-2. Host/friend relay transport hook around the existing QUIC socket:
-   token/header wrapper on the friend side and a synthetic per-friend address
-   wrapper on the host side.
-3. Host profile import and relay test in Settings.
-4. Settings and group UI for direct/relay and Override Settings.
-5. End-to-end host and two friends through a real relay, then a simulated
-   CGNAT path.
+App integration is complete and covered by end-to-end tests with a real relay
+server, host app and friend app. For release, run the relay on the intended VPS,
+host from a real CGNAT path, verify only ciphertext crosses the relay, confirm
+the relay logs never contain tokens or payloads, and run the fuzz targets.
