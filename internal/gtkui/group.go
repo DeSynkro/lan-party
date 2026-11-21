@@ -359,7 +359,7 @@ func (u *probeUI) friendSessionCard(g group.Group, showError func(error), state 
 	}
 	action := gtk.NewButtonWithLabel(actionLabel)
 	action.AddCSSClass("primary")
-	if g.UseRelay {
+	if g.UseRelay && !live {
 		action.SetTooltipText("Paste a new invite from the host to reconnect")
 	}
 	state.friendAction = action
@@ -753,6 +753,11 @@ func (state *groupLive) refresh(u *probeUI, g group.Group) {
 		}
 	}
 	if state.friendAction != nil {
+		if g.UseRelay && !live {
+			state.friendAction.SetTooltipText("Paste a new invite from the host to reconnect")
+		} else {
+			state.friendAction.SetTooltipText("")
+		}
 		switch {
 		case live:
 			state.friendAction.SetLabel("Disconnect")
