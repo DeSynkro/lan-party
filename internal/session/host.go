@@ -144,7 +144,7 @@ func StartHost(ctx context.Context, cfg HostConfig) (*Host, error) {
 	}
 	if relayClient != nil && relayConn != nil {
 		go h.relayKeepalive(relayConn)
-		go h.relayEvents(relayClient)
+		go h.relayEvents(relayClient, relayConn)
 	}
 	go h.acceptLoop()
 	return h, nil
@@ -196,7 +196,7 @@ func (h *Host) relayKeepalive(conn *relay.HostPacketConn) {
 	}
 }
 
-func (h *Host) relayEvents(client *relay.Client) {
+func (h *Host) relayEvents(client *relay.Client, conn *relay.HostPacketConn) {
 	for {
 		select {
 		case <-h.ctx.Done():
@@ -208,7 +208,10 @@ func (h *Host) relayEvents(client *relay.Client) {
 			h.setRelayError(client.Err())
 			_ = h.Close()
 			return
-		case <-client.Events():
+		case event := <-client.Events():
+			if event.Type == "friendLeft" && conn != nil {
+				conn.RemoveFriend(event.FriendID)
+			}
 		}
 	}
 }

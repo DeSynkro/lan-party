@@ -170,3 +170,17 @@ func newTransportIdentity(t *testing.T) secure.Identity {
 	}
 	return secure.Identity{Private: priv, Public: pub}
 }
+
+func TestHostPacketConnRemoveFriend(t *testing.T) {
+	relay := startTestRelay(t, nil)
+	conn, err := NewHostPacketConn(&net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)}, relayDataAddr(t, relay), make([]byte, tokenLength))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	addr := conn.FriendAddress(42)
+	conn.RemoveFriend(42)
+	if _, err := conn.WriteTo([]byte("late"), addr); err == nil {
+		t.Fatal("a removed friend address was still accepted")
+	}
+}
