@@ -131,10 +131,20 @@ session exists; it cannot read game traffic.
   relay password, and pins the relay public-key fingerprint (the Relay ID).
 - The host also opens one UDP socket to the same relay port and keeps the NAT
   mapping alive. All friend traffic shares that socket.
-- Each invite carries a single-use 16-byte friend token. The relay stores only
-  its SHA-256 hash and expires it within one hour.
+- Each invite carries a single-use 16-byte first-join token. The relay stores
+  only its SHA-256 hash and expires it within one hour.
+- After the first approved join, the host issues a separate per-device
+  reconnect token inside the encrypted connection. The host and relay store
+  only its hash; the friend stores the raw token owner-only. It is reusable
+  only while a host session exists, can rebind to a new source address after a
+  short silence, and is revoked when the member is removed or reset.
+- The host refreshes the relay registration for current members whenever a
+  relay session starts. Friends reconnect with the token and their device key,
+  not a new invite.
 - The relay assigns a 16-bit friend ID. The host app presents a synthetic UDP
   address per friend to QUIC, so no per-friend port range is needed.
+- While no host session exists, the relay does not bind UDP at all. Only the
+  TLS control listener remains.
 - A changed relay key does not match the pinned Relay ID and the host refuses
   the connection until the user enters the new Relay ID.
 
@@ -154,7 +164,8 @@ Host, direct mode:
 Host, relay mode:
 
 - one outbound TLS control connection to the relay on TCP
-- one outbound UDP socket to the relay's data port
+- one outbound UDP socket to the relay's data port, opened only while a host
+  session exists
 - no inbound port on the host PC
 
 Friend:
@@ -164,8 +175,9 @@ Friend:
 
 Relay:
 
-- one TCP port for the control channel, `7443` by default
-- one UDP port for data, the same number
+- one TCP port for the control channel, `7443` by default, always listening
+- one UDP port for data, the same number, bound only while a host session is
+  active
 - no inbound connection to the host PC and no per-friend port range
 
 The app never asks for root, never creates a TUN device, and never changes a
@@ -239,6 +251,7 @@ The app writes no secrets to logs. It has no telemetry and no auto-update.
 | Malicious host | The host is the gateway and can see the traffic it publishes. That is inherent in the design. |
 | Malicious relay | Can drop, delay, reorder or observe packet metadata, but cannot read the end-to-end QUIC/TLS traffic or impersonate the host. |
 | Leaked Relay ID | Identifies the relay but grants no access. The relay password and friend tokens are separate. |
+| Stolen reconnect token | Can reach the relay only while a host session is live, but cannot enter the group without the device key. Revoke with Reset reconnect access, member removal, or the inactivity cleanup. |
 | Stolen relay password | Can create host sessions on that relay, but cannot impersonate the real host to friends who pinned its key. Change the relay password and create new invites. |
 | Same-user malware | Can read the key files, settings and groups as your user. A desktop app cannot defend against a compromised desktop. |
 | Supply chain | Few dependencies, pinned versions, `govulncheck` in CI, no runtime downloads. |
@@ -248,8 +261,11 @@ The app writes no secrets to logs. It has no telemetry and no auto-update.
 
 - The game server's own bugs, weak passwords or missing whitelists.
 - A machine that is already compromised as your user.
-- A relay that is down or refuses service. The host session fails instead of
-  silently falling back to a direct connection.
+- A relay that is down or refuses service. The host retries for about 16
+  minutes, then waits for a manual start; it never silently falls back to a
+  direct connection.
+- A friend who exceeds the host's inactivity window. Their member record and
+  reconnect token are removed; they need a new invite and approval.
 - Someone who reads the invite before the intended friend redeems it. The
   approval card is the last chance to deny a stranger.
 - The host seeing which game traffic crosses the tunnel. That is the job.

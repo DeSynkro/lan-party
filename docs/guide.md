@@ -122,15 +122,34 @@ to end.
 3. Choose **Test relay** to check the address, Relay ID pin and password.
 4. Start the session and create an invite as usual. The relay needs only TCP and
    UDP on its one public port; the host PC needs no inbound port.
+5. After the friend joins once, the host gives that device a reconnect token.
+   Later drops reconnect automatically with the saved device key, including
+   after the host ends and starts a session again. The friend does not need a
+   new invite unless the host removes them or resets their reconnect access.
+
+While no host session is active, the relay closes its UDP data port. Only the
+TLS control port stays open so the host can wake it again. Starting a session
+opens the data port before the host is accepted.
 
 The relay is private infrastructure. Friends never see the relay password; an
-invite carries a short-lived friend token instead. Do not post the Relay ID.
+invite carries a short-lived first-join token instead. Do not post the Relay ID.
 The app has no **Share relay** action, and lending the relay to another host
 means giving them the password, which is not supported in the UI.
 
 If the relay changes its key, its Relay ID changes. Enter the new Relay ID and
-create new invites. Old invites stop working. Use `relayctl` on the relay host
-to change the password or rotate the key; see the relay README.
+create new invites. Old invites and reconnect tokens stop working. Use
+`relayctl` on the relay host to change the password or rotate the key; see the
+relay README.
+
+### Forget inactive friends
+
+In **Settings → Friends**, set how many days a friend can go without connecting
+before their member record and reconnect access are removed. The default is 5
+days. Leave the field blank to keep friends forever. Friends who are currently
+connected are never removed.
+
+A friend who is removed needs a new invite and host approval. The member details
+show when they last connected and when they will be forgotten.
 
 ### Use a different address or port for one group
 
@@ -218,9 +237,10 @@ is what closing does anyway. The setting says so.
 - The host stores only a hash, so a code cannot be shown again after the app
   restarts. Create a new invite for the same friend if you need to send it
   again.
-- A relay invite also depends on the host's live relay session. Stopping and
-  starting the session in the same app run re-registers its token. After an app
-  restart, create a new relay invite.
+- A relay friend gets a separate reconnect token after the first join. It is
+  stored in the owner-only secret store and lets them reconnect without another
+  invite until the host removes the member, resets their access, or forgets
+  them as inactive.
 - A denied or timed-out direct join leaves the invite usable until it
   expires. A relay invite binds its token to the friend's first source address,
   so a failed first relay connection needs a new invite.
@@ -266,10 +286,14 @@ Check, in this order:
 
 ### The relay went down
 
-Stop and start the session after the relay is back. The host app does not
-silently switch to direct mode. Relay invites created in this app run are
-registered again when the session starts; after an app restart, create new
-invites.
+The host app retries an unexpectedly lost relay session for about 16 minutes:
+every 5 seconds for the first minute, every 10 seconds for the next 5 minutes,
+then every 30 seconds for the next 10. If the relay comes back, the session
+restarts and member reconnect tokens are registered again. Friends retry on the
+normal native schedule and reconnect without a new invite.
+
+If automatic recovery stops, start the session manually once the relay is back.
+The app does not silently switch to direct mode.
 
 ### The public address changed
 

@@ -94,7 +94,9 @@ defined in the stylesheet.
   button, `Hosting as …`, the effective address with a `Default`/`Custom` tag
   and a `Relay` tag when relay mode is active (or an amber “no public address”
   warning), app port or relay route, `Change` opening the group-only connection
-  dialog, and a truthful connected count.
+  dialog, and a truthful connected count. An unexpected relay loss shows
+  `Relay connection lost. Reconnecting…`; the host retries on the fixed
+  5s/10s/30s schedule and says when automatic recovery stopped.
 - Published: count, `Add service`, one card per service with the name, protocol,
   `Friends open 127.0.0.1:<ports>`, `Game server <address>` and the hint.
   Tapping a card opens details with Edit and Remove.
@@ -114,9 +116,10 @@ defined in the stylesheet.
 - Status panel: `Host live` / `Reconnecting` / `Host offline`, hosted-by line,
   RTT, a note when the host removed the device or the connection ended, the
   next retry while reconnecting, and a Disconnect/Reconnect now/Reconnect
-  button. For a relay group, Reconnect opens the invite dialog because the old
-  relay token is single-use; automatic retry is disabled and the screen says a
-  new invite is needed.
+  button. A relay group reconnects with its saved device key and reconnect
+  token, using the same automatic retry schedule as direct mode. A group with
+  no reconnect token yet shows `New invite`; the screen only asks for a new
+  invite when the token is missing or was reset.
 - Ready to play: one card per service. Each address is `127.0.0.1:<port>` with
   Copy. Multi-port services list each address. A local port that fell back from
   the published port says so. The host's hint is shown under the address.
@@ -146,6 +149,9 @@ defined in the stylesheet.
   connection changed are cancelled.
 - Connection: Reconnect automatically, on by default. It retries a dropped
   friend connection for up to 30 minutes.
+- Friends: `Forget inactive friends after [N] days`. Blank means never; default
+  5. Friends who have not connected in that window are removed and need a new
+  invite. Live friends are kept.
 - Security: Approve new devices.
 - About: version, data directory, key location, log path.
 - Links to the setup guide.
@@ -183,6 +189,9 @@ host at the self-hosted relay.
   valid with a single game port, and a game port range needs the friend port
   left blank. Loopback targets and administrative ports show a non-blocking
   warning.
+- Member details: device, address, fingerprint, first/last seen, approval
+  state, automatic reconnect state, inactivity deadline, `Reset reconnect`
+  (revokes the token; the friend needs a new invite from then on) and Remove.
 - Device approval: friend, device, address, key fingerprint, Allow/Deny. It
   appears wherever the host is in the app and brings the window forward.
 - Confirmations for delete group, leave group, end session, disconnect, remove

@@ -2,9 +2,10 @@
 
 Status: implementation complete. The standalone relay server, setup CLI,
 native/Docker packaging, relay transport, invite v2, app integration, relay
-secret storage, Settings and group UI are in place. What
-remains is manual deployment verification on a real VPS/CGNAT path and fuzzing
-the relay parsers.
+secret storage, Settings and group UI, per-device relay reconnect tokens, the
+inactive-friend cleanup and idle data-plane hardening are in place. What remains
+is manual deployment verification on a real VPS/CGNAT path and fuzzing the relay
+parsers.
 
 This document records the relay direction and the connection-UI decisions so the
 next session does not have to reconstruct them from chat.
@@ -134,8 +135,16 @@ Spike status:
 - Friends have no control channel. Each friend data packet carries its token,
   and the relay assigns the friend ID and data binding on the first valid
   packet.
-- Tokens are single-use and bound to one session. A token cannot create a
-  second friend after the first one idles out or disconnects.
+- First-join tokens are single-use and bound to one session. A token cannot
+  create a second friend after the first one idles out or disconnects.
+- After the first approved join, the host issues a separate per-device
+  reconnect token over the encrypted connection. The host and relay store only
+  its hash; the friend stores the raw token owner-only. The relay accepts it
+  as reusable only while a host session exists, permits a rebind after a short
+  silence, and revokes it on member removal or reset. This is the mechanism
+  that makes relay reconnect behave like direct reconnect.
+- The relay UDP data plane is not bound while no host session exists. A host
+  login opens it before welcome; the last session close returns it to sleep.
 - Tokens are stored as SHA-256 hashes. Raw tokens and the relay password are
   never stored or logged.
 - Relay host and port are separate fields in the UI, CLI and profile. The

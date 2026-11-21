@@ -129,11 +129,21 @@ host       -> relay UDP      [0x02][16-byte data token][2-byte friend id][inner 
   strips the relay header and presents a stable synthetic `*net.UDPAddr` per
   friend ID, so quic-go sees separate clients on one socket.
 - The friend uses `internal/relay.FriendPacketConn`, which prepends the friend
-  token to every packet. Each token is short-lived and single-use.
+  token to every packet. The first-join token is short-lived and single-use.
+- After the first approved join, the host issues a per-device reconnect token
+  inside the encrypted QUIC control stream. The host and relay store only its
+  SHA-256 hash; the friend stores the raw token owner-only. The relay accepts
+  it as a reusable token only while a host session exists, rebinding it to a
+  new source address after a short silence.
+- The host refreshes member token registrations when a relay session starts, so
+  friends reconnect with their device key and token instead of a new invite.
+- The relay data plane is idle-hardened: no UDP socket is bound until a host
+  logs in, and it closes again when the last host session ends. Only the TLS
+  control listener is always present.
 - `internal/tunnel` accepts a supplied `net.PacketConn`, so the host and friend
   reuse the existing QUIC/TLS stack unchanged.
-- Invite v2 carries the relay host, port, Relay ID and friend token. Invite v1
-  remains the direct format.
+- Invite v2 carries the relay host, port, Relay ID and first-join token. Invite
+  v1 remains the direct format.
 
 ## Data on disk
 
