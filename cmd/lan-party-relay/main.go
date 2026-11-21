@@ -157,19 +157,21 @@ func runRelay(args []string) {
 	configPath := flags.String("config", configDefault(), "relay config file")
 	flags.Parse(args)
 
+	publicHost := strings.TrimSpace(os.Getenv("LANPARTY_RELAY_PUBLIC_HOST"))
+	publicAddress := strings.TrimSpace(os.Getenv("LANPARTY_RELAY_PUBLIC_ADDRESS"))
+	publicPort := 0
+	if portText := strings.TrimSpace(os.Getenv("LANPARTY_RELAY_PUBLIC_PORT")); portText != "" {
+		var err error
+		publicPort, err = strconv.Atoi(portText)
+		if err != nil {
+			log.Fatalf("relay: LANPARTY_RELAY_PUBLIC_PORT is not a number: %q", portText)
+		}
+	}
+
 	cfg, err := relay.LoadConfig(*configPath)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			log.Fatal(err)
-		}
-		publicHost := strings.TrimSpace(os.Getenv("LANPARTY_RELAY_PUBLIC_HOST"))
-		publicAddress := strings.TrimSpace(os.Getenv("LANPARTY_RELAY_PUBLIC_ADDRESS"))
-		publicPort := 0
-		if portText := strings.TrimSpace(os.Getenv("LANPARTY_RELAY_PUBLIC_PORT")); portText != "" {
-			publicPort, err = strconv.Atoi(portText)
-			if err != nil {
-				log.Fatalf("relay auto-setup: LANPARTY_RELAY_PUBLIC_PORT is not a number: %q", portText)
-			}
 		}
 		if publicHost == "" && publicAddress == "" {
 			log.Fatalf("relay is not configured at %s; set LANPARTY_RELAY_PUBLIC_HOST (and optional LANPARTY_RELAY_PUBLIC_PORT), or run `lan-party-relay setup --dir %s`",
@@ -191,6 +193,18 @@ func runRelay(args []string) {
 		cfg, err = relay.LoadConfig(*configPath)
 		if err != nil {
 			log.Fatal(err)
+		}
+	} else if publicHost != "" || publicAddress != "" {
+		changed, updateErr := relay.UpdatePublicAddress(filepath.Dir(*configPath), publicHost, publicPort, publicAddress)
+		if updateErr != nil {
+			log.Fatalf("relay: update public address: %v", updateErr)
+		}
+		if changed {
+			log.Printf("relay: public address updated from the environment")
+			cfg, err = relay.LoadConfig(*configPath)
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 	}
 	cert, fingerprint, err := relay.LoadIdentity(relay.KeyPath(*configPath, cfg))

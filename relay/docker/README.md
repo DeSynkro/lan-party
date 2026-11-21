@@ -61,10 +61,10 @@ LANPARTY_RELAY_PORT=8443
 publishes. Docker maps it to the container's internal `7443`. Friends use
 `host:port`.
 
-The host and port are written into the host profile on the first start.
-Changing them afterwards does not update the existing profile; recreate the
-relay with `sudo docker compose down -v` if you need to change them (this
-rotates the relay identity).
+The host and port are applied on every start from `.env`. Changing them and
+restarting the container updates `relay.json` and `relay-profile.json` without
+rotating the relay identity or password. Run `sudo ./relayctl showinfo` again
+and update the values in LAN Party.
 
 ## Show the app values
 

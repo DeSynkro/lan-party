@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"os"
 	"path/filepath"
@@ -75,6 +76,68 @@ func ConfigPath(dir string) string { return filepath.Join(dir, ConfigFileName) }
 
 // ProfilePath returns the host profile path inside dir.
 func ProfilePath(dir string) string { return filepath.Join(dir, ProfileFileName) }
+
+// LoadProfile reads the relay-side host profile. The password is returned as
+// stored; callers that display it must keep the terminal private.
+func LoadProfile(path string) (HostProfile, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return HostProfile{}, err
+	}
+	var profile HostProfile
+	if err := json.Unmarshal(data, &profile); err != nil {
+		return HostProfile{}, fmt.Errorf("parse host profile: %w", err)
+	}
+	host, port, err := profile.HostPort()
+	if err != nil {
+		return HostProfile{}, err
+	}
+	profile.Host = host
+	profile.Port = port
+	return profile, nil
+}
+
+// UpdatePublicAddress changes the advertised relay host and port in the config
+// and host profile. It keeps the relay identity and password unchanged and
+// reports whether anything changed.
+func UpdatePublicAddress(dir, host string, port int, address string) (bool, error) {
+	configPath := ConfigPath(dir)
+	cfg, err := LoadConfig(configPath)
+	if err != nil {
+		return false, err
+	}
+	public, err := publicAddressFor(host, port, address)
+	if err != nil {
+		return false, err
+	}
+	if cfg.PublicAddress == public {
+		return false, nil
+	}
+	newHost, newPort, err := hostPortFromAddress(public)
+	if err != nil {
+		return false, err
+	}
+
+	profilePath := ProfilePath(dir)
+	profile, profileErr := LoadProfile(profilePath)
+	if profileErr != nil && !errors.Is(profileErr, fs.ErrNotExist) {
+		return false, profileErr
+	}
+
+	cfg.PublicAddress = public
+	if err := SaveConfig(configPath, cfg); err != nil {
+		return false, err
+	}
+	if profileErr == nil {
+		profile.Address = public
+		profile.Host = newHost
+		profile.Port = newPort
+		if err := SaveProfile(profilePath, profile); err != nil {
+			return false, err
+		}
+	}
+	return true, nil
+}
 
 // Setup creates the relay key, config and host profile.
 func Setup(options SetupOptions) (HostProfile, error) {

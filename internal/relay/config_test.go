@@ -392,3 +392,58 @@ func TestPublicAddressNormalization(t *testing.T) {
 		}
 	}
 }
+
+func TestUpdatePublicAddressKeepsIdentityAndPassword(t *testing.T) {
+	dir := t.TempDir()
+	profile, err := Setup(SetupOptions{
+		Dir:           dir,
+		PublicAddress: "127.0.0.1:7443",
+		Password:      "relay password",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := UpdatePublicAddress(dir, "relay.example.net", 8443, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changed {
+		t.Fatal("the public address was not changed")
+	}
+	cfg, err := LoadConfig(ConfigPath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.PublicAddress != "relay.example.net:8443" {
+		t.Fatalf("config address = %q", cfg.PublicAddress)
+	}
+	got, err := LoadProfile(ProfilePath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Address != "relay.example.net:8443" || got.Host != "relay.example.net" || got.Port != 8443 {
+		t.Fatalf("profile = %+v", got)
+	}
+	if got.Fingerprint != profile.Fingerprint || got.Password != profile.Password {
+		t.Fatalf("identity or password changed: %+v", got)
+	}
+
+	changed, err = UpdatePublicAddress(dir, "relay.example.net", 8443, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changed {
+		t.Fatal("an unchanged address reported a change")
+	}
+	if _, err := UpdatePublicAddress(dir, "https://relay.example.net", 8443, ""); err == nil {
+		t.Fatal("an invalid host was accepted")
+	}
+	cfg, err = LoadConfig(ConfigPath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.PublicAddress != "relay.example.net:8443" {
+		t.Fatalf("a failed update changed the config: %q", cfg.PublicAddress)
+	}
+}

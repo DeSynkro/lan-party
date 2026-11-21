@@ -96,7 +96,10 @@ generates:
 
 The host profile contains the relay host, port, Relay ID and relay password. It
 is relay-side state and stays in the relay data directory or volume. The app
-does not import it. Run `lan-party-relay show-info --dir <relay-dir>` (or
+does not import it. In Docker, `LANPARTY_RELAY_PUBLIC_HOST` and
+`LANPARTY_RELAY_PUBLIC_PORT` are applied to the config and profile on each
+start, so a change takes effect after a container restart without rotating the
+identity. Run `lan-party-relay show-info --dir <relay-dir>` (or
 `sudo ./relayctl showinfo` for Docker) to display the values, enter them in LAN
 Party under **Settings > Relay**, and use **Test relay**. The app pins the Relay
 ID, which is the relay’s public-key fingerprint. Keep the terminal private.

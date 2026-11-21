@@ -31,7 +31,8 @@ services:
         condition: service_completed_successfully
     environment:
       LANPARTY_RELAY_CONFIG: /data/relay.json
-      # Written into the host profile. Change these in .env for a VPS.
+      # Applied to the config and host profile on every start. Change these
+      # in .env for a VPS.
       LANPARTY_RELAY_PUBLIC_HOST: "${LANPARTY_RELAY_PUBLIC_HOST:-127.0.0.1}"
       LANPARTY_RELAY_PUBLIC_PORT: "${LANPARTY_RELAY_PORT:-7443}"
       # Optional. If empty, the first start generates a strong password.
