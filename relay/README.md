@@ -11,6 +11,10 @@ still authenticate the host end to end.
 It is self-hosted: you run it on your own VPS or spare Linux machine. There is
 no project-operated public relay.
 
+Treat it as your private infrastructure, not a public service. Friends join
+through invites. There is no share-relay action, and lending the relay to
+another host means sharing the relay password; that is not encouraged.
+
 ## What is in the relay release
 
 ```text
@@ -86,12 +90,13 @@ Then install the binary and unit from `native/`. See
 - the relay config and salted password hash (`relay.json`)
 - the host profile (`relay-profile.json`)
 
-The host profile contains the relay address, fingerprint and relay password. It
+The host profile contains the relay address, Relay ID and relay password. It
 stays in the relay data directory or volume. Run
 `lan-party-relay show-info --dir <relay-dir>` (or `sudo ./relayctl showinfo` for
 Docker) to display the three values, enter them in LAN Party under **Settings >
-Relay**, and use **Test relay**. The app pins the relay fingerprint, like an SSH
-host key. The password is printed to the terminal, not exported to a file.
+Relay**, and use **Test relay**. The app pins the Relay ID, which is the
+relay’s public-key fingerprint. The password is printed to the terminal, not
+exported to a file.
 
 The relay key never leaves the relay machine. The relay password is host-only
 and never goes into an invite. Friends receive a short-lived friend token in
@@ -102,11 +107,12 @@ the invite.
 - `LANPARTY_RELAY_PASSWORD` or `setup --password` chooses the initial relay
   password. If omitted, setup generates one.
 - `passwd` changes the password later without rotating the key. Restart the
-  relay and re-import the host profile; the fingerprint stays the same.
-- The fingerprint is public. A leaked fingerprint does not require a reset.
-- `rotate-key` replaces the private key and updates the profile fingerprint.
-  Use it if the private key is compromised. Restart the relay, re-import the
-  profile and issue new invites; the old fingerprint stops working.
+  relay and re-enter the new password in the app; the Relay ID stays the same.
+- The Relay ID is not a secret, but this relay is private infrastructure. Do
+  not post it. It is an identifier, not an access grant.
+- `rotate-key` replaces the private key and updates the profile Relay ID. Use it
+  if the private key is compromised. Restart the relay, re-enter the new Relay
+  ID and issue new invites; the old Relay ID stops working.
 - Docker users get `relayctl setpass`, `relayctl relayreset` and
   `relayctl showinfo`; the commands prompt without echoing and never write the
   password to a file.
@@ -122,10 +128,16 @@ the invite.
   profile is the one file with the plaintext password and stays in the relay
   data directory or volume. Use `show-info` to view the values; keep that
   terminal private.
+- The relay is private host infrastructure. There is no share-relay action;
+  friends join through invites.
+- The Relay ID is a public identifier, not a secret and not an access grant.
+  The password and private key are the secrets.
+- Do not give friends the relay password. Lending the relay to another host is
+  a manual password share and is discouraged.
 - Control connections are capped globally and per IP; friend traffic has a
   per-friend packet-rate cap.
 - Unknown and malformed packets are dropped without a response.
-- Relay key changes require a re-pin in the host app.
+- A Relay ID change requires a re-pin in the host app.
 - Direct mode stays the default.
 
 ## Friend data path
@@ -241,7 +253,7 @@ A friend that sends no data for five minutes is removed and the host receives a
 ```sh
 lan-party-relay setup --dir /etc/lan-party-relay
 lan-party-relay run --config /etc/lan-party-relay/relay.json
-lan-party-relay fingerprint --config /etc/lan-party-relay/relay.json
+lan-party-relay relay-id --config /etc/lan-party-relay/relay.json
 lan-party-relay passwd --dir /etc/lan-party-relay
 lan-party-relay rotate-key --dir /etc/lan-party-relay
 lan-party-relay show-info --dir /etc/lan-party-relay
@@ -250,10 +262,10 @@ lan-party-relay version
 ```
 
 `passwd` changes the relay password without rotating the key. `rotate-key`
-generates a new relay identity and updates the host profile fingerprint. Both
-require a relay restart and a profile re-import. `show-info` is the human
+generates a new relay identity and updates the host profile Relay ID. Both
+require a relay restart and a re-entry in the app. `show-info` is the human
 copy/paste view; `show-profile` is the machine-readable JSON and is not needed
-for normal setup.
+for normal setup. `fingerprint` is an alias for `relay-id`.
 
 Docker has friendlier wrappers for the same operations:
 
@@ -266,7 +278,7 @@ sudo ./relayctl showinfo
 `setup` is also available as `init`.
 
 `LANPARTY_RELAY_CONFIG` sets the default config path for `run` and
-`fingerprint`.
+`relay-id`.
 
 Environment during setup:
 

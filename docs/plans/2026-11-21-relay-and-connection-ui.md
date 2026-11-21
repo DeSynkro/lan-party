@@ -40,8 +40,12 @@ simple enough that the common direct path stays unchanged.
 - The relay is an opaque UDP forwarder, not a VPN and not a decryption point.
 - The existing host/friend QUIC/TLS handshake remains end to end. The host key
   pin still authenticates the host.
-- The relay has its own identity keypair. The app pins the relay fingerprint,
-  like an SSH host key. A changed key warns and requires a re-pin.
+- The relay has its own identity keypair. The app pins the Relay ID, which is
+  the relay public-key fingerprint, like an SSH host key. A changed key warns
+  and requires a re-pin.
+- The relay is private host infrastructure. The app has no share-relay action;
+  only invites are shareable. The Relay ID is an identifier, not an access
+  grant, but it should not be posted.
 - The relay password is host-only. It authorizes the host to create a session.
 - Friends do not receive the relay password. Each invite carries a short-lived
   friend token.
@@ -135,8 +139,8 @@ Spike status:
   never stored or logged.
 - Relay address is `host:port`. The address includes the port. No separate relay
   port field.
-- Relay fingerprint/key is printed by setup and in the relay logs, and is
-  written into the host profile.
+- The Relay ID (public-key fingerprint) is printed by setup and in the relay
+  logs, and is written into the host profile.
 
 ## UI: Network Defaults
 
@@ -171,7 +175,7 @@ Host groups use these defaults unless they set their own connection.
 [x] Use Relay
 
 Relay Address     [ relay.example.net:7443 ]
-Relay Fingerprint [ ABCD…                  ]
+Relay ID [ ABCD…                  ]
 Relay Password    [ ••••••••               ]
 
 The relay is a server you run. Friends do not need the relay
@@ -187,6 +191,10 @@ No port forward is needed.
 The password is stored in an owner-only secret file, not in the ordinary
 settings JSON. It is never displayed after saving and never placed in an invite.
 
+The app has no **Share relay** action. The Relay ID is shown for verification
+and copy-to-self only. The shareable artifact is an invite, which carries a
+short-lived friend token and never the relay password.
+
 ## UI: Group connection
 
 The group dialog uses a single `Override Settings` gate.
@@ -199,7 +207,7 @@ This changes only this group.
 
 [ ] Override Settings
     Using Settings: Relay
-    Relay: relay.example.net:7443 · fingerprint ABCD…
+    Relay: relay.example.net:7443 · Relay ID ABCD…
     Friends connect through the relay.
 
 [ Cancel ]  [ Save ]
@@ -213,7 +221,7 @@ Override on: editable connection.
 [x] Use Relay
     [ ] Custom relay for this group
         Relay Address     [ … ]
-        Relay Fingerprint [ … ]
+        Relay ID [ … ]
         Relay Password    [ … ]
 
     Relay: from Settings / custom
@@ -255,8 +263,8 @@ Rules:
 
 ## State and migration
 
-- Settings gains relay address, relay fingerprint, relay password secret, and a
-  `UseRelay` default flag. Default is off.
+- Settings gains relay address, Relay ID (profile fingerprint), relay password
+  secret, and a `UseRelay` default flag. Default is off.
 - Group gains:
   - `OverrideSettings bool`
   - `UseRelay bool`
@@ -278,8 +286,8 @@ Relay binary: Go, no GTK, separate `cmd/lan-party-relay`. See
 - TCP control port and UDP data port share the same number, `7443`.
 - The container's first `run` auto-creates the relay key, config, password and
   host profile if the config is missing and `LANPARTY_RELAY_PUBLIC_ADDRESS` is
-  set. The relay prints its fingerprint in its logs. No separate setup command
-  is needed.
+  set. The relay prints its Relay ID in its logs. No separate setup command is
+  needed.
 - No default credentials. No password in a committed env file. The generated
   password is only in the host profile inside the relay volume.
 - Image published to GHCR: `ghcr.io/desynkro/lan-party-relay:1.2`.
@@ -337,8 +345,8 @@ volumes:
 Implemented:
 
 - End-to-end host/friend TLS. The relay sees ciphertext only.
-- Relay key pin and key-change warning in the app (pin verification in the
-  relay client; UI warning comes with app integration).
+- Relay ID pin and change warning in the app (pin verification in the relay
+  client; UI warning comes with app integration).
 - Host password with PBKDF2-SHA256, 600,000 iterations.
 - Per-invite tokens stored as SHA-256 hashes with a one-hour cap.
 - Constant-time token and password comparisons. No secret logging.
@@ -348,8 +356,8 @@ Implemented:
 - Friend and control idle timeouts.
 - Packet-size caps. Unknown/malformed packets are dropped without a response.
 - Single-use tokens, token replay rejection, expired token rejection.
-- Password changes preserve the relay key and fingerprint.
-- Key rotation replaces the identity and updates the host profile fingerprint.
+- Password changes preserve the relay key and Relay ID.
+- Key rotation replaces the identity and updates the host profile Relay ID.
 - Tests for one/two friends, distinct friend IDs, wrong password, wrong pin,
   token replay, expiry, caps, malformed packets, idle cleanup, shutdown,
   password changes and key rotation.
@@ -398,7 +406,7 @@ sudo lan-party-relay setup --dir /etc/lan-party-relay
 
 The setup asks for the public relay address (port defaults to `7443`), generates
 the relay identity key and password, writes `relay.json`, `relay.key` and
-`relay-profile.json`, and prints the profile path and fingerprint.
+`relay-profile.json`, and prints the profile path and Relay ID.
 
 Docker path:
 
@@ -417,20 +425,20 @@ sudo ./relayctl showinfo
 ```
 
 The container is the same relay binary. The profile stays in the protected
-volume; the admin copies the address, fingerprint and password from the
-terminal instead of exporting a plaintext profile file. The relay private key
-never leaves the relay machine and is never in the profile or an invite.
+volume; the admin copies the address, Relay ID and password from the terminal
+instead of exporting a plaintext profile file. The relay private key never
+leaves the relay machine and is never in the profile or an invite.
 
 The main app does not generate relay bundles. It accepts the relay address,
-fingerprint and password manually (and may import a profile file later), pins
-the fingerprint and offers **Test relay**.
+Relay ID and password manually (and may import a profile file later), pins the
+Relay ID and offers **Test relay**.
 
 Advanced/manual commands:
 
 ```sh
 lan-party-relay setup --dir /etc/lan-party-relay
 lan-party-relay run --config /etc/lan-party-relay/relay.json
-lan-party-relay fingerprint --config /etc/lan-party-relay/relay.json
+lan-party-relay relay-id --config /etc/lan-party-relay/relay.json
 lan-party-relay passwd --password-stdin --dir /etc/lan-party-relay
 lan-party-relay rotate-key --dir /etc/lan-party-relay
 lan-party-relay show-info --dir /etc/lan-party-relay
@@ -438,13 +446,13 @@ lan-party-relay show-profile --dir /etc/lan-party-relay
 lan-party-relay version
 ```
 
-`passwd` preserves the relay key and fingerprint. `rotate-key` creates a new
-identity; the host app must re-import the profile and old invites stop working.
-The fingerprint is public, so a leaked fingerprint alone does not require a
-reset.
+`passwd` preserves the relay key and Relay ID. `rotate-key` creates a new
+identity; the host app must enter the new Relay ID and old invites stop working.
+The Relay ID is not a secret, but the relay is private infrastructure; a leaked
+Relay ID alone does not grant access.
 
 `setup` is also available as `init`. `LANPARTY_RELAY_CONFIG` sets the default
-config path for `run` and `fingerprint`.
+config path for `run` and `relay-id`.
 
 Friends never configure the relay. They paste the invite, which carries the
 relay address, pin and short-lived friend token.
@@ -511,12 +519,12 @@ Remaining:
 
 ## Open questions
 
-- Should the app show the full relay fingerprint or a short grouped form?
+- Should the app show the full Relay ID or a short grouped form?
 - Where exactly to store the relay password secret: a new `relay.json`, the
   existing key store, or a dedicated secret file. Per-group custom relays need
   multiple entries.
 - How to show relay status in the group card without adding clutter.
-- How the app displays a relay key-change warning and re-pin flow.
+- How the app displays a Relay ID-change warning and re-pin flow.
 - Whether a failed relay session offers a direct retry when a valid public
   endpoint exists, or always fails until the user switches mode.
 
@@ -527,8 +535,8 @@ Resolved:
 - Tokens are generated by the host, sent to the relay as hashes and are
   single-use.
 - Relay port is `7443`, with TCP control and UDP data on the same number.
-- `passwd` changes the password without changing the fingerprint; `rotate-key`
-  changes the identity and fingerprint.
+- `passwd` changes the password without changing the Relay ID; `rotate-key`
+  changes the identity and Relay ID.
 - Relay failures fail the session with a clear error; no silent direct fallback.
 - Docker image publishes to GHCR; Compose lives in `relay/docker/`.
 
@@ -537,7 +545,7 @@ Resolved:
 The relay is ready for its Docker Compose test. After that, start app
 integration in this order:
 
-1. Invite v2 with relay address, fingerprint and friend token.
+1. Invite v2 with relay address, Relay ID and friend token.
 2. Host/friend relay transport hook around the existing QUIC socket:
    token/header wrapper on the friend side and a synthetic per-friend address
    wrapper on the host side.

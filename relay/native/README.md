@@ -89,7 +89,7 @@ The unit reads `/etc/lan-party-relay/relay.json` by default. To override the
 config path, copy `native/relay.env.example` to
 `/etc/lan-party-relay/relay.env` and edit it.
 
-Follow the logs to see the fingerprint and any errors:
+Follow the logs to see the Relay ID and any errors:
 
 ```sh
 sudo journalctl -u lan-party-relay -f
@@ -114,8 +114,11 @@ the file:
 sudo lan-party-relay show-info --dir /etc/lan-party-relay
 ```
 
-Enter the address, fingerprint and password in LAN Party under
-**Settings > Relay**, then use **Test relay**. The app pins the fingerprint.
+Enter the address, Relay ID and password in LAN Party under
+**Settings > Relay**, then use **Test relay**. The app pins the Relay ID.
+
+This relay is host-only infrastructure. Do not post the Relay ID or give out
+the password; friends join through invites.
 
 The password is printed to the terminal only. Keep that terminal private and
 clear it after copying. If the profile is ever deleted, `passwd` recreates it
@@ -140,11 +143,12 @@ sudo systemctl restart lan-party-relay
 sudo lan-party-relay show-info --dir /etc/lan-party-relay
 ```
 
-The fingerprint stays the same. Enter the new password in the app.
+The Relay ID stays the same. Enter the new password in the app.
 
-The fingerprint is public and safe to share. A leaked fingerprint does not
-require a reset. If the private `relay.key` is compromised, or you want a new
-relay identity, rotate it with the service stopped:
+The Relay ID is not a secret, but this is private infrastructure. Do not post
+it. It is an identifier, not an access grant. If the private `relay.key` is
+compromised, or you want a new relay identity, rotate it with the service
+stopped:
 
 ```sh
 sudo systemctl stop lan-party-relay
@@ -153,12 +157,12 @@ sudo systemctl start lan-party-relay
 sudo lan-party-relay show-info --dir /etc/lan-party-relay
 ```
 
-This changes the fingerprint. Enter the new fingerprint in the app and issue new
-invites; old pins and invites that carry the old fingerprint stop working.
+This changes the Relay ID. Enter the new Relay ID in the app and issue new
+invites; old pins and invites that carry the old Relay ID stop working.
 
 ## Updating
 
-The config, key and fingerprint survive an update. Replace the binary and
+The config, key and Relay ID survive an update. Replace the binary and
 restart:
 
 ```sh
@@ -168,8 +172,7 @@ sudo systemctl start lan-party-relay
 ```
 
 Do not regenerate the key during an update. A new key means the host app must
-re-import the profile and re-pin the fingerprint, and existing invites stop
-working.
+re-enter the Relay ID, and existing invites stop working.
 
 ## Uninstall
 
@@ -186,11 +189,11 @@ hash. This cannot be undone.
 
 ## Troubleshooting
 
-**The service exits immediately.** Run the fingerprint command as the service
+**The service exits immediately.** Run the Relay ID command as the service
 user to see the same check the unit runs:
 
 ```sh
-sudo -u lan-party-relay lan-party-relay fingerprint --config /etc/lan-party-relay/relay.json
+sudo -u lan-party-relay lan-party-relay relay-id --config /etc/lan-party-relay/relay.json
 ```
 
 Common causes are a missing file, a config or key readable by other users, or
@@ -206,8 +209,8 @@ sudo ss -lntup | grep 7443
 firewall and the VPS provider's firewall. The control channel is TCP; friend
 traffic is UDP. A TCP-only check is not enough.
 
-**The app says the fingerprint changed.** The relay key changed. Only re-pin if
-you changed it intentionally. Otherwise treat it as a possible
+**The app says the Relay ID changed.** The relay key changed. Only re-enter it
+if you changed it intentionally. Otherwise treat it as a possible
 man-in-the-middle and investigate before importing anything.
 
 ## Security notes

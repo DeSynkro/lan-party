@@ -11,11 +11,12 @@ Usage: sudo ./relayctl <command>
 Commands:
   setpass     Set a new relay password (prompted, not echoed)
   relayreset  Replace the relay key and fingerprint (asks for confirmation)
-  showinfo    Show the address, fingerprint and password for the host app
+  showinfo    Show the address, Relay ID and password for the host app
 
 A password can also be chosen before the first start with
-LANPARTY_RELAY_PASSWORD in .env. showinfo prints the password; keep the
-terminal private and clear it after copying.
+LANPARTY_RELAY_PASSWORD in .env. The relay is host-only: share invites, not
+the Relay ID or password. showinfo prints the password; keep the terminal
+private and clear it after copying.
 EOF
 }
 
@@ -79,7 +80,8 @@ relayreset() {
 }
 
 showinfo() {
-    echo "Keep this terminal private. Clear it after copying the password." >&2
+    echo "Host-only relay: do not share the Relay ID or password." >&2
+    echo "Keep this terminal private and clear it after copying." >&2
     docker compose run --rm relay show-info --dir /data
 }
 

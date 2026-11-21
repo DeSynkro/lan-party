@@ -27,7 +27,7 @@ func main() {
 		runSetup(os.Args[2:])
 	case "run":
 		runRelay(os.Args[2:])
-	case "fingerprint":
+	case "relay-id", "fingerprint":
 		runFingerprint(os.Args[2:])
 	case "passwd":
 		runPasswd(os.Args[2:])
@@ -53,7 +53,8 @@ func usage() {
 Commands:
   setup          Create the relay key, config and host profile
   run            Run the relay
-  fingerprint    Print the relay public-key fingerprint
+  relay-id       Print the Relay ID (public-key fingerprint)
+  fingerprint    Alias for relay-id
   passwd         Change the relay password without rotating the key
   rotate-key     Replace the relay key and update the host profile fingerprint
   show-info      Print the address, fingerprint and password for the host app
@@ -265,9 +266,10 @@ func runShowInfo(args []string) {
 		log.Fatal(err)
 	}
 	fmt.Printf("Relay address:     %s\n", profile.Address)
-	fmt.Printf("Relay fingerprint: %s\n", profile.Fingerprint)
+	fmt.Printf("Relay ID:          %s\n", profile.Fingerprint)
 	fmt.Printf("Relay password:    %s\n", profile.Password)
-	fmt.Println("\nEnter these in LAN Party under Settings > Relay. Keep this terminal private.")
+	fmt.Println("\nEnter these in LAN Party under Settings > Relay.")
+	fmt.Println("The relay is host-only: keep this terminal private, and share invites instead of the Relay ID or password.")
 }
 
 func prompt(label string) (string, error) {

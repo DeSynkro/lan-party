@@ -69,12 +69,14 @@ It prints the three values the host app needs:
 
 ```text
 Relay address:     relay.example.com:7443
-Relay fingerprint: 774e2e…
+Relay ID:          774e2e…
 Relay password:    …
 ```
 
-Enter them in LAN Party under **Settings > Relay**. The app pins the
-fingerprint.
+Enter them in LAN Party under **Settings > Relay**. The app pins the Relay ID.
+
+This relay is host-only infrastructure, not a public service. Do not post the
+Relay ID or give out the password. Friends join through invites.
 
 The password is printed only to the terminal, not written to a file. Keep the
 terminal private and clear it after copying. The host profile stays inside the
@@ -102,20 +104,20 @@ sudo ./relayctl setpass
 ```
 
 It prompts twice without echoing, updates the config and the host profile,
-restarts the relay, and leaves the fingerprint unchanged. Run `showinfo` to copy
+restarts the relay, and leaves the Relay ID unchanged. Run `showinfo` to copy
 the new password into the app.
 
-The fingerprint is public and safe to share. Leaking it does not require a
-reset. If the **private** `relay.key` is compromised, or you want a new relay
-identity:
+The Relay ID is not a secret, but this is private infrastructure. Do not post
+it. It is an identifier, not an access grant. If the **private** `relay.key` is
+compromised, or you want a new relay identity:
 
 ```sh
 sudo ./relayctl relayreset
 ```
 
-It asks for confirmation, replaces the key, updates the profile fingerprint and
+It asks for confirmation, replaces the key, updates the profile Relay ID and
 restarts the relay. The password stays the same. Old pins and invites that carry
-the old fingerprint stop working.
+the old Relay ID stop working.
 
 ## Firewall
 
@@ -159,7 +161,7 @@ sudo ./relayctl showinfo
 sudo docker compose ps
 sudo docker compose logs -f
 sudo docker compose restart relay
-sudo docker compose run --rm relay fingerprint
+sudo docker compose run --rm relay relay-id
 sudo docker compose run --rm relay version
 ```
 
@@ -225,8 +227,8 @@ port. Check with `sudo ss -lntup | grep 7443` or change
 machine and at the VPS provider. The relay also needs outbound UDP to reach
 friends' advertised addresses, but no other inbound ports.
 
-**The app says the fingerprint changed.** The relay key changed. Only re-pin if
-you changed it intentionally. Otherwise treat it as a possible
+**The app says the Relay ID changed.** The relay key changed. Only re-enter it
+if you changed it intentionally. Otherwise treat it as a possible
 man-in-the-middle and investigate.
 
 **The relay uses too much memory.** The Compose file caps it at 128 MB and one
