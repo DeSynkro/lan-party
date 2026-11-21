@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 )
 
@@ -105,40 +104,6 @@ func TestHostProfileHostPortFallback(t *testing.T) {
 	}
 	if host != "relay.example.net" || port != 8443 {
 		t.Fatalf("host/port = %q/%d", host, port)
-	}
-}
-
-func TestDecodeHostProfile(t *testing.T) {
-	id := strings.Repeat("AB", 32)
-	data := []byte(`{"version":1,"address":"relay.example.net:8443","fingerprint":"` + id + `","password":" secret "}`)
-	profile, err := DecodeHostProfile(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if profile.Host != "relay.example.net" || profile.Port != 8443 {
-		t.Fatalf("host/port = %q/%d", profile.Host, profile.Port)
-	}
-	if profile.Fingerprint != strings.ToLower(id) {
-		t.Fatalf("fingerprint = %q", profile.Fingerprint)
-	}
-	if profile.Password != "secret" {
-		t.Fatalf("password = %q", profile.Password)
-	}
-}
-
-func TestDecodeHostProfileRejectsBadFiles(t *testing.T) {
-	id := strings.Repeat("ab", 32)
-	bad := []string{
-		`not json`,
-		`{"version":2,"address":"relay.example.net:7443","fingerprint":"` + id + `","password":"x"}`,
-		`{"version":1,"address":"","fingerprint":"` + id + `","password":"x"}`,
-		`{"version":1,"address":"relay.example.net:7443","fingerprint":"short","password":"x"}`,
-		`{"version":1,"address":"relay.example.net:7443","fingerprint":"` + id + `","password":""}`,
-	}
-	for i, text := range bad {
-		if _, err := DecodeHostProfile([]byte(text)); err == nil {
-			t.Errorf("case %d was accepted", i)
-		}
 	}
 }
 

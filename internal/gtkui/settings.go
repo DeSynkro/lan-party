@@ -3,7 +3,6 @@ package gtkui
 import (
 	"context"
 	"errors"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -233,49 +232,6 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	networkCard.Append(directBox)
 	networkCard.Append(relayBox)
 
-	importProfile := gtk.NewButtonWithLabel("Import relay profile…")
-	importProfile.AddCSSClass("secondary")
-	importProfile.SetHAlign(gtk.AlignStart)
-	importProfile.ConnectClicked(func() {
-		chooser := gtk.NewFileChooserNative("Import relay profile", &u.win.Window, gtk.FileChooserActionOpen, "Import", "Cancel")
-		filter := gtk.NewFileFilter()
-		filter.SetName("Relay profile")
-		filter.AddPattern("relay-profile.json")
-		filter.AddPattern("*.json")
-		chooser.AddFilter(filter)
-		chooser.ConnectResponse(func(response int) {
-			defer chooser.Destroy()
-			if response != int(gtk.ResponseAccept) {
-				return
-			}
-			file := chooser.File()
-			if file == nil {
-				return
-			}
-			data, err := os.ReadFile(file.Path())
-			if err != nil {
-				feedback.showError(errors.New("could not read that relay profile"))
-				return
-			}
-			imported, err := u.state.ImportRelayProfile(data)
-			if err != nil {
-				feedback.showError(err)
-				return
-			}
-			settings = imported
-			useRelay.SetActive(true)
-			relayHostEntry.SetText(imported.RelayHost)
-			relayPortEntry.SetText(strconv.Itoa(imported.RelayPort))
-			relayIDEntry.SetText(imported.RelayID)
-			relayPasswordEntry.SetText("")
-			updatePasswordStatus()
-			updateRelayPreview()
-			syncConnectionFields()
-			feedback.showStatus("Imported the relay profile.")
-		})
-		chooser.Show()
-	})
-
 	testRelay := gtk.NewButtonWithLabel("Test relay")
 	testRelay.AddCSSClass("secondary")
 	testRelay.SetHAlign(gtk.AlignStart)
@@ -341,15 +297,12 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 		feedback.showStatus("Saved.")
 	})
 
-	testRow := gtk.NewBox(gtk.OrientationHorizontal, 8)
-	testRow.Append(testRelay)
-	testRow.Append(importProfile)
-	testRow.SetHAlign(gtk.AlignStart)
-	testRow.SetMarginTop(12)
-	networkCard.Append(testRow)
-
-	save.SetMarginTop(8)
-	networkCard.Append(save)
+	buttonRow := gtk.NewBox(gtk.OrientationHorizontal, 8)
+	buttonRow.Append(testRelay)
+	buttonRow.Append(save)
+	buttonRow.SetHAlign(gtk.AlignStart)
+	buttonRow.SetMarginTop(12)
+	networkCard.Append(buttonRow)
 	page.Append(networkCard)
 
 	updateDirectPreview()

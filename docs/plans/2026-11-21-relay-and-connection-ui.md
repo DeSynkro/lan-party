@@ -2,7 +2,7 @@
 
 Status: implementation complete. The standalone relay server, setup CLI,
 native/Docker packaging, relay transport, invite v2, app integration, relay
-secret storage, host-profile import, Settings and group UI are in place. What
+secret storage, Settings and group UI are in place. What
 remains is manual deployment verification on a real VPS/CGNAT path and fuzzing
 the relay parsers.
 
@@ -438,9 +438,9 @@ volume; the admin copies the host, port, Relay ID and password from the terminal
 instead of exporting a plaintext profile file. The relay private key never
 leaves the relay machine and is never in the profile or an invite.
 
-The main app does not generate relay bundles. It accepts the relay host, port,
-Relay ID and password manually (and may import a profile file later), pins the
-Relay ID and offers **Test relay**.
+The main app does not generate or import relay bundles. It accepts the relay
+host, port, Relay ID and password manually, pins the Relay ID and offers
+**Test relay**.
 
 Advanced/manual commands:
 

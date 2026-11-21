@@ -117,9 +117,8 @@ to end.
    native systemd installs both work. Note the relay host, port (`7443` by
    default), Relay ID and password printed by the relay setup.
 2. In **Settings → Network defaults**, tick **Use Relay**. Enter the relay host,
-   relay port, Relay ID and password, or choose **Import relay profile…** and
-   pick the `relay-profile.json` file. The profile contains the password, so
-   delete it after importing.
+   relay port, Relay ID and password printed by `relayctl showinfo` on Docker
+   or `lan-party-relay show-info` on a native install.
 3. Choose **Test relay** to check the address, Relay ID pin and password.
 4. Start the session and create an invite as usual. The relay needs only TCP and
    UDP on its one public port; the host PC needs no inbound port.

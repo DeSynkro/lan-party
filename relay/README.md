@@ -95,12 +95,11 @@ generates:
 - the host profile (`relay-profile.json`)
 
 The host profile contains the relay host, port, Relay ID and relay password. It
-stays in the relay data directory or volume. Run
-`lan-party-relay show-info --dir <relay-dir>` (or `sudo ./relayctl showinfo` for
-Docker) to display the three values, enter them in LAN Party under **Settings >
-Relay**, and use **Test relay**. The app pins the Relay ID, which is the
-relay’s public-key fingerprint. The password is printed to the terminal, not
-exported to a file.
+is relay-side state and stays in the relay data directory or volume. The app
+does not import it. Run `lan-party-relay show-info --dir <relay-dir>` (or
+`sudo ./relayctl showinfo` for Docker) to display the values, enter them in LAN
+Party under **Settings > Relay**, and use **Test relay**. The app pins the Relay
+ID, which is the relay’s public-key fingerprint. Keep the terminal private.
 
 The relay key never leaves the relay machine. The relay password is host-only
 and never goes into an invite. Friends receive a short-lived friend token in
@@ -270,8 +269,8 @@ lan-party-relay version
 `passwd` changes the relay password without rotating the key. `rotate-key`
 generates a new relay identity and updates the host profile Relay ID. Both
 require a relay restart and a re-entry in the app. `show-info` is the human
-copy/paste view; `show-profile` is the machine-readable JSON and is not needed
-for normal setup. `fingerprint` is an alias for `relay-id`.
+copy/paste view. `show-profile` is advanced, machine-readable output; the app
+does not import it. `fingerprint` is an alias for `relay-id`.
 
 Docker has friendlier wrappers for the same operations:
 

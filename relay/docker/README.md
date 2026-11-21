@@ -93,9 +93,8 @@ The password is printed only to the terminal, not written to a file. Keep the
 terminal private and clear it after copying. The host profile stays inside the
 `relay-data` volume; it is not exported.
 
-If you need the machine-readable profile for a future file import, the
-`show-profile` command still exists, but `showinfo` is the safer path for normal
-use.
+The app does not import the profile. Enter the values from `showinfo` manually.
+`show-profile` remains available for advanced, machine-readable use.
 
 ## Password and key rotation
 

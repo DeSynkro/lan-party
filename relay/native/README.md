@@ -64,7 +64,7 @@ Setup generates the relay identity key, the relay password and these files:
 | --- | --- | --- |
 | `/etc/lan-party-relay/relay.json` | relay config and password hash | yes |
 | `/etc/lan-party-relay/relay.key` | relay identity key | yes |
-| `/etc/lan-party-relay/relay-profile.json` | import file for the host app | yes, contains the password |
+| `/etc/lan-party-relay/relay-profile.json` | relay-side profile with the plaintext password | yes, contains the password |
 
 The host profile is the only file that contains the relay password in plain
 text. The relay itself stores only a salted PBKDF2 hash.

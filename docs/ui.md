@@ -135,14 +135,13 @@ defined in the stylesheet.
 - Network defaults: a `Use Relay` tickbox swaps between the direct fields
   (public address, app port) and the relay fields (relay host, relay port,
   Relay ID, relay password). Both sets stay saved while hidden. The preview
-  says which address or relay goes into invites. `Test relay`, `Import relay
-  profile…` and Save sit under the fields, with inline errors. The relay
-  password is never shown after saving; leave the password field blank to keep
-  it. Importing a profile fills the fields and saves the password. These are the
-  defaults for host groups without their own connection. A host group can
-  override them in its own connection dialog. Changing a live group's app port
-  or relay stops and restarts the session after confirmation. Open invites whose
-  effective connection changed are cancelled.
+  says which address or relay goes into invites. `Test relay` and Save sit
+  under the fields, with inline errors. The relay password is never shown after
+  saving; leave the password field blank to keep it. These are the defaults for
+  host groups without their own connection. A host group can override them in
+  its own connection dialog. Changing a live group's app port or relay stops and
+  restarts the session after confirmation. Open invites whose effective
+  connection changed are cancelled.
 - Connection: Reconnect automatically, on by default. It retries a dropped
   friend connection for up to 30 minutes.
 - Security: Approve new devices.

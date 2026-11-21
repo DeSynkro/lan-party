@@ -319,39 +319,6 @@ func (a *App) ClearGroupRelayPassword(groupID string) error {
 	return a.clearRelayPasswordLocked(groupRelaySecret(groupID))
 }
 
-// ImportRelayProfile loads the owner-only file written by relay setup and
-// saves its host, port, Relay ID and password.
-func (a *App) ImportRelayProfile(data []byte) (config.Settings, error) {
-	profile, err := relay.DecodeHostProfile(data)
-	if err != nil {
-		return a.Settings(), err
-	}
-	s := a.Settings()
-	s.UseRelay = true
-	s.RelayHost = profile.Host
-	s.RelayPort = profile.Port
-	s.RelayID = profile.Fingerprint
-
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	oldPassword, hadPassword, err := a.relayPasswordLocked(defaultRelaySecret)
-	if err != nil {
-		return a.settings, err
-	}
-	if err := a.storeRelayPasswordLocked(defaultRelaySecret, profile.Password); err != nil {
-		return a.settings, err
-	}
-	if err := a.saveSettingsLocked(s); err != nil {
-		if hadPassword {
-			_ = a.storeRelayPasswordLocked(defaultRelaySecret, oldPassword)
-		} else {
-			_ = a.clearRelayPasswordLocked(defaultRelaySecret)
-		}
-		return a.settings, err
-	}
-	return a.settings, nil
-}
-
 // TestRelayConnection performs the host relay handshake without starting a
 // session. An empty password uses the saved Settings password.
 func (a *App) TestRelayConnection(ctx context.Context, host string, port int, relayID, password string) error {

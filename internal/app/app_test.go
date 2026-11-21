@@ -1618,58 +1618,6 @@ func TestDeleteGroupClearsRelayPassword(t *testing.T) {
 	}
 }
 
-func TestImportRelayProfile(t *testing.T) {
-	a := newTestApp(t)
-	id := strings.Repeat("ab", 32)
-	profile := relay.HostProfile{
-		Version:     relay.Version,
-		Address:     "relay.example.net:9443",
-		Fingerprint: strings.ToUpper(id),
-		Password:    "relay secret",
-	}
-	path := filepath.Join(t.TempDir(), relay.ProfileFileName)
-	if err := relay.SaveProfile(path, profile); err != nil {
-		t.Fatal(err)
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err := a.ImportRelayProfile(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !got.UseRelay || got.RelayHost != "relay.example.net" || got.RelayPort != 9443 || got.RelayID != id {
-		t.Fatalf("settings = %+v", got)
-	}
-	if !a.RelayPasswordSet() {
-		t.Fatal("the relay password was not imported")
-	}
-	a.mu.Lock()
-	password, ok, err := a.relayPasswordLocked(defaultRelaySecret)
-	a.mu.Unlock()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !ok || password != "relay secret" {
-		t.Fatalf("password = %q, ok = %v", password, ok)
-	}
-}
-
-func TestImportRelayProfileRejectsBadData(t *testing.T) {
-	a := newTestApp(t)
-	before := a.Settings()
-	if _, err := a.ImportRelayProfile([]byte("not a profile")); err == nil {
-		t.Fatal("bad data was accepted")
-	}
-	if a.Settings() != before {
-		t.Fatalf("settings changed: %+v", a.Settings())
-	}
-	if a.RelayPasswordSet() {
-		t.Fatal("a password was stored")
-	}
-}
-
 func freeRelayPort(t *testing.T) int {
 	t.Helper()
 	for attempt := 0; attempt < 20; attempt++ {
