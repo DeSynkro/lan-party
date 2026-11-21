@@ -58,8 +58,14 @@ func (a *App) authenticate(ctx context.Context, groupID string, req tunnel.AuthR
 	}
 
 	ip := hostOnly(req.RemoteAddr)
+	limiterKey := ip
+	displayAddr := ip
+	if req.Relay {
+		limiterKey = req.RemoteAddr
+		displayAddr = "via relay"
+	}
 	now := time.Now()
-	if !a.limiter.Allow(ip, now) {
+	if !a.limiter.Allow(limiterKey, now) {
 		return deny("too many attempts; wait a minute and try again"), nil
 	}
 
@@ -74,14 +80,14 @@ func (a *App) authenticate(ctx context.Context, groupID string, req tunnel.AuthR
 	}
 
 	if member, ok := g.FindMemberByKey(key); ok && member.IsApproved() {
-		a.noteConnection(groupID, member.ID, ip)
+		a.noteConnection(groupID, member.ID, displayAddr)
 		return allow(member.ID, g.Services), nil
 	}
 
 	if req.MemberID != "" {
 		member, ok := g.FindMember(req.MemberID)
 		if !ok {
-			a.limiter.Fail(ip, now)
+			a.limiter.Fail(limiterKey, now)
 			return deny("this device is not in the group"), nil
 		}
 
@@ -90,7 +96,7 @@ func (a *App) authenticate(ctx context.Context, groupID string, req tunnel.AuthR
 			Kind:        "new device",
 			PeerName:    member.Name,
 			DeviceName:  req.DeviceName,
-			Address:     ip,
+			Address:     displayAddr,
 			Fingerprint: req.Fingerprint,
 		})
 		if err != nil {
@@ -100,10 +106,10 @@ func (a *App) authenticate(ctx context.Context, groupID string, req tunnel.AuthR
 			return deny("the host did not answer in time"), nil
 		}
 		if !allowed {
-			a.limiter.Fail(ip, now)
+			a.limiter.Fail(limiterKey, now)
 			return deny("the host denied this device"), nil
 		}
-		if err := a.replaceDevice(groupID, member.ID, req, ip); err != nil {
+		if err := a.replaceDevice(groupID, member.ID, req, displayAddr); err != nil {
 			return deny("the device could not be saved"), nil
 		}
 		if host := a.currentHost(); host != nil {
@@ -114,7 +120,7 @@ func (a *App) authenticate(ctx context.Context, groupID string, req tunnel.AuthR
 	}
 
 	if req.Token == "" {
-		a.limiter.Fail(ip, now)
+		a.limiter.Fail(limiterKey, now)
 		return deny("this device is not in the group"), nil
 	}
 
@@ -131,7 +137,7 @@ func (a *App) authenticate(ctx context.Context, groupID string, req tunnel.AuthR
 		}
 	}
 	if matched == nil {
-		a.limiter.Fail(ip, now)
+		a.limiter.Fail(limiterKey, now)
 		return deny("that invite is not valid"), nil
 	}
 
@@ -141,7 +147,7 @@ func (a *App) authenticate(ctx context.Context, groupID string, req tunnel.AuthR
 			Kind:        "join",
 			PeerName:    matched.Name,
 			DeviceName:  req.DeviceName,
-			Address:     ip,
+			Address:     displayAddr,
 			Fingerprint: req.Fingerprint,
 		})
 		if err != nil {
@@ -151,12 +157,12 @@ func (a *App) authenticate(ctx context.Context, groupID string, req tunnel.AuthR
 			return deny("the host did not answer in time"), nil
 		}
 		if !allowed {
-			a.limiter.Fail(ip, now)
+			a.limiter.Fail(limiterKey, now)
 			return deny("the host denied the join"), nil
 		}
 	}
 
-	memberID, replaced, err := a.enroll(groupID, matched.ID, req, ip)
+	memberID, replaced, err := a.enroll(groupID, matched.ID, req, displayAddr)
 	if err != nil {
 		return deny("the member could not be saved"), nil
 	}

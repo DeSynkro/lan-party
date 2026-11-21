@@ -75,6 +75,9 @@ func Join(ctx context.Context, cfg JoinConfig) (*Friend, error) {
 		if err != nil {
 			return nil, fmt.Errorf("relay address: %w", err)
 		}
+		// Dial the address the wrapper already resolved so a multi-A/AAAA
+		// relay hostname cannot resolve to a different address.
+		endpoint = relayAddr.String()
 		token, err := relay.DecodeFriendToken(cfg.Invite.RelayToken)
 		if err != nil {
 			return nil, err

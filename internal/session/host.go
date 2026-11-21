@@ -56,6 +56,11 @@ type Host struct {
 	mu          sync.Mutex
 	services    serviceIndex
 	peers       map[*hostPeer]struct{}
+
+	done      chan struct{}
+	closeOnce sync.Once
+	errMu     sync.Mutex
+	relayErr  error
 }
 
 type hostPeer struct {
@@ -108,6 +113,7 @@ func StartHost(ctx context.Context, cfg HostConfig) (*Host, error) {
 		server, err = tunnel.Listen(tunnel.ServerConfig{
 			Identity:     cfg.Identity,
 			PacketConn:   relayConn,
+			Relay:        true,
 			Authenticate: cfg.Authenticate,
 		})
 		if err != nil {
@@ -134,9 +140,10 @@ func StartHost(ctx context.Context, cfg HostConfig) (*Host, error) {
 		cancel:      cancel,
 		services:    newServiceIndex(cfg.Services),
 		peers:       map[*hostPeer]struct{}{},
+		done:        make(chan struct{}),
 	}
 	if relayClient != nil && relayConn != nil {
-		go h.relayKeepalive(relayClient, relayConn)
+		go h.relayKeepalive(relayConn)
 		go h.relayEvents(relayClient)
 	}
 	go h.acceptLoop()
@@ -151,17 +158,19 @@ func (h *Host) AuthorizeRelayToken(ctx context.Context, token string, expires ti
 	return h.relayClient.Authorize(ctx, token, expires)
 }
 
-func (h *Host) relayKeepalive(client *relay.Client, conn *relay.HostPacketConn) {
+func (h *Host) relayKeepalive(conn *relay.HostPacketConn) {
 	ticker := time.NewTicker(20 * time.Second)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-h.ctx.Done():
 			return
-		case <-client.Done():
-			return
 		case <-ticker.C:
 			if err := conn.SendKeepalive(); err != nil {
+				if h.ctx.Err() == nil {
+					h.setRelayError(fmt.Errorf("relay data keepalive: %w", err))
+					_ = h.Close()
+				}
 				return
 			}
 		}
@@ -174,6 +183,11 @@ func (h *Host) relayEvents(client *relay.Client) {
 		case <-h.ctx.Done():
 			return
 		case <-client.Done():
+			if h.ctx.Err() != nil {
+				return
+			}
+			h.setRelayError(client.Err())
+			_ = h.Close()
 			return
 		case <-client.Events():
 		}
@@ -261,18 +275,39 @@ func (h *Host) Revoke(memberID string) error {
 
 // Close ends the session and every peer connection.
 func (h *Host) Close() error {
-	h.cancel()
-	_ = h.server.Close()
-	if h.relayClient != nil {
-		_ = h.relayClient.Close()
-	}
+	h.closeOnce.Do(func() {
+		h.cancel()
+		_ = h.server.Close()
+		if h.relayClient != nil {
+			_ = h.relayClient.Close()
+		}
 
-	h.mu.Lock()
-	for p := range h.peers {
-		p.cancel()
-	}
-	h.mu.Unlock()
+		h.mu.Lock()
+		for p := range h.peers {
+			p.cancel()
+		}
+		h.mu.Unlock()
+		close(h.done)
+	})
 	return nil
+}
+
+// Done closes when the host session ends.
+func (h *Host) Done() <-chan struct{} { return h.done }
+
+// RelayError is why the relay path ended, if it did.
+func (h *Host) RelayError() error {
+	h.errMu.Lock()
+	defer h.errMu.Unlock()
+	return h.relayErr
+}
+
+func (h *Host) setRelayError(err error) {
+	h.errMu.Lock()
+	if h.relayErr == nil {
+		h.relayErr = err
+	}
+	h.errMu.Unlock()
 }
 
 func (h *Host) acceptLoop() {

@@ -256,7 +256,7 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 					feedback.showError(err)
 					return
 				}
-				feedback.showStatus("Relay reachable and the password is correct.")
+				feedback.showStatus("Relay control channel reachable; password correct. UDP is checked when friends connect.")
 			})
 		}()
 	})
@@ -266,25 +266,33 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	save.SetHAlign(gtk.AlignStart)
 	save.ConnectClicked(func() {
 		s := u.state.Settings()
-		directPort, err := strconv.Atoi(strings.TrimSpace(portEntry.Text()))
-		if err != nil {
-			feedback.showError(errors.New("the app port must be a number"))
-			return
-		}
-		relayPort := u.state.Settings().RelayPort
-		if text := strings.TrimSpace(relayPortEntry.Text()); text != "" {
-			relayPort, err = strconv.Atoi(text)
-			if err != nil {
-				feedback.showError(errors.New("the relay port must be a number"))
-				return
+		relayOn := useRelay.Active()
+		s.UseRelay = relayOn
+		s.PublicAddress = strings.TrimSpace(publicEntry.Text())
+		s.RelayHost = strings.TrimSpace(relayHostEntry.Text())
+		s.RelayID = strings.TrimSpace(relayIDEntry.Text())
+		if text := strings.TrimSpace(portEntry.Text()); text != "" {
+			port, err := strconv.Atoi(text)
+			if err != nil || port < 1 || port > 65535 {
+				if !relayOn {
+					feedback.showError(errors.New("the app port must be between 1 and 65535"))
+					return
+				}
+			} else {
+				s.AppPort = port
 			}
 		}
-		s.PublicAddress = strings.TrimSpace(publicEntry.Text())
-		s.AppPort = directPort
-		s.UseRelay = useRelay.Active()
-		s.RelayHost = strings.TrimSpace(relayHostEntry.Text())
-		s.RelayPort = relayPort
-		s.RelayID = strings.TrimSpace(relayIDEntry.Text())
+		if text := strings.TrimSpace(relayPortEntry.Text()); text != "" {
+			port, err := strconv.Atoi(text)
+			if err != nil || port < 1 || port > 65535 {
+				if relayOn {
+					feedback.showError(errors.New("the relay port must be between 1 and 65535"))
+					return
+				}
+			} else {
+				s.RelayPort = port
+			}
+		}
 		if err := u.state.SaveSettingsWithRelayPassword(s, relayPasswordEntry.Text()); err != nil {
 			feedback.showError(err)
 			return

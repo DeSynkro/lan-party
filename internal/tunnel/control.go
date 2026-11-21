@@ -58,6 +58,7 @@ type AuthRequest struct {
 	DeviceName  string
 	Token       string
 	RemoteAddr  string
+	Relay       bool
 	PublicKey   ed25519.PublicKey
 	Fingerprint string
 }

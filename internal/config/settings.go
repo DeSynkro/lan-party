@@ -102,7 +102,7 @@ func (s Settings) Validate() error {
 	if err := ValidateAddress(s.PublicAddress); err != nil {
 		return err
 	}
-	if s.UseRelay || strings.TrimSpace(s.RelayHost) != "" || strings.TrimSpace(s.RelayID) != "" {
+	if s.UseRelay {
 		return ValidateRelayConnection(s.RelayHost, s.RelayPort, s.RelayID)
 	}
 	return nil

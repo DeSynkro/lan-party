@@ -213,6 +213,10 @@ func (u *probeUI) hostSessionCard(g group.Group, showError func(error), state *g
 	}
 	state.hostConnected = connected
 	card.Append(connected)
+	if note := u.state.HostNote(); note != "" {
+		card.Append(gapBox(6))
+		card.Append(cardText(note, "warning"))
+	}
 	return card
 }
 
@@ -350,6 +354,8 @@ func (u *probeUI) friendSessionCard(g group.Group, showError func(error), state 
 	actionLabel := "Reconnect"
 	if live {
 		actionLabel = "Disconnect"
+	} else if g.UseRelay {
+		actionLabel = "Join new invite"
 	} else if reconnect.Active {
 		actionLabel = "Reconnect now"
 	}
@@ -360,6 +366,10 @@ func (u *probeUI) friendSessionCard(g group.Group, showError func(error), state 
 		presence := u.state.FriendPresence()
 		if u.state.LiveGroupID() == g.ID && presence.Live {
 			u.confirmDisconnect(g)
+			return
+		}
+		if g.UseRelay {
+			u.showJoinDialog()
 			return
 		}
 		if err := u.state.Reconnect(context.Background(), g.ID); err != nil {
@@ -373,6 +383,9 @@ func (u *probeUI) friendSessionCard(g group.Group, showError func(error), state 
 	card.Append(gapBox(10))
 	card.Append(cardText("Hosted by "+g.HostName, "desc"))
 	detail := "Start the session on the host, then reconnect."
+	if g.UseRelay {
+		detail = "Ask the host for a new invite, then join with it."
+	}
 	switch {
 	case live:
 		detail = presence.RTT.Round(time.Millisecond).String()
@@ -423,7 +436,7 @@ func (u *probeUI) friendServices(g group.Group) *gtk.Box {
 			if i > 0 {
 				box.Append(gapBox(8))
 			}
-			box.Append(u.offlineFriendServiceCard(s))
+			box.Append(u.offlineFriendServiceCard(s, g.UseRelay))
 		}
 		return box
 	}
@@ -474,7 +487,7 @@ func (u *probeUI) friendServices(g group.Group) *gtk.Box {
 	return box
 }
 
-func (u *probeUI) offlineFriendServiceCard(s group.Service) *gtk.Box {
+func (u *probeUI) offlineFriendServiceCard(s group.Service, relay bool) *gtk.Box {
 	card := gtk.NewBox(gtk.OrientationVertical, 0)
 	card.AddCSSClass("card")
 	top := gtk.NewBox(gtk.OrientationHorizontal, 8)
@@ -485,7 +498,11 @@ func (u *probeUI) offlineFriendServiceCard(s group.Service) *gtk.Box {
 	card.Append(top)
 	card.Append(gapBox(8))
 	card.Append(cardText("Port "+group.FormatPorts(s.Ports), "desc"))
-	card.Append(cardText("Host offline. Reconnect when the host is back.", "desc"))
+	if relay {
+		card.Append(cardText("Host offline. Ask the host for a new invite.", "desc"))
+	} else {
+		card.Append(cardText("Host offline. Reconnect when the host is back.", "desc"))
+	}
 	if s.Hint != "" {
 		card.Append(gapBox(6))
 		card.Append(cardText(s.Hint, "desc"))
@@ -602,7 +619,7 @@ func (u *probeUI) groupSignature(g group.Group) string {
 	fmt.Fprintf(&b, "group|%s|%s|%s|%s|%s|%s|%s", g.ID, g.Name, g.Role, g.HostName, g.Endpoint, g.HostPin, g.SelfName)
 	if g.IsHost() {
 		live := u.state.LiveGroupID() == g.ID
-		fmt.Fprintf(&b, "|live=%t", live)
+		fmt.Fprintf(&b, "|live=%t|host-note=%s", live, u.state.HostNote())
 		fmt.Fprintf(&b, "|connection=%s,%d", g.PublicAddress, g.AppPort)
 		if connection, err := u.state.EffectiveConnection(g.ID); err == nil {
 			fmt.Fprintf(&b, "|use-relay=%t,relay-custom=%t,relay=%s,%d,%s,override=%t",
@@ -738,6 +755,8 @@ func (state *groupLive) refresh(u *probeUI, g group.Group) {
 		switch {
 		case live:
 			state.friendAction.SetLabel("Disconnect")
+		case g.UseRelay:
+			state.friendAction.SetLabel("Join new invite")
 		case reconnect.Active:
 			state.friendAction.SetLabel("Reconnect now")
 		default:
@@ -754,6 +773,8 @@ func (state *groupLive) refresh(u *probeUI, g group.Group) {
 			state.friendDetail.SetText(u.state.FriendNote())
 		case reconnect.Stopped:
 			state.friendDetail.SetText(reconnectStoppedText(reconnect))
+		case g.UseRelay:
+			state.friendDetail.SetText("Ask the host for a new invite, then join with it.")
 		default:
 			state.friendDetail.SetText("Start the session on the host, then reconnect.")
 		}

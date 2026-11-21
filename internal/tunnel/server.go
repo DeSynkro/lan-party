@@ -19,6 +19,7 @@ type ServerConfig struct {
 	Identity             secure.Identity
 	ListenAddr           string
 	PacketConn           net.PacketConn // optional; the server takes ownership
+	Relay                bool
 	Authenticate         Authenticator
 	MaxStreams           int
 	ApprovalTimeout      time.Duration
@@ -31,6 +32,7 @@ type Server struct {
 	listener         *quic.Listener
 	transport        *quic.Transport
 	packetConn       net.PacketConn
+	relay            bool
 	auth             Authenticator
 	approvalTimeout  time.Duration
 	handshakeTimeout time.Duration
@@ -94,6 +96,7 @@ func Listen(cfg ServerConfig) (*Server, error) {
 		listener:         listener,
 		transport:        transport,
 		packetConn:       cfg.PacketConn,
+		relay:            cfg.Relay,
 		auth:             cfg.Authenticate,
 		approvalTimeout:  timeout,
 		handshakeTimeout: handshakeTimeout,
@@ -263,6 +266,7 @@ func (s *Server) handshake(qc *quic.Conn) (*Conn, error) {
 		DeviceName:  clipText(hello.DeviceName, 120),
 		Token:       clipText(hello.Token, 512),
 		RemoteAddr:  qc.RemoteAddr().String(),
+		Relay:       s.relay,
 		PublicKey:   pub,
 		Fingerprint: secure.Fingerprint(pub),
 	}

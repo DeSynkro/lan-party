@@ -179,6 +179,15 @@ func TestSettingsRelayValidation(t *testing.T) {
 	if err := off.Validate(); err != nil {
 		t.Fatalf("relay-off defaults = %v", err)
 	}
+	off.RelayHost = "not a host"
+	off.RelayID = "short"
+	if err := off.Validate(); err != nil {
+		t.Fatalf("inactive relay values blocked direct mode: %v", err)
+	}
+	off.UseRelay = true
+	if err := off.Validate(); err == nil {
+		t.Fatal("activating invalid relay values was accepted")
+	}
 }
 
 func TestLoadSettingsBadJSON(t *testing.T) {

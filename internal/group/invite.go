@@ -10,6 +10,7 @@ type Invite struct {
 	CreatedAt  time.Time `json:"createdAt"`
 	ExpiresAt  time.Time `json:"expiresAt"`
 	RedeemedAt time.Time `json:"redeemedAt,omitempty"`
+	Relay      bool      `json:"relay,omitempty"`
 }
 
 // Open reports whether the invite can still be redeemed at now.

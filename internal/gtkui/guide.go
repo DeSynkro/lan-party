@@ -11,7 +11,11 @@ import (
 
 func (u *probeUI) buildGuidePage() *gtk.ScrolledWindow {
 	settings := u.state.Settings()
+	relayOn := settings.UseRelay && strings.TrimSpace(settings.RelayHost) != ""
 	rule := fmt.Sprintf("Forward the group's UDP app port (default %d) to %s", settings.AppPort, localIPv4())
+	if relayOn {
+		rule = "Relay: " + settings.RelayHost + " · port " + strconv.Itoa(settings.RelayPort)
+	}
 
 	page := gtk.NewBox(gtk.OrientationVertical, 0)
 	page.AddCSSClass("page")
@@ -43,7 +47,11 @@ func (u *probeUI) buildGuidePage() *gtk.ScrolledWindow {
 	hosting.Append(gapBox(10))
 	hosting.Append(cardText("1. Open your group and add the game server you want to share. Use the IP and port it listens on.", "desc"))
 	hosting.Append(gapBox(10))
-	hosting.Append(cardText("2. Forward one UDP port on your router. That is the app port, not the game port.", "desc"))
+	if relayOn {
+		hosting.Append(cardText("2. Friends connect through your relay. No port forward is needed on this PC.", "desc"))
+	} else {
+		hosting.Append(cardText("2. Forward one UDP port on your router. That is the app port, not the game port.", "desc"))
+	}
 	hosting.Append(gapBox(10))
 
 	copyButton := gtk.NewButtonWithLabel("Copy")
@@ -59,11 +67,17 @@ func (u *probeUI) buildGuidePage() *gtk.ScrolledWindow {
 	ruleRow.Append(copyButton)
 	hosting.Append(ruleRow)
 	hosting.Append(gapBox(10))
-	hosting.Append(cardText("Only this one port faces the internet. The game ports themselves stay closed.", "desc"))
+	if relayOn {
+		hosting.Append(cardText("The relay is the only reachable machine. The host PC needs no inbound port, and the game ports stay closed.", "desc"))
+	} else {
+		hosting.Append(cardText("Only this one port faces the internet. The game ports themselves stay closed.", "desc"))
+	}
 	hosting.Append(gapBox(10))
 
 	addressLine := "No public address set yet. Open Settings and fill it in."
-	if strings.TrimSpace(settings.PublicAddress) != "" {
+	if relayOn {
+		addressLine = "Relay route: " + settings.RelayHost + " · port " + strconv.Itoa(settings.RelayPort) + " · Relay ID " + shortRelayID(settings.RelayID)
+	} else if strings.TrimSpace(settings.PublicAddress) != "" {
 		addressLine = "Your public address: " + settings.PublicAddress
 	}
 	hosting.Append(cardText(addressLine, "desc"))
@@ -96,7 +110,7 @@ func (u *probeUI) buildGuidePage() *gtk.ScrolledWindow {
 	problems.Append(textLabel("Problems", "card-title"))
 	problems.Append(gapBox(10))
 	problems.Append(cardText("A friend can't reach you", "setting-title"))
-	problems.Append(cardText("Check the public address in Settings, the UDP rule on your router, and the firewall on this PC. A VPN on the host can also hide the address. If your router's WAN address differs from your public address, your ISP may use carrier-grade NAT; this version has no relay, so direct hosting will not work.", "desc"))
+	problems.Append(cardText("Check the public address in Settings, the UDP rule on your router, and the firewall on this PC. A VPN on the host can also hide the address. If your router's WAN address differs from your public address, your ISP may use carrier-grade NAT; use Settings → Use Relay with your self-hosted relay instead, and choose Test relay.", "desc"))
 	problems.Append(gapBox(10))
 	problems.Append(cardText("Your public address changed", "setting-title"))
 	problems.Append(cardText("Update it in Settings. Old invites still point at the old address, so create new ones after the change.", "desc"))
@@ -123,7 +137,11 @@ func (u *probeUI) buildGuidePage() *gtk.ScrolledWindow {
 	page.Append(security)
 
 	page.Append(gapBox(10))
-	page.Append(cardText("Default app port "+strconv.Itoa(settings.AppPort)+" · UDP", "desc"))
+	if relayOn {
+		page.Append(cardText("Relay "+settings.RelayHost+" · port "+strconv.Itoa(settings.RelayPort)+" · no port forward", "desc"))
+	} else {
+		page.Append(cardText("Default app port "+strconv.Itoa(settings.AppPort)+" · UDP", "desc"))
+	}
 
 	scroll := gtk.NewScrolledWindow()
 	scroll.SetPolicy(gtk.PolicyNever, gtk.PolicyAutomatic)

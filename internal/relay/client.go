@@ -175,8 +175,10 @@ func (c *Client) Authorize(ctx context.Context, token string, expires time.Time)
 
 // Close says goodbye and closes the control connection.
 func (c *Client) Close() error {
+	c.writeMu.Lock()
 	_ = c.conn.SetWriteDeadline(time.Now().Add(time.Second))
 	_ = writeControl(c.conn, controlMessage{Type: "bye"})
+	c.writeMu.Unlock()
 	c.finish(net.ErrClosed)
 	return nil
 }

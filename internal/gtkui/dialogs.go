@@ -266,7 +266,7 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 		summaryRoute.SetText("Public address: " + endpoint)
 		summaryDetail.SetText("Friends connect to the address in Settings.")
 	}
-	if settingsConnection.UseRelay {
+	if settingsConnection.RelayHost != "" && settingsConnection.RelayID != "" {
 		inheritedNote.SetText("Relay: from Settings · " + relayRoute(settingsConnection.RelayHost, settingsConnection.RelayPort, settingsConnection.RelayID))
 	} else {
 		inheritedNote.SetText("Relay: the Settings relay is not configured.")
@@ -433,7 +433,8 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 			}
 		}
 
-		if pendingReset {
+		wasReset := pendingReset
+		if wasReset {
 			err = u.state.ResetGroupConnection(g.ID)
 		} else {
 			err = u.state.SaveGroupConnectionOptions(g.ID, in, password)
@@ -446,10 +447,16 @@ func (u *probeUI) showGroupConnectionDialog(g group.Group, showError func(error)
 			errLabel.SetVisible(true)
 			return
 		}
+		hasPassword = u.state.GroupRelayPasswordSet(g.ID)
+		passwordClearedOnSave = false
 		if restartNeeded {
 			if err := u.state.StartSession(g.ID); err != nil {
 				updatePreview()
-				errLabel.SetText("Connection saved, but the session could not restart: " + err.Error() + ". Start the session again.")
+				saved := "Connection saved"
+				if wasReset {
+					saved = "Reset applied"
+				}
+				errLabel.SetText(saved + ", but the session could not restart: " + err.Error() + ". Start the session again.")
 				errLabel.SetVisible(true)
 				return
 			}
@@ -1100,7 +1107,11 @@ func (u *probeUI) confirmEndSession(g group.Group) {
 }
 
 func (u *probeUI) confirmDisconnect(g group.Group) {
-	u.confirm("Disconnect?", "The group stays saved and you can reconnect later.", "Disconnect", func() {
+	message := "The group stays saved and you can reconnect later."
+	if g.UseRelay {
+		message = "The group stays saved. To reconnect through the relay, ask the host for a new invite."
+	}
+	u.confirm("Disconnect?", message, "Disconnect", func() {
 		_ = u.state.StopSession()
 		u.showGroup(g.ID)
 	})

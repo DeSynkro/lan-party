@@ -172,7 +172,7 @@ func ClientTLS(fingerprint string) *tls.Config {
 				return errors.New("relay sent no certificate")
 			}
 			if got := publicKeyFingerprint(rawCerts[0]); got != fingerprint {
-				return fmt.Errorf("relay key mismatch: got %s", got)
+				return fmt.Errorf("the relay key does not match the pinned Relay ID (got %s); if the relay was rotated, update the Relay ID in Settings", got)
 			}
 			return nil
 		},

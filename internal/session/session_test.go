@@ -594,4 +594,16 @@ func TestHostFriendThroughRelay(t *testing.T) {
 		presence, ok := host.Presence()["member-1"]
 		return ok && presence.Live
 	})
+
+	if err := relayServer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-host.Done():
+	case <-time.After(2 * time.Second):
+		t.Fatal("the host did not notice the relay going away")
+	}
+	if host.RelayError() == nil {
+		t.Fatal("the host did not record the relay error")
+	}
 }

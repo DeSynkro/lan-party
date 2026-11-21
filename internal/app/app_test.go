@@ -1639,6 +1639,7 @@ func freeRelayPort(t *testing.T) int {
 
 type testRelayServer struct {
 	profile relay.HostProfile
+	server  *relay.Server
 }
 
 func startTestRelayServer(t *testing.T, password string) *testRelayServer {
@@ -1671,7 +1672,7 @@ func startTestRelayServer(t *testing.T, password string) *testRelayServer {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = server.Close() })
-	return &testRelayServer{profile: profile}
+	return &testRelayServer{profile: profile, server: server}
 }
 
 func enableSettingsRelay(t *testing.T, a *App, relayServer *testRelayServer) {
@@ -1771,6 +1772,30 @@ func TestAppRelayHostAndFriend(t *testing.T) {
 	if status := friendApp.ReconnectStatus(joined.ID); status.Active {
 		t.Fatal("relay reconnect was scheduled")
 	}
+
+	newCode, err := hostApp.CreateInvite(g.ID, "Ash again")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rejoinCtx, rejoinCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer rejoinCancel()
+	rejoined, err := friendApp.JoinInvite(rejoinCtx, newCode, "ash-desktop")
+	if err != nil {
+		t.Fatalf("the friend could not rejoin with a new invite: %v", err)
+	}
+	if rejoined.ID != joined.ID {
+		t.Fatalf("rejoin created a new group %s instead of updating %s", rejoined.ID, joined.ID)
+	}
+	if !friendApp.FriendPresence().Live {
+		t.Fatal("the reconnected friend is not live")
+	}
+
+	if err := relayServer.server.Close(); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, 3*time.Second, func() bool {
+		return hostApp.LiveGroupID() == "" && hostApp.HostNote() != ""
+	})
 }
 
 func TestCreateRelayInviteNeedsLiveSession(t *testing.T) {
@@ -1990,9 +2015,25 @@ func TestSaveGroupConnectionOptionsPassword(t *testing.T) {
 		t.Fatalf("password after a failed save = %q, ok = %v", password, ok)
 	}
 
-	// Switching to the Settings relay keeps the custom password for later.
+	// An inherited relay needs the Settings relay and its password.
 	inherited := in
 	inherited.RelayCustom = false
+	if err := a.SaveGroupConnectionOptions(g.ID, inherited, ""); err == nil {
+		t.Fatal("an unconfigured Settings relay was accepted")
+	}
+	s := a.Settings()
+	s.UseRelay = true
+	s.RelayHost = "relay.example.net"
+	s.RelayPort = 7443
+	s.RelayID = strings.Repeat("cd", 32)
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.SetRelayPassword("settings secret"); err != nil {
+		t.Fatal(err)
+	}
+
+	// Switching to the Settings relay keeps the custom password for later.
 	if err := a.SaveGroupConnectionOptions(g.ID, inherited, ""); err != nil {
 		t.Fatal(err)
 	}
@@ -2076,5 +2117,90 @@ func TestRelayInviteSurvivesSessionRestart(t *testing.T) {
 	defer cancel()
 	if _, err := friendApp.JoinInvite(ctx, code, "ash-desktop"); err != nil {
 		t.Fatalf("the invite did not survive the session restart: %v", err)
+	}
+}
+
+func TestRelayPasswordIsBoundToTheRelay(t *testing.T) {
+	a := newTestApp(t)
+	s := a.Settings()
+	s.UseRelay = true
+	s.RelayHost = "relay-a.example.net"
+	s.RelayPort = 7443
+	s.RelayID = strings.Repeat("ab", 32)
+	if err := a.SaveSettingsWithRelayPassword(s, "relay a password"); err != nil {
+		t.Fatal(err)
+	}
+
+	other := s
+	other.RelayHost = "relay-b.example.net"
+	other.RelayID = strings.Repeat("cd", 32)
+	if err := a.SaveSettingsWithRelayPassword(other, ""); err == nil {
+		t.Fatal("the relay A password was reused for relay B")
+	}
+	if err := a.SaveSettingsWithRelayPassword(other, "relay b password"); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.SaveSettingsWithRelayPassword(other, ""); err != nil {
+		t.Fatalf("the unchanged relay password was not reused: %v", err)
+	}
+}
+
+func TestGroupRelayPasswordIsBoundToTheRelay(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := GroupConnectionInput{
+		Override:    true,
+		UseRelay:    true,
+		RelayCustom: true,
+		RelayHost:   "relay-a.example.net",
+		RelayPort:   7443,
+		RelayID:     strings.Repeat("ab", 32),
+	}
+	if err := a.SaveGroupConnectionOptions(g.ID, in, "relay a password"); err != nil {
+		t.Fatal(err)
+	}
+	other := in
+	other.RelayHost = "relay-b.example.net"
+	other.RelayID = strings.Repeat("cd", 32)
+	if err := a.SaveGroupConnectionOptions(g.ID, other, ""); err == nil {
+		t.Fatal("the relay A password was reused for relay B")
+	}
+	if err := a.SaveGroupConnectionOptions(g.ID, other, "relay b password"); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.SaveGroupConnectionOptions(g.ID, other, ""); err != nil {
+		t.Fatalf("the unchanged relay password was not reused: %v", err)
+	}
+}
+
+func TestRelayInvitesFromPreviousRunAreDropped(t *testing.T) {
+	paths := config.Paths{
+		ConfigDir: filepath.Join(t.TempDir(), "config"),
+		DataDir:   filepath.Join(t.TempDir(), "data"),
+	}
+	store := group.OpenStore(filepath.Join(paths.DataDir, "groups.json"))
+	g := group.CreateHostGroup("Friday Night", "Desynkro")
+	now := time.Now().UTC()
+	g.Invites = []group.Invite{
+		{ID: "relay", Name: "Ash", TokenHash: "hash", CreatedAt: now, ExpiresAt: now.Add(time.Hour), Relay: true},
+		{ID: "direct", Name: "Blair", TokenHash: "hash2", CreatedAt: now, ExpiresAt: now.Add(time.Hour)},
+	}
+	if err := store.Save([]group.Group{g}); err != nil {
+		t.Fatal(err)
+	}
+	a, err := NewWithStore(paths, memStore{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = a.Close() })
+	saved, ok := a.Group(g.ID)
+	if !ok {
+		t.Fatal("group missing")
+	}
+	if len(saved.Invites) != 1 || saved.Invites[0].ID != "direct" {
+		t.Fatalf("invites = %+v", saved.Invites)
 	}
 }

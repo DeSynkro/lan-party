@@ -221,7 +221,9 @@ is what closing does anyway. The setting says so.
 - A relay invite also depends on the host's live relay session. Stopping and
   starting the session in the same app run re-registers its token. After an app
   restart, create a new relay invite.
-- A denied or timed-out join leaves the invite usable until it expires.
+- A denied or timed-out direct join leaves the invite usable until it
+  expires. A relay invite binds its token to the friend's first source address,
+  so a failed first relay connection needs a new invite.
 - **Cancel invite** in the host's group screen stops a code immediately.
 
 ## Device changes
