@@ -21,6 +21,8 @@ const descriptionWidth = 280
 func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	settings := u.state.Settings()
 	feedback := newFeedback()
+	networkFeedback := newFeedback()
+	friendsFeedback := newFeedback()
 
 	page := gtk.NewBox(gtk.OrientationVertical, 0)
 	page.AddCSSClass("page")
@@ -122,11 +124,11 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 		}
 	}
 	publicEntry.ConnectChanged(func() {
-		feedback.hide()
+		networkFeedback.hide()
 		updateDirectPreview()
 	})
 	portEntry.ConnectChanged(func() {
-		feedback.hide()
+		networkFeedback.hide()
 		updateDirectPreview()
 	})
 
@@ -192,11 +194,11 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	}
 	for _, entry := range []*gtk.Entry{relayHostEntry, relayPortEntry, relayIDEntry} {
 		entry.ConnectChanged(func() {
-			feedback.hide()
+			networkFeedback.hide()
 			updateRelayPreview()
 		})
 	}
-	relayPasswordEntry.ConnectChanged(func() { feedback.hide() })
+	relayPasswordEntry.ConnectChanged(func() { networkFeedback.hide() })
 
 	relayBox := gtk.NewBox(gtk.OrientationVertical, 0)
 	relayBox.Append(formRow("Relay host", relayHostEntry))
@@ -225,7 +227,7 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 		}
 	}
 	useRelay.ConnectToggled(func() {
-		feedback.hide()
+		networkFeedback.hide()
 		syncConnectionFields()
 	})
 
@@ -235,21 +237,23 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	networkCard.Append(useRelay)
 	networkCard.Append(directBox)
 	networkCard.Append(relayBox)
+	networkCard.Append(networkFeedback.box)
 
 	testRelay = gtk.NewButtonWithLabel("Test relay")
 	testRelay.AddCSSClass("secondary")
 	testRelay.SetHAlign(gtk.AlignStart)
 	testRelay.ConnectClicked(func() {
+		feedback.hide()
 		host := strings.TrimSpace(relayHostEntry.Text())
 		port, err := strconv.Atoi(strings.TrimSpace(relayPortEntry.Text()))
 		if err != nil {
-			feedback.showError(errors.New("the relay port must be a number"))
+			networkFeedback.showError(errors.New("the relay port must be a number"))
 			return
 		}
 		relayID := strings.TrimSpace(relayIDEntry.Text())
 		password := relayPasswordEntry.Text()
 		testRelay.SetSensitive(false)
-		feedback.showStatus("Testing the relay…")
+		networkFeedback.showStatus("Testing the relay…")
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 			defer cancel()
@@ -257,10 +261,10 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 			glib.IdleAdd(func() {
 				testRelay.SetSensitive(true)
 				if err != nil {
-					feedback.showError(err)
+					networkFeedback.showError(err)
 					return
 				}
-				feedback.showStatus("Relay control channel reachable; password correct. UDP is checked when friends connect.")
+				networkFeedback.showStatus("Relay control channel reachable; password correct. UDP is checked when friends connect.")
 			})
 		}()
 	})
@@ -269,6 +273,7 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	save.AddCSSClass("primary")
 	save.SetHAlign(gtk.AlignStart)
 	save.ConnectClicked(func() {
+		feedback.hide()
 		s := u.state.Settings()
 		relayOn := useRelay.Active()
 		s.UseRelay = relayOn
@@ -279,7 +284,7 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 			port, err := strconv.Atoi(text)
 			if err != nil || port < 1 || port > 65535 {
 				if !relayOn {
-					feedback.showError(errors.New("the app port must be between 1 and 65535"))
+					networkFeedback.showError(errors.New("the app port must be between 1 and 65535"))
 					return
 				}
 			} else {
@@ -290,7 +295,7 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 			port, err := strconv.Atoi(text)
 			if err != nil || port < 1 || port > 65535 {
 				if relayOn {
-					feedback.showError(errors.New("the relay port must be between 1 and 65535"))
+					networkFeedback.showError(errors.New("the relay port must be between 1 and 65535"))
 					return
 				}
 			} else {
@@ -298,7 +303,7 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 			}
 		}
 		if err := u.state.SaveSettingsWithRelayPassword(s, relayPasswordEntry.Text()); err != nil {
-			feedback.showError(err)
+			networkFeedback.showError(err)
 			return
 		}
 		settings = u.state.Settings()
@@ -306,7 +311,7 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 		updatePasswordStatus()
 		updateDirectPreview()
 		updateRelayPreview()
-		feedback.showStatus("Saved.")
+		networkFeedback.showStatus("Saved.")
 	})
 
 	buttonRow := gtk.NewBox(gtk.OrientationHorizontal, 8)
@@ -358,16 +363,18 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	friendsCard.Append(formRow("After (days)", forgetEntry))
 	friendsCard.Append(gapBox(8))
 	friendsCard.Append(textLabel("Friends who have not connected in this many days are removed and need a new invite. Leave blank to keep them forever.", "help"))
+	friendsCard.Append(friendsFeedback.box)
 	friendsSave := gtk.NewButtonWithLabel("Save friend settings")
 	friendsSave.AddCSSClass("primary")
 	friendsSave.SetHAlign(gtk.AlignStart)
 	friendsSave.SetMarginTop(10)
 	friendsSave.ConnectClicked(func() {
+		feedback.hide()
 		days := 0
 		if text := strings.TrimSpace(forgetEntry.Text()); text != "" {
 			n, err := strconv.Atoi(text)
 			if err != nil || n < 1 || n > 365 {
-				feedback.showError(errors.New("the inactive friend limit must be between 1 and 365 days, or blank for never"))
+				friendsFeedback.showError(errors.New("the inactive friend limit must be between 1 and 365 days, or blank for never"))
 				return
 			}
 			days = n
@@ -375,11 +382,11 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 		s := u.state.Settings()
 		s.ForgetFriendsDays = days
 		if err := u.state.SaveSettings(s); err != nil {
-			feedback.showError(err)
+			friendsFeedback.showError(err)
 			return
 		}
 		settings = u.state.Settings()
-		feedback.showStatus("Saved.")
+		friendsFeedback.showStatus("Saved.")
 	})
 	friendsCard.Append(friendsSave)
 	page.Append(friendsCard)
