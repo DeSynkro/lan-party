@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	"github.com/desynkro/lan-party/internal/config"
 	"github.com/desynkro/lan-party/internal/group"
 	"github.com/desynkro/lan-party/internal/invite"
+	"github.com/desynkro/lan-party/internal/relay"
 	"github.com/desynkro/lan-party/internal/secure"
 	"github.com/desynkro/lan-party/internal/tunnel"
 )
@@ -1515,4 +1517,448 @@ func TestServiceChangesOnlyUpdateTheLiveGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 	checkLiveServices("after an idle remove")
+}
+
+func TestRelayPasswordSecret(t *testing.T) {
+	a := newTestApp(t)
+	if a.RelayPasswordSet() {
+		t.Fatal("a password exists on a fresh app")
+	}
+	if err := a.SetRelayPassword("   "); err == nil {
+		t.Fatal("an empty password was accepted")
+	}
+	if err := a.SetRelayPassword(" relay secret "); err != nil {
+		t.Fatal(err)
+	}
+	if !a.RelayPasswordSet() {
+		t.Fatal("the password was not stored")
+	}
+	a.mu.Lock()
+	password, ok, err := a.relayPasswordLocked(defaultRelaySecret)
+	a.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok || password != "relay secret" {
+		t.Fatalf("password = %q, ok = %v", password, ok)
+	}
+	if err := a.ClearRelayPassword(); err != nil {
+		t.Fatal(err)
+	}
+	if a.RelayPasswordSet() {
+		t.Fatal("the password was not cleared")
+	}
+}
+
+func TestGroupRelayPasswordAndReset(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.GroupRelayPasswordSet(g.ID) {
+		t.Fatal("a password exists on a fresh group")
+	}
+	if err := a.SetGroupRelayPassword(g.ID, "group relay secret"); err != nil {
+		t.Fatal(err)
+	}
+	if !a.GroupRelayPasswordSet(g.ID) {
+		t.Fatal("the group password was not stored")
+	}
+	if err := a.SetGroupConnectionOptions(g.ID, GroupConnectionInput{
+		Override:      true,
+		UseRelay:      true,
+		RelayCustom:   true,
+		RelayHost:     "relay.example.net",
+		RelayID:       strings.Repeat("ab", 32),
+		PublicAddress: "ignored.example.net",
+		AppPort:       41000,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.ResetGroupConnection(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	got, err := a.EffectiveConnection(g.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Custom || got.RelayCustom || got.UseRelay {
+		t.Fatalf("reset connection = %+v", got)
+	}
+	saved, ok := a.Group(g.ID)
+	if !ok {
+		t.Fatal("group missing after reset")
+	}
+	if saved.OverrideSettings || saved.UseRelay || saved.RelayCustom || saved.RelayHost != "" || saved.RelayID != "" {
+		t.Fatalf("saved connection after reset = %+v", saved)
+	}
+	if saved.PublicAddress != "" || saved.AppPort != 0 {
+		t.Fatalf("saved direct values after reset = %+v", saved)
+	}
+	if a.GroupRelayPasswordSet(g.ID) {
+		t.Fatal("the group password was not cleared")
+	}
+}
+
+func TestDeleteGroupClearsRelayPassword(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.SetGroupRelayPassword(g.ID, "group relay secret"); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.DeleteGroup(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	if a.GroupRelayPasswordSet(g.ID) {
+		t.Fatal("the group password survived deletion")
+	}
+}
+
+func TestImportRelayProfile(t *testing.T) {
+	a := newTestApp(t)
+	id := strings.Repeat("ab", 32)
+	profile := relay.HostProfile{
+		Version:     relay.Version,
+		Address:     "relay.example.net:9443",
+		Fingerprint: strings.ToUpper(id),
+		Password:    "relay secret",
+	}
+	path := filepath.Join(t.TempDir(), relay.ProfileFileName)
+	if err := relay.SaveProfile(path, profile); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := a.ImportRelayProfile(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.UseRelay || got.RelayHost != "relay.example.net" || got.RelayPort != 9443 || got.RelayID != id {
+		t.Fatalf("settings = %+v", got)
+	}
+	if !a.RelayPasswordSet() {
+		t.Fatal("the relay password was not imported")
+	}
+	a.mu.Lock()
+	password, ok, err := a.relayPasswordLocked(defaultRelaySecret)
+	a.mu.Unlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok || password != "relay secret" {
+		t.Fatalf("password = %q, ok = %v", password, ok)
+	}
+}
+
+func TestImportRelayProfileRejectsBadData(t *testing.T) {
+	a := newTestApp(t)
+	before := a.Settings()
+	if _, err := a.ImportRelayProfile([]byte("not a profile")); err == nil {
+		t.Fatal("bad data was accepted")
+	}
+	if a.Settings() != before {
+		t.Fatalf("settings changed: %+v", a.Settings())
+	}
+	if a.RelayPasswordSet() {
+		t.Fatal("a password was stored")
+	}
+}
+
+func freeRelayPort(t *testing.T) int {
+	t.Helper()
+	for attempt := 0; attempt < 20; attempt++ {
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		port := ln.Addr().(*net.TCPAddr).Port
+		_ = ln.Close()
+		udp, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: port})
+		if err == nil {
+			_ = udp.Close()
+			return port
+		}
+	}
+	t.Fatal("could not find a free relay port")
+	return 0
+}
+
+type testRelayServer struct {
+	profile relay.HostProfile
+}
+
+func startTestRelayServer(t *testing.T, password string) *testRelayServer {
+	t.Helper()
+	port := freeRelayPort(t)
+	dir := t.TempDir()
+	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
+	profile, err := relay.Setup(relay.SetupOptions{
+		Dir:           dir,
+		PublicAddress: address,
+		Listen:        address,
+		Password:      password,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := relay.LoadConfig(relay.ConfigPath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cert, fingerprint, err := relay.LoadIdentity(relay.KeyPath(relay.ConfigPath(dir), cfg))
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, err := relay.NewServer(cfg, cert, fingerprint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := server.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = server.Close() })
+	return &testRelayServer{profile: profile}
+}
+
+func enableSettingsRelay(t *testing.T, a *App, relayServer *testRelayServer) {
+	t.Helper()
+	s := a.Settings()
+	s.UseRelay = true
+	s.RelayHost = relayServer.profile.Host
+	s.RelayPort = relayServer.profile.Port
+	s.RelayID = relayServer.profile.Fingerprint
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.SetRelayPassword(relayServer.profile.Password); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestTestRelayConnection(t *testing.T) {
+	relayServer := startTestRelayServer(t, "relay test password")
+	a := newTestApp(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := a.TestRelayConnection(ctx, relayServer.profile.Host, relayServer.profile.Port, relayServer.profile.Fingerprint, relayServer.profile.Password); err != nil {
+		t.Fatalf("relay test failed: %v", err)
+	}
+	if err := a.TestRelayConnection(ctx, relayServer.profile.Host, relayServer.profile.Port, relayServer.profile.Fingerprint, "wrong password"); err == nil {
+		t.Fatal("a wrong relay password passed the test")
+	}
+}
+
+func TestAppRelayHostAndFriend(t *testing.T) {
+	relayServer := startTestRelayServer(t, "relay test password")
+	hostApp := newTestApp(t)
+	s := hostApp.Settings()
+	s.ApproveNewDevices = false
+	if err := hostApp.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	enableSettingsRelay(t, hostApp, relayServer)
+	g, err := hostApp.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := hostApp.StartSession(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = hostApp.StopSession() })
+
+	code, err := hostApp.CreateInvite(g.ID, "Ash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	inv, err := invite.Decode(code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inv.Version != invite.RelayVersion || inv.Endpoint != "" {
+		t.Fatalf("invite = %+v", inv)
+	}
+	if inv.RelayHost != relayServer.profile.Host || inv.RelayPort != relayServer.profile.Port || inv.RelayID != relayServer.profile.Fingerprint {
+		t.Fatalf("invite relay = %+v", inv)
+	}
+	if _, err := relay.DecodeFriendToken(inv.RelayToken); err != nil {
+		t.Fatalf("relay token = %v", err)
+	}
+
+	friendApp := newTestApp(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	joined, err := friendApp.JoinInvite(ctx, code, "ash-desktop")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !joined.UseRelay || !joined.OverrideSettings || !joined.RelayCustom {
+		t.Fatalf("joined group = %+v", joined)
+	}
+	if joined.RelayHost != inv.RelayHost || joined.RelayPort != inv.RelayPort || joined.RelayID != inv.RelayID {
+		t.Fatalf("joined relay = %+v", joined)
+	}
+	if joined.Endpoint != "" {
+		t.Fatalf("joined endpoint = %q", joined.Endpoint)
+	}
+	if !friendApp.FriendPresence().Live {
+		t.Fatal("the friend is not live")
+	}
+	waitFor(t, 3*time.Second, func() bool {
+		return len(hostApp.HostPresence()) > 0
+	})
+
+	if err := friendApp.StopSession(); err != nil {
+		t.Fatal(err)
+	}
+	err = friendApp.Reconnect(ctx, joined.ID)
+	if err == nil || !strings.Contains(err.Error(), "new invite") {
+		t.Fatalf("reconnect error = %v", err)
+	}
+	if status := friendApp.ReconnectStatus(joined.ID); status.Active {
+		t.Fatal("relay reconnect was scheduled")
+	}
+}
+
+func TestCreateRelayInviteNeedsLiveSession(t *testing.T) {
+	relayServer := startTestRelayServer(t, "relay test password")
+	a := newTestApp(t)
+	enableSettingsRelay(t, a, relayServer)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.CreateInvite(g.ID, "Ash"); err == nil {
+		t.Fatal("a relay invite was created without a live session")
+	}
+}
+
+func TestStartRelaySessionNeedsPassword(t *testing.T) {
+	relayServer := startTestRelayServer(t, "relay test password")
+	a := newTestApp(t)
+	s := a.Settings()
+	s.UseRelay = true
+	s.RelayHost = relayServer.profile.Host
+	s.RelayPort = relayServer.profile.Port
+	s.RelayID = relayServer.profile.Fingerprint
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = a.StartSession(g.ID)
+	if err == nil || !strings.Contains(err.Error(), "password") {
+		t.Fatalf("start error = %v", err)
+	}
+	if a.LiveGroupID() != "" {
+		t.Fatal("a relay session started without a password")
+	}
+}
+
+func TestRelaySessionUsesGroupCustomRelay(t *testing.T) {
+	relayServer := startTestRelayServer(t, "group relay password")
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.SetGroupConnectionOptions(g.ID, GroupConnectionInput{
+		Override:    true,
+		UseRelay:    true,
+		RelayCustom: true,
+		RelayHost:   relayServer.profile.Host,
+		RelayPort:   relayServer.profile.Port,
+		RelayID:     relayServer.profile.Fingerprint,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.SetGroupRelayPassword(g.ID, relayServer.profile.Password); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.StartSession(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	defer a.StopSession()
+	code, err := a.CreateInvite(g.ID, "Ash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	inv, err := invite.Decode(code)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if inv.Version != invite.RelayVersion || inv.RelayHost != relayServer.profile.Host {
+		t.Fatalf("invite = %+v", inv)
+	}
+}
+
+func TestRelaySettingsCannotChangeWhileLive(t *testing.T) {
+	relayServer := startTestRelayServer(t, "relay test password")
+	a := newTestApp(t)
+	enableSettingsRelay(t, a, relayServer)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.StartSession(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	defer a.StopSession()
+
+	s := a.Settings()
+	s.RelayHost = "other.example.net"
+	s.RelayID = strings.Repeat("cd", 32)
+	if err := a.SaveSettings(s); err == nil || !strings.Contains(err.Error(), "relay") {
+		t.Fatalf("settings change error = %v", err)
+	}
+	if err := a.SetGroupConnectionOptions(g.ID, GroupConnectionInput{
+		Override:    true,
+		UseRelay:    true,
+		RelayCustom: true,
+		RelayHost:   "other.example.net",
+		RelayPort:   relayServer.profile.Port,
+		RelayID:     relayServer.profile.Fingerprint,
+	}); err == nil || !strings.Contains(err.Error(), "relay") {
+		t.Fatalf("group relay change error = %v", err)
+	}
+}
+
+func TestRelaySettingsChangeCancelsInvitesAfterStop(t *testing.T) {
+	relayServer := startTestRelayServer(t, "relay test password")
+	a := newTestApp(t)
+	enableSettingsRelay(t, a, relayServer)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.StartSession(g.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.CreateInvite(g.ID, "Ash"); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.StopSession(); err != nil {
+		t.Fatal(err)
+	}
+	saved, ok := a.Group(g.ID)
+	if !ok || len(saved.OpenInvites(time.Now())) != 1 {
+		t.Fatalf("open invites = %+v", saved.Invites)
+	}
+
+	s := a.Settings()
+	s.RelayHost = "other.example.net"
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	saved, ok = a.Group(g.ID)
+	if !ok || len(saved.OpenInvites(time.Now())) != 0 {
+		t.Fatalf("invites survived the relay change: %+v", saved.Invites)
+	}
 }

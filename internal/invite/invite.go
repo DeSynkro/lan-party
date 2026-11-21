@@ -125,6 +125,8 @@ func Decode(code string) (Invite, error) {
 	if err := json.Unmarshal(data, &inv); err != nil {
 		return Invite{}, errors.New("the invite is damaged")
 	}
+	inv.RelayHost = strings.TrimSpace(inv.RelayHost)
+	inv.RelayID = strings.ToLower(strings.TrimSpace(inv.RelayID))
 	if err := Validate(inv, time.Now()); err != nil {
 		return Invite{}, err
 	}

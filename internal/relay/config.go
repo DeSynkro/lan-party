@@ -2,6 +2,7 @@ package relay
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -58,6 +59,46 @@ func (p HostProfile) HostPort() (string, int, error) {
 		return "", 0, errors.New("host profile has no relay address")
 	}
 	return hostPortFromAddress(p.Address)
+}
+
+// DecodeHostProfile parses the owner-only handoff file written by relay setup.
+// It returns the canonical separate host and port and a lowercase Relay ID.
+func DecodeHostProfile(data []byte) (HostProfile, error) {
+	var profile HostProfile
+	if err := json.Unmarshal(data, &profile); err != nil {
+		return HostProfile{}, fmt.Errorf("parse host profile: %w", err)
+	}
+	if profile.Version != Version {
+		return HostProfile{}, fmt.Errorf("host profile version %d is not supported", profile.Version)
+	}
+	host, port, err := profile.HostPort()
+	if err != nil {
+		return HostProfile{}, err
+	}
+	host = strings.TrimSpace(host)
+	if host == "" {
+		return HostProfile{}, errors.New("the host profile is missing the relay host")
+	}
+	if port < 1 || port > 65535 {
+		return HostProfile{}, errors.New("the host profile has a bad relay port")
+	}
+	fingerprint := strings.ToLower(strings.TrimSpace(profile.Fingerprint))
+	if len(fingerprint) != 64 {
+		return HostProfile{}, errors.New("the host profile has a bad Relay ID")
+	}
+	if _, err := hex.DecodeString(fingerprint); err != nil {
+		return HostProfile{}, errors.New("the host profile has a bad Relay ID")
+	}
+	password := strings.TrimSpace(profile.Password)
+	if password == "" {
+		return HostProfile{}, errors.New("the host profile is missing the relay password")
+	}
+	profile.Host = host
+	profile.Port = port
+	profile.Address = net.JoinHostPort(host, strconv.Itoa(port))
+	profile.Fingerprint = fingerprint
+	profile.Password = password
+	return profile, nil
 }
 
 // SetupOptions are the inputs to a first-run relay setup.

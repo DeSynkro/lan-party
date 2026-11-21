@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"net"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"github.com/desynkro/lan-party/internal/config"
 	"github.com/desynkro/lan-party/internal/group"
 	"github.com/desynkro/lan-party/internal/invite"
+	"github.com/desynkro/lan-party/internal/relay"
 	"github.com/desynkro/lan-party/internal/secure"
 	"github.com/desynkro/lan-party/internal/session"
 	"github.com/desynkro/lan-party/internal/tunnel"
@@ -32,6 +34,7 @@ type App struct {
 	store       *group.Store
 	groups      []group.Group
 	keys        *secure.Store
+	secrets     secure.SecretStore
 	host        *session.Host
 	friend      *session.Friend
 	liveGroupID string
@@ -69,6 +72,7 @@ func NewWithStore(paths config.Paths, kr secure.SecretStore) (*App, error) {
 		store:       store,
 		groups:      groups,
 		keys:        secure.NewStore(kr),
+		secrets:     kr,
 		inviteCodes: map[string]string{},
 		limiter:     newAttemptLimiter(),
 	}, nil
@@ -116,21 +120,33 @@ func (a *App) Settings() config.Settings {
 
 // SaveSettings validates and writes the settings.
 func (a *App) SaveSettings(s config.Settings) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.saveSettingsLocked(s)
+}
+
+// saveSettingsLocked is SaveSettings for callers that take several changes
+// under one lock. Callers hold a.mu.
+func (a *App) saveSettingsLocked(s config.Settings) error {
 	s.RelayHost = strings.TrimSpace(s.RelayHost)
 	s.RelayID = strings.ToLower(strings.TrimSpace(s.RelayID))
 
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	if a.host != nil && s.AppPort != a.settings.AppPort {
+	if a.host != nil {
 		idx := a.groupIndexLocked(a.liveGroupID)
 		if idx < 0 {
-			return errors.New("end the session before changing the app port")
-		}
-		oldConnection := resolveGroupConnection(a.settings, a.groups[idx])
-		newConnection := resolveGroupConnection(s, a.groups[idx])
-		if !oldConnection.UseRelay && !newConnection.UseRelay && oldConnection.AppPort != newConnection.AppPort {
-			return errors.New("end the session before changing the app port")
+			if s.AppPort != a.settings.AppPort {
+				return errors.New("end the session before changing the app port")
+			}
+		} else {
+			oldConnection := resolveGroupConnection(a.settings, a.groups[idx])
+			newConnection := resolveGroupConnection(s, a.groups[idx])
+			if oldConnection.UseRelay || newConnection.UseRelay {
+				if !sameInviteConnection(oldConnection, newConnection) {
+					return errors.New("end the session before changing the relay")
+				}
+			} else if s.AppPort != a.settings.AppPort && oldConnection.AppPort != newConnection.AppPort {
+				return errors.New("end the session before changing the app port")
+			}
 		}
 	}
 	if err := s.Validate(); err != nil {
@@ -160,6 +176,220 @@ func (a *App) SaveSettings(s config.Settings) error {
 		a.stopAutoReconnectLocked()
 	} else if !wasAutoReconnect && a.friend != nil && !a.friend.Presence().Live && a.liveGroupID != "" {
 		a.startAutoReconnectLocked(a.liveGroupID, time.Now())
+	}
+	return nil
+}
+
+const (
+	relaySecretService = "lanparty-relay"
+	defaultRelaySecret = "default"
+)
+
+func groupRelaySecret(groupID string) string { return "group/" + groupID }
+
+// relayPasswordLocked reads one relay password from the owner-only secret
+// store. Callers hold a.mu.
+func (a *App) relayPasswordLocked(name string) (string, bool, error) {
+	value, err := a.secrets.Get(relaySecretService, name)
+	if errors.Is(err, fs.ErrNotExist) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("read relay password: %w", err)
+	}
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", false, nil
+	}
+	return value, true, nil
+}
+
+// storeRelayPasswordLocked writes one relay password. Callers hold a.mu.
+func (a *App) storeRelayPasswordLocked(name, password string) error {
+	password = strings.TrimSpace(password)
+	if password == "" {
+		return errors.New("the relay password is empty")
+	}
+	if err := a.secrets.Set(relaySecretService, name, password); err != nil {
+		return fmt.Errorf("store relay password: %w", err)
+	}
+	return nil
+}
+
+// clearRelayPasswordLocked removes one relay password. Callers hold a.mu.
+func (a *App) clearRelayPasswordLocked(name string) error {
+	err := a.secrets.Delete(relaySecretService, name)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("clear relay password: %w", err)
+	}
+	return nil
+}
+
+// RelayPasswordSet reports whether the Settings relay has a saved password.
+func (a *App) RelayPasswordSet() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	_, ok, err := a.relayPasswordLocked(defaultRelaySecret)
+	return err == nil && ok
+}
+
+// SetRelayPassword stores the Settings relay password. It is never written to
+// settings.json and is never shown again after saving.
+func (a *App) SetRelayPassword(password string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.storeRelayPasswordLocked(defaultRelaySecret, password)
+}
+
+// ClearRelayPassword removes the Settings relay password.
+func (a *App) ClearRelayPassword() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.clearRelayPasswordLocked(defaultRelaySecret)
+}
+
+// GroupRelayPasswordSet reports whether a group's custom relay has a password.
+func (a *App) GroupRelayPasswordSet(groupID string) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.groupIndexLocked(groupID) < 0 {
+		return false
+	}
+	_, ok, err := a.relayPasswordLocked(groupRelaySecret(groupID))
+	return err == nil && ok
+}
+
+// SetGroupRelayPassword stores the password for a group's custom relay.
+func (a *App) SetGroupRelayPassword(groupID, password string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	idx := a.groupIndexLocked(groupID)
+	if idx < 0 {
+		return errors.New("group not found")
+	}
+	if !a.groups[idx].IsHost() {
+		return errors.New("only a hosted group can store a relay password")
+	}
+	return a.storeRelayPasswordLocked(groupRelaySecret(groupID), password)
+}
+
+// ClearGroupRelayPassword removes a group's custom relay password.
+func (a *App) ClearGroupRelayPassword(groupID string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.clearRelayPasswordLocked(groupRelaySecret(groupID))
+}
+
+// ImportRelayProfile loads the owner-only file written by relay setup and
+// saves its host, port, Relay ID and password.
+func (a *App) ImportRelayProfile(data []byte) (config.Settings, error) {
+	profile, err := relay.DecodeHostProfile(data)
+	if err != nil {
+		return a.Settings(), err
+	}
+	s := a.Settings()
+	s.UseRelay = true
+	s.RelayHost = profile.Host
+	s.RelayPort = profile.Port
+	s.RelayID = profile.Fingerprint
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	oldPassword, hadPassword, err := a.relayPasswordLocked(defaultRelaySecret)
+	if err != nil {
+		return a.settings, err
+	}
+	if err := a.storeRelayPasswordLocked(defaultRelaySecret, profile.Password); err != nil {
+		return a.settings, err
+	}
+	if err := a.saveSettingsLocked(s); err != nil {
+		if hadPassword {
+			_ = a.storeRelayPasswordLocked(defaultRelaySecret, oldPassword)
+		} else {
+			_ = a.clearRelayPasswordLocked(defaultRelaySecret)
+		}
+		return a.settings, err
+	}
+	return a.settings, nil
+}
+
+// TestRelayConnection performs the host relay handshake without starting a
+// session. An empty password uses the saved Settings password.
+func (a *App) TestRelayConnection(ctx context.Context, host string, port int, relayID, password string) error {
+	host = strings.TrimSpace(host)
+	relayID = strings.ToLower(strings.TrimSpace(relayID))
+	password = strings.TrimSpace(password)
+	if err := config.ValidateRelayConnection(host, port, relayID); err != nil {
+		return err
+	}
+	if password == "" {
+		a.mu.Lock()
+		stored, ok, err := a.relayPasswordLocked(defaultRelaySecret)
+		a.mu.Unlock()
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return errors.New("enter the relay password")
+		}
+		password = stored
+	}
+	client, err := relay.DialClient(ctx, relay.ClientConfig{
+		Address:     net.JoinHostPort(host, strconv.Itoa(port)),
+		Fingerprint: relayID,
+		Password:    password,
+	})
+	if err != nil {
+		return err
+	}
+	return client.Close()
+}
+
+// ResetGroupConnection clears every group connection override and the custom
+// relay password. The group returns to the Settings defaults.
+func (a *App) ResetGroupConnection(groupID string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	idx := a.groupIndexLocked(groupID)
+	if idx < 0 {
+		return errors.New("group not found")
+	}
+	g := &a.groups[idx]
+	if !g.IsHost() {
+		return errors.New("only a hosted group can reset its connection")
+	}
+
+	oldGroup := *g
+	oldPassword, hadPassword, err := a.relayPasswordLocked(groupRelaySecret(groupID))
+	if err != nil {
+		return err
+	}
+	oldConnection := resolveGroupConnection(a.settings, oldGroup)
+	g.OverrideSettings = false
+	g.UseRelay = false
+	g.RelayCustom = false
+	g.RelayHost = ""
+	g.RelayPort = 0
+	g.RelayID = ""
+	g.PublicAddress = ""
+	g.AppPort = 0
+	var cancelled []inviteSnapshot
+	if !sameInviteConnection(oldConnection, resolveGroupConnection(a.settings, *g)) {
+		cancelled = append(cancelled, a.cancelOpenInvitesLocked(g, time.Now().UTC()))
+	}
+	if err := a.clearRelayPasswordLocked(groupRelaySecret(groupID)); err != nil {
+		*g = oldGroup
+		a.restoreInvitesLocked(cancelled)
+		return err
+	}
+	if err := a.saveLocked(); err != nil {
+		*g = oldGroup
+		a.restoreInvitesLocked(cancelled)
+		if hadPassword {
+			_ = a.storeRelayPasswordLocked(groupRelaySecret(groupID), oldPassword)
+		}
+		return err
 	}
 	return nil
 }
@@ -296,6 +526,12 @@ func (a *App) DeleteGroup(id string) error {
 	}
 	if err := a.keys.Delete(keyName); err != nil {
 		return fmt.Errorf("remove key: %w", err)
+	}
+	a.mu.Lock()
+	err := a.clearRelayPasswordLocked(groupRelaySecret(id))
+	a.mu.Unlock()
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -572,9 +808,16 @@ func (a *App) SetGroupConnectionOptions(groupID string, in GroupConnectionInput)
 	g.RelayID = in.RelayID
 	newConnection := resolveGroupConnection(a.settings, *g)
 
-	if a.host != nil && a.liveGroupID == groupID && !newConnection.UseRelay && !oldConnection.UseRelay && newConnection.AppPort != oldConnection.AppPort {
-		*g = oldGroup
-		return errors.New("end the session before changing this group's app port")
+	if a.host != nil && a.liveGroupID == groupID {
+		if oldConnection.UseRelay || newConnection.UseRelay {
+			if !sameInviteConnection(oldConnection, newConnection) {
+				*g = oldGroup
+				return errors.New("end the session before changing the relay")
+			}
+		} else if oldConnection.AppPort != newConnection.AppPort {
+			*g = oldGroup
+			return errors.New("end the session before changing this group's app port")
+		}
 	}
 
 	var cancelled []inviteSnapshot
@@ -686,20 +929,32 @@ func (a *App) CreateInvite(groupID, peerName string) (string, error) {
 	}
 	g := cloneGroup(a.groups[idx])
 	connection := resolveGroupConnection(a.settings, g)
+	var relayHost *session.Host
+	if connection.UseRelay {
+		relayHost = a.hostForGroupLocked(groupID)
+	}
 	a.mu.Unlock()
 
 	if g.Role != group.RoleHost {
 		return "", errors.New("only the host can create invites")
 	}
+	var endpoint string
 	if connection.UseRelay {
-		return "", errors.New("relay invites are not implemented yet")
-	}
-	if strings.TrimSpace(connection.PublicAddress) == "" {
-		return "", errors.New("set your public address first")
-	}
-	endpoint, err := publicEndpoint(connection.PublicAddress, connection.AppPort)
-	if err != nil {
-		return "", err
+		if relayHost == nil {
+			return "", errors.New("start the session before creating a relay invite")
+		}
+		if err := config.ValidateRelayConnection(connection.RelayHost, connection.RelayPort, connection.RelayID); err != nil {
+			return "", err
+		}
+	} else {
+		if strings.TrimSpace(connection.PublicAddress) == "" {
+			return "", errors.New("set your public address first")
+		}
+		var err error
+		endpoint, err = publicEndpoint(connection.PublicAddress, connection.AppPort)
+		if err != nil {
+			return "", err
+		}
 	}
 	identity, ok, err := a.keys.Load("host/" + groupID)
 	if err != nil {
@@ -721,7 +976,7 @@ func (a *App) CreateInvite(groupID, peerName string) (string, error) {
 		CreatedAt: now,
 		ExpiresAt: now.Add(group.InviteTTL),
 	}
-	code, err := invite.Encode(invite.Invite{
+	codeInvite := invite.Invite{
 		Version:   invite.CurrentVersion,
 		GroupID:   g.ID,
 		GroupName: g.Name,
@@ -731,25 +986,62 @@ func (a *App) CreateInvite(groupID, peerName string) (string, error) {
 		Token:     token,
 		PeerName:  peerName,
 		Expires:   record.ExpiresAt,
-	})
+	}
+	if connection.UseRelay {
+		_, relayToken, err := relay.NewFriendToken()
+		if err != nil {
+			return "", err
+		}
+		codeInvite.Version = invite.RelayVersion
+		codeInvite.Endpoint = ""
+		codeInvite.RelayHost = connection.RelayHost
+		codeInvite.RelayPort = connection.RelayPort
+		codeInvite.RelayID = connection.RelayID
+		codeInvite.RelayToken = relayToken
+	}
+	code, err := invite.Encode(codeInvite)
 	if err != nil {
 		return "", err
 	}
 
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	idx = a.groupIndexLocked(groupID)
 	if idx < 0 {
+		a.mu.Unlock()
 		return "", errors.New("group not found")
 	}
 	if err := a.groups[idx].AddInvite(record); err != nil {
+		a.mu.Unlock()
 		return "", err
 	}
 	if err := a.saveLocked(); err != nil {
 		a.groups[idx].Invites = a.groups[idx].Invites[:len(a.groups[idx].Invites)-1]
+		a.mu.Unlock()
 		return "", err
 	}
 	a.inviteCodes[record.ID] = code
+	a.mu.Unlock()
+
+	if connection.UseRelay {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := relayHost.AuthorizeRelayToken(ctx, codeInvite.RelayToken, record.ExpiresAt); err != nil {
+			a.mu.Lock()
+			if idx = a.groupIndexLocked(groupID); idx >= 0 {
+				g := &a.groups[idx]
+				for i := range g.Invites {
+					if g.Invites[i].ID == record.ID {
+						g.Invites = append(g.Invites[:i], g.Invites[i+1:]...)
+						break
+					}
+				}
+				delete(a.inviteCodes, record.ID)
+				_ = a.saveLocked()
+			}
+			a.mu.Unlock()
+			return "", fmt.Errorf("authorize the relay invite: %w", err)
+		}
+	}
 	return code, nil
 }
 
@@ -812,7 +1104,32 @@ func (a *App) StartSession(groupID string) error {
 		return errors.New("a session is already running")
 	}
 	services := append([]group.Service(nil), a.groups[idx].Services...)
-	appPort := resolveGroupConnection(a.settings, a.groups[idx]).AppPort
+	connection := resolveGroupConnection(a.settings, a.groups[idx])
+	var relayConfig *session.RelayHostConfig
+	if connection.UseRelay {
+		secret := defaultRelaySecret
+		if connection.RelayCustom {
+			secret = groupRelaySecret(groupID)
+		}
+		password, ok, err := a.relayPasswordLocked(secret)
+		if err != nil {
+			a.mu.Unlock()
+			return err
+		}
+		if !ok {
+			a.mu.Unlock()
+			return errors.New("the relay password is missing; add it in Settings")
+		}
+		if err := config.ValidateRelayConnection(connection.RelayHost, connection.RelayPort, connection.RelayID); err != nil {
+			a.mu.Unlock()
+			return err
+		}
+		relayConfig = &session.RelayHostConfig{
+			Address:     net.JoinHostPort(connection.RelayHost, strconv.Itoa(connection.RelayPort)),
+			Fingerprint: connection.RelayID,
+			Password:    password,
+		}
+	}
 	a.mu.Unlock()
 	if stale != nil {
 		_ = stale.Close()
@@ -832,9 +1149,10 @@ func (a *App) StartSession(groupID string) error {
 		host, err = session.StartHost(context.Background(), session.HostConfig{
 			Identity:     identity,
 			GroupID:      groupID,
-			AppPort:      appPort,
+			AppPort:      connection.AppPort,
 			Services:     services,
 			Authenticate: hostAuth{app: a, groupID: groupID},
+			Relay:        relayConfig,
 		})
 		if err == nil {
 			break
@@ -961,6 +1279,16 @@ func (a *App) JoinInvite(ctx context.Context, code, deviceName string) (group.Gr
 		friendServices(friend.Services()),
 	)
 	g.HostGroupID = inv.GroupID
+	if inv.Version == invite.RelayVersion {
+		g.OverrideSettings = true
+		g.ConnectionVersion = 1
+		g.UseRelay = true
+		g.RelayCustom = true
+		g.RelayHost = inv.RelayHost
+		g.RelayPort = inv.RelayPort
+		g.RelayID = inv.RelayID
+		g.Endpoint = ""
+	}
 
 	a.mu.Lock()
 	if a.sessionEpoch != epoch {
@@ -1011,6 +1339,10 @@ func (a *App) reconnect(ctx context.Context, groupID string) error {
 	if a.groups[idx].Role != group.RoleFriend {
 		a.mu.Unlock()
 		return permanentReconnect(errors.New("only a joined group can be reconnected"))
+	}
+	if a.groups[idx].UseRelay {
+		a.mu.Unlock()
+		return permanentReconnect(errors.New("this group joined through a relay. Ask the host for a new invite to reconnect."))
 	}
 	epoch := a.sessionEpoch
 	if a.host != nil {

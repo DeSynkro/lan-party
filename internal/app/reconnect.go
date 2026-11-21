@@ -130,6 +130,9 @@ func (a *App) startAutoReconnectLocked(groupID string, started time.Time) {
 	if idx < 0 || a.groups[idx].Role != group.RoleFriend {
 		return
 	}
+	if a.groups[idx].UseRelay {
+		return
+	}
 	if a.friend != nil {
 		if a.friend.Presence().Live || a.friend.Revoked() {
 			return
