@@ -1,0 +1,29 @@
+{{define "content"}}
+<p class="small"><a href="/">Dashboard</a> / <a href="/groups/{{.GroupID}}">Group</a> / Invite</p>
+<section class="card narrow">
+  <p class="eyebrow">Invite</p>
+  <h1>Invite a friend</h1>
+  <p class="muted">They paste the code into the LAN Party desktop app. Their games then reach your services through <code>127.0.0.1</code>.</p>
+
+  {{if .OtherLiveName}}
+  <p class="banner warn">A session for <strong>{{.OtherLiveName}}</strong> is already running. End it before starting this group.</p>
+  {{end}}
+  {{if .SessionOff}}
+  <p class="banner warn">The session for this group is off. Creating the invite starts it.</p>
+  {{end}}
+  {{if not .HasAddress}}
+  <p class="banner warn">Set the public address in <a href="/settings">Settings</a> first, so the invite can tell friends where to connect.</p>
+  {{end}}
+
+  <form method="post" action="/groups/{{.GroupID}}/invites" class="stack">
+    <label for="peerName">Friend's name
+      <input id="peerName" name="peerName" value="{{.PeerName}}" maxlength="40" required autofocus>
+      <span class="hint">Only so you can tell invites apart.</span>
+    </label>
+    <div class="actions">
+      <button type="submit" class="primary">Create invite</button>
+      <a class="button" href="/groups/{{.GroupID}}">Cancel</a>
+    </div>
+  </form>
+</section>
+{{end}}
