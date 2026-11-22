@@ -376,7 +376,7 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	friendsCard := gtk.NewBox(gtk.OrientationVertical, 0)
 	friendsCard.AddCSSClass("card")
 	friendsCard.SetMarginBottom(10)
-	friendsCard.Append(textLabel("Forget inactive friends", "setting-title"))
+	friendsCard.Append(textLabel("Forget inactive friends (relay mode)", "setting-title"))
 	friendsCard.Append(gapBox(4))
 	friendsCard.Append(formRow("After (days)", forgetEntry))
 	friendsCard.Append(gapBox(8))
