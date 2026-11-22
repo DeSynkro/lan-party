@@ -1,0 +1,51 @@
+{{define "content"}}
+<p class="small"><a href="/">Dashboard</a> / <a href="/groups/{{.GroupID}}">Group</a> / {{if .Editing}}Edit service{{else}}New service{{end}}</p>
+<section class="card">
+  <p class="eyebrow">Service</p>
+  <h1>{{if .Editing}}Edit service{{else}}Add a service{{end}}</h1>
+  <p class="muted">Tell this host which game server port friends should reach. The target is the address of the game server as seen from this host.</p>
+
+  {{if not .Editing}}
+  <form method="get" action="/groups/{{.GroupID}}/services/new" class="row">
+    <label class="field" style="flex:1">Load a preset
+      <select name="preset">
+        <option value="">Choose a game…</option>
+        {{range .Presets}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+      </select>
+    </label>
+    <button type="submit">Load</button>
+  </form>
+  <details>
+    <summary>Or fill it in yourself</summary>
+  {{else}}<details open><summary>Service details</summary>{{end}}
+
+  <form method="post" action="{{if .Editing}}/groups/{{.GroupID}}/services/{{.ServiceID}}{{else}}/groups/{{.GroupID}}/services{{end}}" class="stack">
+    <label for="name">Name
+      <input id="name" name="name" value="{{.Name}}" maxlength="64" required>
+    </label>
+    <label for="proto">Protocol
+      <select id="proto" name="proto" required>
+        <option value="tcp"{{if eq .Proto "tcp"}} selected{{end}}>TCP</option>
+        <option value="udp"{{if eq .Proto "udp"}} selected{{end}}>UDP</option>
+        <option value="both"{{if eq .Proto "both"}} selected{{end}}>Both</option>
+      </select>
+    </label>
+    <label for="target">Game server target
+      <input id="target" name="target" value="{{.Target}}" placeholder="127.0.0.1:25565 or 192.168.1.50" required>
+      <span class="hint">An IP, hostname, or IP:port on this host's network.</span>
+    </label>
+    <label for="ports">Game ports
+      <input id="ports" name="ports" value="{{.PortsText}}" placeholder="25565 or 2456-2458" required>
+      <span class="hint">Comma-separated or a range. Friends use the same port numbers.</span>
+    </label>
+    <label for="hint">Hint for friends (optional)
+      <input id="hint" name="hint" value="{{.Hint}}" maxlength="120" placeholder="Direct Connect in Minecraft">
+    </label>
+    <div class="actions">
+      <button type="submit" class="primary">{{if .Editing}}Save service{{else}}Add service{{end}}</button>
+      <a class="button" href="/groups/{{.GroupID}}">Cancel</a>
+    </div>
+  </form>
+  </details>
+</section>
+{{end}}

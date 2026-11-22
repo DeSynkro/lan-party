@@ -1,6 +1,7 @@
 package webui
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -118,10 +119,11 @@ func (f *fakeApp) UpdateService(groupID string, s group.Service) error {
 		for j := range f.groups[i].Services {
 			if f.groups[i].Services[j].ID == s.ID {
 				f.groups[i].Services[j] = s
+				return nil
 			}
 		}
 	}
-	return nil
+	return errors.New("service not found")
 }
 
 func (f *fakeApp) RemoveService(groupID, serviceID string) error {
@@ -129,15 +131,15 @@ func (f *fakeApp) RemoveService(groupID, serviceID string) error {
 		if f.groups[i].ID != groupID {
 			continue
 		}
-		kept := f.groups[i].Services[:0]
-		for _, s := range f.groups[i].Services {
-			if s.ID != serviceID {
-				kept = append(kept, s)
+		for j, s := range f.groups[i].Services {
+			if s.ID == serviceID {
+				f.groups[i].Services = append(f.groups[i].Services[:j], f.groups[i].Services[j+1:]...)
+				return nil
 			}
 		}
-		f.groups[i].Services = kept
+		return errors.New("service not found")
 	}
-	return nil
+	return errors.New("group not found")
 }
 
 func (f *fakeApp) CreateInvite(groupID, peerName string) (string, error) {

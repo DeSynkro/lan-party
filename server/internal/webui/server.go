@@ -78,6 +78,12 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /groups/{id}/delete", s.authenticated(s.handleGroupDelete))
 	s.mux.HandleFunc("POST /groups/{id}/start", s.authenticated(s.handleGroupStart))
 	s.mux.HandleFunc("POST /groups/{id}/stop", s.authenticated(s.handleGroupStop))
+	s.mux.HandleFunc("GET /groups/{id}/services/new", s.authenticated(s.handleServiceNew))
+	s.mux.HandleFunc("POST /groups/{id}/services", s.authenticated(s.handleServiceCreate))
+	s.mux.HandleFunc("GET /groups/{id}/services/{sid}", s.authenticated(s.handleServiceEdit))
+	s.mux.HandleFunc("POST /groups/{id}/services/{sid}", s.authenticated(s.handleServiceUpdate))
+	s.mux.HandleFunc("GET /groups/{id}/services/{sid}/remove", s.authenticated(s.handleServiceRemoveForm))
+	s.mux.HandleFunc("POST /groups/{id}/services/{sid}/remove", s.authenticated(s.handleServiceRemove))
 	s.mux.HandleFunc("GET /events", s.authenticated(s.handleEvents))
 	s.mux.HandleFunc("/", s.handleNotFound)
 }
