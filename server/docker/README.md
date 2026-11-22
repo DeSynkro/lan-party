@@ -19,19 +19,44 @@ read-only for that reason.
 
 ## First run
 
+From a source checkout, one command:
+
 ```sh
 cd server/docker
-cp .env.example .env
-./setup.sh
-docker compose up -d
+sudo docker compose up --build -d
+sudo docker compose logs lan-party-web | grep -A2 "admin password"
 ```
 
-`setup.sh` fills `PUID`/`PGID` from your user, creates `./data` and `./tls` with
-owner-only permissions, and sets the admin password. The password is never
-written to `.env` or the container logs.
+From the release zip, use the published image:
 
-Open `http://<host>:8080` and sign in. Then set the public address, create a
-group, add a service, and invite a friend.
+```sh
+cd docker
+sudo docker compose up -d
+sudo docker compose logs lan-party-web | grep -A2 "admin password"
+```
+
+The first start generates a strong admin password and prints it once in the
+logs. Save it in your password manager, open `http://<host>:8080`, and sign in.
+After signing in you can recreate the container to drop the password from its
+logs:
+
+```sh
+sudo docker compose down
+sudo docker compose up -d
+```
+
+`sudo` is only needed to reach the Docker daemon; the app itself runs as a
+non-root user. `setup.sh` is optional. Use it when you want a chosen password or
+a different `PUID`/`PGID`:
+
+```sh
+cp .env.example .env
+sudo ./setup.sh
+sudo docker compose up --build -d
+```
+
+The web container waits for a short init container that makes `./data` writable
+by `PUID`/`PGID` (default `1000`). No manual `mkdir` or `chown` is needed.
 
 ## Data
 

@@ -10,13 +10,15 @@ runs one live host session at a time, matching the desktop app.
 
 ## Quick start
 
-Docker, from `server/docker`:
+Docker, from `server/docker`, with nothing else to prepare:
 
 ```sh
-cp .env.example .env
-./setup.sh
-docker compose up -d
+sudo docker compose up --build -d
+sudo docker compose logs lan-party-web | grep -A2 "admin password"
 ```
+
+Or use `./setup.sh` first if you want a chosen password and your own
+`PUID`/`PGID`.
 
 Native Linux, from a release zip: extract it, then run `./native/run.sh`.
 

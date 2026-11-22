@@ -332,8 +332,7 @@ jobs:
           mkdir -p data
           chmod 700 data
 
-          docker compose run --rm -T lan-party-web setup --data-dir /data --password ci-password-123
-          docker compose up -d
+          docker compose up --build -d
           ready=0
           for i in $(seq 1 30); do
             if curl -fsS "http://127.0.0.1:${web_port}/healthz" >/dev/null 2>&1; then
@@ -347,6 +346,7 @@ jobs:
             echo "web container did not become healthy" >&2
             exit 1
           fi
+          docker compose logs --no-color lan-party-web | grep -q "first-run admin password"
           docker compose exec -T lan-party-web /lan-party-web show-info --data-dir /data | grep -q "app port"
           test "$(stat -c %a data/web.json)" = "600"
           docker compose down -v

@@ -20,16 +20,19 @@ for friends to play.
 
 ## Docker
 
+From a source checkout, one command:
+
 ```sh
 cd server/docker
-cp .env.example .env
-./setup.sh
-docker compose up -d
+sudo docker compose up --build -d
+sudo docker compose logs lan-party-web | grep -A2 "admin password"
 ```
 
-Then open `http://<server>:8080`. `setup.sh` creates `./data`, writes `.env` with
-your `PUID`/`PGID`, and sets the admin password.
+The first start prints a generated admin password once in the logs. Save it,
+then open `http://<server>:8080`. The release zip does the same with
+`sudo docker compose up -d` from its `docker/` folder.
 
+`./setup.sh` is optional; use it to choose the password and `PUID`/`PGID`.
 See [server/docker/README.md](../server/docker/README.md) for ports, TLS and
 backups.
 
