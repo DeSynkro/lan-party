@@ -76,3 +76,45 @@ func TestEventsRequireAuth(t *testing.T) {
 		t.Fatalf("status = %d", rr.Code)
 	}
 }
+
+func TestEventsCloseWhenSessionIsDestroyed(t *testing.T) {
+	srv := newTestServer(t)
+	srv.eventInterval = 5 * time.Millisecond
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req := httptest.NewRequest("GET", "http://lan.local/events", nil).WithContext(ctx)
+	req.Host = "lan.local"
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: srv.session.ID})
+	rr := httptest.NewRecorder()
+	done := make(chan struct{})
+	go func() {
+		srv.Handler().ServeHTTP(rr, req)
+		close(done)
+	}()
+	time.Sleep(20 * time.Millisecond)
+	srv.sessions.Destroy(srv.session.ID)
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("event stream survived session destruction")
+	}
+}
+
+func TestSessionAliveDoesNotTouch(t *testing.T) {
+	store := NewSessionStore(20*time.Millisecond, time.Hour)
+	session, err := store.Create()
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(10 * time.Millisecond)
+	if !store.Alive(session.ID) {
+		t.Fatal("live session reported dead")
+	}
+	time.Sleep(15 * time.Millisecond)
+	if _, ok := store.Get(session.ID); ok {
+		t.Fatal("Alive extended the idle timeout")
+	}
+	if store.Alive("missing") {
+		t.Fatal("missing session reported alive")
+	}
+}

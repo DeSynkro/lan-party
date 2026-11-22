@@ -78,6 +78,21 @@ func (s *SessionStore) Get(id string) (*Session, bool) {
 	return session, true
 }
 
+// Alive reports whether a session is still valid without touching it.
+func (s *SessionStore) Alive(id string) bool {
+	if id == "" {
+		return false
+	}
+	now := s.now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	session, ok := s.sessions[id]
+	if !ok {
+		return false
+	}
+	return !s.expiredLocked(session, now)
+}
+
 // Destroy removes one session.
 func (s *SessionStore) Destroy(id string) {
 	s.mu.Lock()

@@ -41,7 +41,8 @@ you own:
 ```sh
 mkdir -p ~/lan-party-web && cd ~/lan-party-web
 unzip lan-party-web_1.3.0_linux_amd64.zip
-./run.sh
+cd lan-party-web_1.3.0_linux_amd64
+./native/run.sh
 ```
 
 The runner asks for a listen address and UDP port, writes `./web.env`, sets the

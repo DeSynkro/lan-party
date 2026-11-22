@@ -18,11 +18,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Native Linux, from a release zip:
-
-```sh
-./run.sh
-```
+Native Linux, from a release zip: extract it, then run `./native/run.sh`.
 
 Then open the web UI, sign in, set the public address, create a group, add a
 service and invite a friend. Forward the UDP game port on your router first.
@@ -80,5 +76,7 @@ go test ./server/...
 go build ./server/cmd/lan-party-web
 ```
 
-The web binary must not import `internal/gtkui` or `internal/relay`, and must
-build with `CGO_ENABLED=0`.
+The web binary must not import `internal/gtkui`, and must build with
+`CGO_ENABLED=0`. The web UI layer never imports `internal/relay`; the engine
+links the relay package but the host forces direct mode, so no relay settings,
+password or Relay ID are reachable from the browser.

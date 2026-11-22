@@ -32,7 +32,7 @@ func (s *Server) handleServiceNew(w http.ResponseWriter, r *http.Request, sessio
 		BaseView: s.base(r, "New service"),
 		GroupID:  g.ID,
 		Proto:    "tcp",
-		Target:   s.app.DeviceName(),
+		Target:   "127.0.0.1",
 		Presets:  preset.All(),
 	}
 	if id := r.URL.Query().Get("preset"); id != "" {

@@ -305,8 +305,8 @@ app.
   the desktop app. There is no app-level passphrase in 1.3: encrypt the disk and
   backups.
 - Invite codes, password hashes, private keys and session IDs are never logged
-  or rendered on a logged-out page. Invite codes are shown once and cleared on
-  restart.
+  or rendered on a logged-out page. Invite codes are shown on the group page
+  for the life of the process and are cleared on restart.
 - No relay secrets, Relay ID or reconnect tokens exist in this binary. Relay
   settings copied into its data directory are normalized to direct mode at load.
 - The container runs as a non-root UID with a read-only root filesystem, dropped

@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"flag"
 	"fmt"
@@ -305,12 +306,21 @@ func runShowInfo(args []string) error {
 
 func runHealthcheck(args []string) error {
 	fs := flag.NewFlagSet("healthcheck", flag.ContinueOnError)
-	url := fs.String("url", "http://127.0.0.1:8080/healthz", "health endpoint")
+	url := fs.String("url", "", "health endpoint (default http://127.0.0.1:8080/healthz, or https when TLS is configured)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	target := strings.TrimSpace(*url)
+	if target == "" {
+		target = defaultHealthURL(os.Getenv("LANPARTY_WEB_TLS_CERT"), os.Getenv("LANPARTY_WEB_TLS_KEY"))
+	}
 	client := &http.Client{Timeout: 2 * time.Second}
-	resp, err := client.Get(*url)
+	if strings.HasPrefix(target, "https://") {
+		// The healthcheck talks to loopback with the deployment's own
+		// possibly self-signed certificate.
+		client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}} //nolint:gosec
+	}
+	resp, err := client.Get(target)
 	if err != nil {
 		return err
 	}
@@ -319,6 +329,14 @@ func runHealthcheck(args []string) error {
 		return fmt.Errorf("healthcheck: %s", resp.Status)
 	}
 	return nil
+}
+
+func defaultHealthURL(certFile, keyFile string) string {
+	scheme := "http"
+	if certFile != "" && keyFile != "" {
+		scheme = "https"
+	}
+	return scheme + "://127.0.0.1:8080/healthz"
 }
 
 func envOr(name, fallback string) string {

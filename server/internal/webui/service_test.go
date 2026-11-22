@@ -50,6 +50,18 @@ func TestServicePresetPrefillsForm(t *testing.T) {
 	}
 }
 
+func TestServiceNewDefaultsToLoopback(t *testing.T) {
+	srv := newTestServerWithGroups(t, group.Group{ID: "g1", Name: "Friday", Role: group.RoleHost})
+	rr := srv.get("/groups/g1/services/new")
+	body := rr.Body.String()
+	if !strings.Contains(body, `value="127.0.0.1"`) {
+		t.Fatal("target does not default to a usable address")
+	}
+	if strings.Contains(body, `value="Server"`) {
+		t.Fatal("target defaults to the device name")
+	}
+}
+
 func TestServiceEditForm(t *testing.T) {
 	srv := newTestServerWithGroups(t, group.Group{ID: "g1", Name: "Friday", Role: group.RoleHost,
 		Services: []group.Service{{ID: "s1", Name: "Terraria", Proto: "tcp", Target: "127.0.0.1", Ports: []int{7777}}},

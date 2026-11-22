@@ -1,0 +1,9 @@
+# Source-checkout override: build the image from the repository.
+# The release zip omits this file, so it pulls the published image instead.
+services:
+  lan-party-web:
+    build:
+      context: ../..
+      dockerfile: server/docker/Dockerfile
+      args:
+        VERSION: "${LANPARTY_WEB_VERSION:-dev}"

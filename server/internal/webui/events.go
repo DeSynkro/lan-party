@@ -106,13 +106,20 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request, session *S
 	if !send() {
 		return
 	}
-	ticker := time.NewTicker(time.Second)
+	interval := s.eventInterval
+	if interval <= 0 {
+		interval = time.Second
+	}
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-r.Context().Done():
 			return
 		case <-ticker.C:
+			if !s.sessions.Alive(session.ID) {
+				return
+			}
 			if !send() {
 				return
 			}

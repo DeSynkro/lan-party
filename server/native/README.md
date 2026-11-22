@@ -5,17 +5,18 @@ or a small systemd unit.
 
 ## Console runner
 
-The release zip contains `lan-party-web`, `run.sh`, `web.env.example` and a
-short README. Put them in a directory you own:
+The release zip contains `lan-party-web` at its root, with `run.sh` and the
+other native files under `native/`. Extract it into a directory you own:
 
 ```sh
 mkdir -p ~/lan-party-web && cd ~/lan-party-web
 unzip lan-party-web_1.3.0_linux_amd64.zip
-./run.sh
+cd lan-party-web_1.3.0_linux_amd64
+./native/run.sh
 ```
 
 On first run `run.sh` asks for the listen address and UDP game port, writes
-`./web.env`, and sets the admin password. It then shows a menu:
+`./native/web.env`, and sets the admin password. It then shows a menu:
 
 ```text
   1) Start
@@ -29,7 +30,7 @@ On first run `run.sh` asks for the listen address and UDP game port, writes
 Start it directly without the menu:
 
 ```sh
-./run.sh start
+./native/run.sh start
 ```
 
 Everything lives beside the script:

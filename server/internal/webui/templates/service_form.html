@@ -7,7 +7,7 @@
 
   {{if not .Editing}}
   <form method="get" action="/groups/{{.GroupID}}/services/new" class="row">
-    <label class="field" style="flex:1">Load a preset
+    <label class="field grow">Load a preset
       <select name="preset">
         <option value="">Choose a game…</option>
         {{range .Presets}}<option value="{{.ID}}">{{.Name}}</option>{{end}}

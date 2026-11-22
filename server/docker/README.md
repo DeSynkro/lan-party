@@ -105,4 +105,6 @@ docker compose up -d
 ```
 
 The build context is the repository root. The root `.dockerignore` keeps the
-cache small.
+cache small. `compose.override.yaml` adds the build; the release zip omits that
+file and pulls the published image, so change to `cd docker` when working from
+a zip.
