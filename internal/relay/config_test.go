@@ -393,6 +393,31 @@ func TestPublicAddressNormalization(t *testing.T) {
 	}
 }
 
+func TestUpdatePublicAddressUpdatesListen(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := Setup(SetupOptions{
+		Dir:           dir,
+		PublicAddress: "127.0.0.1:7443",
+		Password:      "relay password",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	changed, err := UpdatePublicAddress(dir, "relay.example.net", 8443, "", ":8443")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changed {
+		t.Fatal("no change")
+	}
+	cfg, err := LoadConfig(ConfigPath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Listen != ":8443" || cfg.PublicAddress != "relay.example.net:8443" {
+		t.Fatalf("config = %+v", cfg)
+	}
+}
+
 func TestUpdatePublicAddressKeepsIdentityAndPassword(t *testing.T) {
 	dir := t.TempDir()
 	profile, err := Setup(SetupOptions{
@@ -404,7 +429,7 @@ func TestUpdatePublicAddressKeepsIdentityAndPassword(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	changed, err := UpdatePublicAddress(dir, "relay.example.net", 8443, "")
+	changed, err := UpdatePublicAddress(dir, "relay.example.net", 8443, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -418,6 +443,9 @@ func TestUpdatePublicAddressKeepsIdentityAndPassword(t *testing.T) {
 	if cfg.PublicAddress != "relay.example.net:8443" {
 		t.Fatalf("config address = %q", cfg.PublicAddress)
 	}
+	if cfg.Listen != ":7443" {
+		t.Fatalf("listen = %q", cfg.Listen)
+	}
 	got, err := LoadProfile(ProfilePath(dir))
 	if err != nil {
 		t.Fatal(err)
@@ -429,14 +457,14 @@ func TestUpdatePublicAddressKeepsIdentityAndPassword(t *testing.T) {
 		t.Fatalf("identity or password changed: %+v", got)
 	}
 
-	changed, err = UpdatePublicAddress(dir, "relay.example.net", 8443, "")
+	changed, err = UpdatePublicAddress(dir, "relay.example.net", 8443, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if changed {
 		t.Fatal("an unchanged address reported a change")
 	}
-	if _, err := UpdatePublicAddress(dir, "https://relay.example.net", 8443, ""); err == nil {
+	if _, err := UpdatePublicAddress(dir, "https://relay.example.net", 8443, "", ""); err == nil {
 		t.Fatal("an invalid host was accepted")
 	}
 	cfg, err = LoadConfig(ConfigPath(dir))

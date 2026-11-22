@@ -114,8 +114,10 @@ cannot read the game traffic. Your host key and the friend's connection stay end
 to end.
 
 1. Follow [relay/README.md](../relay/README.md) to start the relay. Docker and
-   native systemd installs both work. Note the relay host, port (`7443` by
-   default), Relay ID and password printed by the relay setup.
+   native systemd installs both work. For a quick native trial without systemd,
+   run `native/run.sh` from the relay zip: it runs in the console and stops when
+   you close the terminal. Note the relay host, port (`7443` by default), Relay
+   ID and password printed by the relay setup.
 2. In **Settings → Network defaults**, tick **Use Relay**. Enter the relay host,
    relay port, Relay ID and password printed by `relayctl showinfo` on Docker
    or `lan-party-relay show-info` on a native install.

@@ -6,7 +6,50 @@ Docker image under a hardened systemd unit.
 The relay is an opaque UDP forwarder. It cannot read the encrypted QUIC/TLS
 traffic between the host and friends.
 
-## Requirements
+## Try it first: console mode, no root or systemd
+
+The release zip includes `native/run.sh`. It runs the same relay binary in a
+foreground console and keeps all of its data under one user-owned directory:
+
+```sh
+unzip lan-party-relay_1.2.0_linux_amd64.zip
+cd lan-party-relay_1.2.0_linux_amd64
+./native/run.sh
+```
+
+If the zip did not preserve the executable bit:
+
+```sh
+chmod +x native/run.sh
+./native/run.sh
+```
+
+The first run asks for the public host and port, creates the relay key and
+password, and starts the relay. It uses
+`~/.local/share/lan-party-relay` by default, or `LANPARTY_RELAY_DIR` if set. No
+system user, systemd unit or `/etc` files are created.
+
+The console menu can:
+
+- show the host, port, Relay ID and password
+- change the public host or port, including after the first run
+- change or generate the password
+- rotate the Relay ID
+- show the recent relay log
+- stop the relay
+
+Closing the terminal or pressing Ctrl+C stops the relay. This mode is for a
+relay you run while hosting; it is not a service and does not start on boot.
+
+You can also pass the initial values directly:
+
+```sh
+./native/run.sh --host relay.example.com --port 7443
+```
+
+The router/firewall still needs TCP and UDP on that port.
+
+## Requirements (for the service install)
 
 - Linux amd64 or arm64 with systemd
 - a public IPv4 or IPv6 address, or a hostname that resolves to one
@@ -147,6 +190,25 @@ the password; friends join through invites.
 The password is printed to the terminal only. Keep that terminal private and
 clear it after copying. If the profile is ever deleted, `passwd` recreates it
 with the new password; the password cannot be recovered from `relay.json`.
+
+## Change the public host or port (service install)
+
+The console wrapper has a menu option for this. For a service install, stop the
+service, update the config and profile, fix ownership, and start it again:
+
+```sh
+sudo systemctl stop lan-party-relay
+sudo lan-party-relay set-public --dir /etc/lan-party-relay \
+  --host relay.example.net --port 7443 --listen :7443
+sudo chown lan-party-relay:lan-party-relay /etc/lan-party-relay/relay.json /etc/lan-party-relay/relay.key
+sudo chmod 0600 /etc/lan-party-relay/relay.json /etc/lan-party-relay/relay.key
+sudo chmod 0600 /etc/lan-party-relay/relay-profile.json
+sudo systemctl start lan-party-relay
+sudo lan-party-relay show-info --dir /etc/lan-party-relay
+```
+
+`--listen :7443` keeps the local bind port aligned with the public port. If a
+firewall redirects a different public port to 7443, omit `--listen`.
 
 ## Password and key rotation
 

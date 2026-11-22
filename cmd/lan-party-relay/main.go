@@ -34,6 +34,8 @@ func main() {
 		runPasswd(os.Args[2:])
 	case "rotate-key":
 		runRotateKey(os.Args[2:])
+	case "set-public":
+		runSetPublic(os.Args[2:])
 	case "show-profile":
 		runShowProfile(os.Args[2:])
 	case "show-info":
@@ -58,6 +60,7 @@ Commands:
   fingerprint    Alias for relay-id
   passwd         Change the relay password without rotating the key
   rotate-key     Replace the relay key and update the host profile fingerprint
+  set-public     Change the public host/port advertised by the relay
   show-info      Print the address, fingerprint and password for the host app
   show-profile   Print the host profile as JSON
   version        Print the relay version
@@ -195,7 +198,7 @@ func runRelay(args []string) {
 			log.Fatal(err)
 		}
 	} else if publicHost != "" || publicAddress != "" {
-		changed, updateErr := relay.UpdatePublicAddress(filepath.Dir(*configPath), publicHost, publicPort, publicAddress)
+		changed, updateErr := relay.UpdatePublicAddress(filepath.Dir(*configPath), publicHost, publicPort, publicAddress, "")
 		if updateErr != nil {
 			log.Fatalf("relay: update public address: %v", updateErr)
 		}
@@ -228,6 +231,29 @@ func runRelay(args []string) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
 	<-signals
+}
+
+func runSetPublic(args []string) {
+	flags := flag.NewFlagSet("set-public", flag.ExitOnError)
+	dir := flags.String("dir", workingDir(), "relay data directory")
+	host := flags.String("host", "", "public relay host or IP")
+	port := flags.Int("port", 0, "public relay port")
+	address := flags.String("address", "", "public relay address as host:port")
+	listen := flags.String("listen", "", "new local listen address as host:port")
+	flags.Parse(args)
+
+	if *host == "" && *address == "" {
+		log.Fatal("set-public: --host or --address is required")
+	}
+	changed, err := relay.UpdatePublicAddress(*dir, *host, *port, *address, *listen)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if !changed {
+		fmt.Println("Relay public address is unchanged.")
+		return
+	}
+	fmt.Println("Relay public address updated. Restart the relay if it is running.")
 }
 
 func runFingerprint(args []string) {

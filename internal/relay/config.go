@@ -100,7 +100,7 @@ func LoadProfile(path string) (HostProfile, error) {
 // UpdatePublicAddress changes the advertised relay host and port in the config
 // and host profile. It keeps the relay identity and password unchanged and
 // reports whether anything changed.
-func UpdatePublicAddress(dir, host string, port int, address string) (bool, error) {
+func UpdatePublicAddress(dir, host string, port int, address, listen string) (bool, error) {
 	configPath := ConfigPath(dir)
 	cfg, err := LoadConfig(configPath)
 	if err != nil {
@@ -110,7 +110,13 @@ func UpdatePublicAddress(dir, host string, port int, address string) (bool, erro
 	if err != nil {
 		return false, err
 	}
-	if cfg.PublicAddress == public {
+	listen = strings.TrimSpace(listen)
+	if listen != "" {
+		if err := validateListen(listen); err != nil {
+			return false, err
+		}
+	}
+	if cfg.PublicAddress == public && (listen == "" || cfg.Listen == listen) {
 		return false, nil
 	}
 	newHost, newPort, err := hostPortFromAddress(public)
@@ -125,6 +131,9 @@ func UpdatePublicAddress(dir, host string, port int, address string) (bool, erro
 	}
 
 	cfg.PublicAddress = public
+	if listen != "" {
+		cfg.Listen = listen
+	}
 	if err := SaveConfig(configPath, cfg); err != nil {
 		return false, err
 	}

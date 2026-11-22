@@ -28,6 +28,7 @@ lan-party-relay_1.2.0_linux_amd64/
     relayctl
     README.md
   native/
+    run.sh
     lan-party-relay.service
     relay.env.example
     relayctl
@@ -52,9 +53,9 @@ arm64 zip.
 The image publishes from the same tag as the release. A tag push produces both
 the relay zips and the amd64 image.
 
-## Two ways to run it
+## Ways to run it
 
-Both modes run the same binary and have the same security model.
+All modes run the same binary and have the same security model.
 
 ### Docker Compose
 
@@ -71,6 +72,20 @@ sudo ./relayctl showinfo
 From a source checkout, use `sudo docker compose up --build -d`; the local
 `compose.override.yaml` builds the image from source. See
 [docker/README.md](docker/README.md) for the full steps.
+
+### Native console, no root or systemd
+
+For a quick trial or a relay you only run while hosting:
+
+```sh
+./native/run.sh
+```
+
+It keeps its data under `~/.local/share/lan-party-relay`, prompts for the
+public host and port, and shows a menu for info, address changes, password
+changes, key rotation and logs. Ctrl+C or the Stop item ends it. Nothing is
+installed system-wide and it does not start on boot. See
+[native/README.md](native/README.md).
 
 ### Native Linux binary plus systemd
 
@@ -269,6 +284,7 @@ lan-party-relay run --config /etc/lan-party-relay/relay.json
 lan-party-relay relay-id --config /etc/lan-party-relay/relay.json
 lan-party-relay passwd --dir /etc/lan-party-relay
 lan-party-relay rotate-key --dir /etc/lan-party-relay
+lan-party-relay set-public --dir /etc/lan-party-relay --host relay.example.net --port 7443 --listen :7443
 lan-party-relay show-info --dir /etc/lan-party-relay
 lan-party-relay show-profile --dir /etc/lan-party-relay
 lan-party-relay version
