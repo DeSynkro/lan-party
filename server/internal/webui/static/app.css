@@ -496,6 +496,11 @@ textarea {
   color: var(--muted);
 }
 
+dl,
+dd {
+  margin: 0;
+}
+
 .stat {
   display: grid;
   gap: 0.15rem;
