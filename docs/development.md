@@ -16,6 +16,11 @@ internal/secure/        key files, identities, certificates, pins
 internal/session/       host and friend sessions
 internal/tunnel/        QUIC, TLS pinning, control stream
 internal/gtkui/         GTK4 interface, style.css and UI assets
+internal/password/      PBKDF2 hashing shared by the relay and web host
+server/cmd/             lan-party-web main package
+server/internal/webui/  web host HTTP layer, auth, templates and assets
+server/docker/          web host Dockerfile, Compose and setup helpers
+server/native/          web host console runner and systemd unit
 build/                  AppImage helpers
 docs/                   design, architecture, security, UI, guide
 docs/plans/             historical rewrite plan
@@ -28,6 +33,15 @@ make run
 make test
 make build
 make appimage
+```
+
+The web host has no GTK or cgo dependency:
+
+```sh
+make web-test      # go test ./server/...
+make web           # test and build bin/lan-party-web
+make web-native    # Linux amd64/arm64 release zips
+make web-image     # container image from the repository root
 ```
 
 Building needs GTK4 and GLib 2.72+ development headers (`libgtk-4-dev`,
@@ -73,6 +87,9 @@ The tests cover:
 - an end-to-end app test: host creates a group, invite, approval, friend joins,
   TCP echo, revoke
 - GTK service-form composition, live-refresh signatures and CSS colour checks
+- web host auth, sessions, CSRF and Origin checks, rate limiting, headers,
+  credential storage, view-model leakage, service/invite/approval actions,
+  settings and password changes, SSE snapshots and the audit ring
 
 The end-to-end app test uses in-memory key stores. Tests never write to the
 real data or key directories.
@@ -141,6 +158,12 @@ styles, desktop file and icon, downloads a pinned `appimagetool` into `.tools`,
 verifies its checksum and writes
 `dist/lan-party_<version>_linux_amd64.AppImage`.
 
+`build/web.sh` builds static Linux amd64/arm64 `lan-party-web` binaries with the
+web host's Docker and native packaging, licenses and build metadata into
+`dist/lan-party-web_<version>_linux_<arch>.zip`. `server/docker/Dockerfile`
+builds the container from the repository root with `CGO_ENABLED=0` and a
+distroless runtime.
+
 The AppImage currently uses the system GTK4 runtime. It builds on every push
 to main and on tags. The artifact is retained for 14 days. Builds use the
 Ubuntu 22.04 runner and gotk4 v0.2.2, which sets the runtime floor at GTK 4.6,
@@ -179,8 +202,10 @@ the push commands or, with `--push`, pushes to the `github` remote (or `origin`
 when `github` is not configured). Set `LANPARTY_RELEASE_REMOTE` to override it.
 
 CI builds the AppImage, Windows zip and relay zips, writes `SHA256SUMS`, and
-creates a **draft** release. Open the draft on GitHub, check the notes and all
-assets, then publish it.
+creates a **draft** release. The `web` job also builds the web host zips, runs
+the native and Compose smoke tests, and publishes
+`ghcr.io/desynkro/lan-party-web` on tags. Open the draft on GitHub, check the
+notes and all assets, then publish it.
 
 Manual equivalent:
 

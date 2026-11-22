@@ -1,0 +1,64 @@
+{{define "content"}}
+<p class="small"><a href="/">Dashboard</a> / <a href="/groups/{{.GroupID}}">Group</a> / {{if .Editing}}Edit service{{else}}New service{{end}}</p>
+<section class="card">
+  <p class="eyebrow">Service</p>
+  <h1>{{if .Editing}}Edit service{{else}}Add a service{{end}}</h1>
+  <p class="muted">Tell this host which game server port friends should reach. The target is the address of the game server as seen from this host.</p>
+
+  {{if not .Editing}}
+  <form method="get" action="/groups/{{.GroupID}}/services/new" class="preset-form">
+    <label for="preset">Load a preset</label>
+    <div class="preset-controls">
+      <select id="preset" name="preset">
+        <option value="">Choose a game…</option>
+        {{range .Presets}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+      </select>
+      <button type="submit">Load</button>
+    </div>
+  </form>
+  {{end}}
+
+  <form method="post" action="{{if .Editing}}/groups/{{.GroupID}}/services/{{.ServiceID}}{{else}}/groups/{{.GroupID}}/services{{end}}" class="stack">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <label for="name">Name
+      <input id="name" name="name" value="{{.Name}}" maxlength="64" required>
+    </label>
+    <label for="proto">Protocol
+      <select id="proto" name="proto" required>
+        <option value="tcp"{{if eq .Proto "tcp"}} selected{{end}}>TCP</option>
+        <option value="udp"{{if eq .Proto "udp"}} selected{{end}}>UDP</option>
+        <option value="both"{{if eq .Proto "both"}} selected{{end}}>Both</option>
+      </select>
+    </label>
+    <label for="target">Game server target
+      <input id="target" name="target" value="{{.Target}}" placeholder="127.0.0.1:25565 or 192.168.1.50" required>
+      <span class="hint">An IP, hostname, or IP:port on this host's network.</span>
+    </label>
+    {{if and .Docker (eq .Target "127.0.0.1")}}
+    <p class="banner warn">This web host runs in Docker, where <code>127.0.0.1</code> means the container itself. Enter this host's LAN address instead, for example <code>192.168.0.10</code>.</p>
+    {{end}}
+    <label for="ports">Game ports
+      <input id="ports" name="ports" value="{{.PortsText}}" placeholder="25565 or 2456-2458" required>
+      <span class="hint">Comma-separated or a range. Friends use the same port numbers.</span>
+    </label>
+    {{if .Docker}}
+    <details class="docker-hint">
+      <summary>Docker firewall reminder</summary>
+      <p class="hint">If the game server is on this Docker host, allow the port from Docker's private range. Example for TCP 25565:</p>
+      <pre class="code">sudo ufw allow from 172.16.0.0/12 to any port 25565 proto tcp comment 'LAN Party -> Game'</pre>
+      <p class="hint">Remove it later with:</p>
+      <pre class="code"># LAN Party -> Game
+sudo ufw delete allow from 172.16.0.0/12 to any port 25565 proto tcp</pre>
+      <p class="hint">Use <code>udp</code> for UDP services, and add one rule per port. These rules allow containers on this host only, not your LAN or the internet.</p>
+    </details>
+    {{end}}
+    <label for="hint">Hint for friends (optional)
+      <input id="hint" name="hint" value="{{.Hint}}" maxlength="120" placeholder="Direct Connect in Minecraft">
+    </label>
+    <div class="actions">
+      <button type="submit" class="primary">{{if .Editing}}Save service{{else}}Add service{{end}}</button>
+      <a class="button" href="/groups/{{.GroupID}}">Cancel</a>
+    </div>
+  </form>
+</section>
+{{end}}

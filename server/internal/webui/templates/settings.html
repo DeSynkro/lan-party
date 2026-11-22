@@ -1,0 +1,90 @@
+{{define "content"}}
+<p class="eyebrow">Host</p>
+<h1>Settings</h1>
+
+<form method="post" action="/settings" class="stack settings-form">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <section class="card">
+    <h2>Ports</h2>
+    <div class="grid">
+      <div class="stat"><span>Web UI (TCP)</span><b class="mono">{{.WebPort}}</b></div>
+      <div class="stat"><span>Game (UDP)</span><b class="mono">{{.AppPort}}</b></div>
+    </div>
+    <p class="hint">Both ports are managed by this deployment and are read-only here, because Docker fixes its mappings when the container is created. Use the steps below to change them.</p>
+    <details>
+      <summary>How to change the ports</summary>
+      <p class="small">Docker, in <code>server/docker</code>:</p>
+      <pre class="code">sudo ./setup.sh --ports</pre>
+      <p class="small">Or edit <code>.env</code> directly, then restart:</p>
+      <pre class="code">LANPARTY_WEB_PORT={{.WebPort}}
+LANPARTY_APP_PORT={{.AppPort}}
+
+sudo docker compose up -d</pre>
+      <p class="small">Native: edit <code>native/web.env</code> and restart <code>run.sh</code>.</p>
+      <p class="hint">Changing the UDP port also means changing the router forward.</p>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>Network</h2>
+    <label for="publicAddress">Public address
+      <input id="publicAddress" name="publicAddress" value="{{.PublicAddress}}" list="lan-addresses" placeholder="play.example.com or 203.0.113.10">
+      <span class="hint">The address friends dial. It can be a hostname or IP, and it is not necessarily this web UI's address.</span>
+    </label>
+    <datalist id="lan-addresses">
+      {{range .AddressSuggestions}}<option value="{{.}}">{{end}}
+    </datalist>
+  </section>
+
+  <section class="card settings-friends">
+    <h2>Friends</h2>
+    <label class="check">
+      <input type="checkbox" name="approveNewDevices"{{if .ApproveNewDevices}} checked{{end}}>
+      Ask before a new device joins
+    </label>
+    <p class="hint">On: every new device waits for your approval, even with a valid invite. Off: a valid invite joins automatically.</p>
+    <label for="forgetDays">Forget inactive friends after
+      <input id="forgetDays" name="forgetDays" type="number" min="0" max="365" value="{{.ForgetDays}}" inputmode="numeric">
+      <span class="hint">Days without a connection. Leave blank or 0 to keep everyone.</span>
+    </label>
+  </section>
+
+  <div class="actions">
+    <button type="submit" class="primary">Save settings</button>
+  </div>
+</form>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Admin password</h2>
+    <a class="button" href="/settings/password">Change password</a>
+  </div>
+  <p class="muted">Changing the password signs out every browser, including this one.</p>
+</section>
+
+<section class="card">
+  <h2>Recent activity</h2>
+  {{if .Activity}}
+  <ul class="list small">
+    {{range .Activity}}
+    <li>
+      <div><strong>{{.Action}}</strong> {{.Detail}}</div>
+      <span class="muted">{{if .IP}}{{.IP}} · {{end}}{{when .At}}</span>
+    </li>
+    {{end}}
+  </ul>
+  {{else}}
+  <p class="muted">Nothing recorded yet.</p>
+  {{end}}
+</section>
+
+<section class="card">
+  <h2>About</h2>
+  <div class="stack small">
+    <div class="split"><span class="muted">Version</span><span class="mono">{{.Version}}</span></div>
+    <div class="split"><span class="muted">Data directory</span><span class="mono">{{.DataDir}}</span></div>
+    <div class="split"><span class="muted">Log file</span><span class="mono">{{.LogPath}}</span></div>
+  </div>
+  <p class="hint">Host keys stay in the data directory as owner-only files. Back up that directory, and encrypt the backup.</p>
+</section>
+{{end}}

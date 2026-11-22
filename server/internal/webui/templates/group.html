@@ -1,0 +1,151 @@
+{{define "content"}}
+<p class="small"><a href="/">Dashboard</a> / {{.Group.Name}}</p>
+<div class="split">
+  <div>
+    <p class="eyebrow">Group</p>
+    <h1>{{.Group.Name}}</h1>
+  </div>
+  <a class="button" href="/groups/{{.Group.ID}}/delete" data-modal>Delete group</a>
+</div>
+
+{{if .Approval}}
+<div class="banner warn" role="alert">
+  <strong>{{.Approval.PeerName}}</strong> on <strong>{{.Approval.DeviceName}}</strong> wants to join from {{.Approval.Address}}.
+  <p class="small mono">Key {{.Approval.Fingerprint}}</p>
+  <form method="post" action="/approvals/{{.Approval.ID}}">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <div class="row">
+      <button type="submit" name="allow" value="yes" class="primary">Allow</button>
+      <button type="submit" name="allow" value="no" class="danger">Deny</button>
+    </div>
+  </form>
+</div>
+{{end}}
+
+<section class="card">
+  <div class="split">
+    <h2>Session</h2>
+    {{if .Group.Live}}<span class="pill" data-session-state="{{.Group.ID}}"><span class="dot live"></span>Live</span>{{else}}<span class="pill" data-session-state="{{.Group.ID}}"><span class="dot"></span>Session off</span>{{end}}
+  </div>
+  <div class="grid">
+    <div class="stat"><span>Public endpoint</span><b class="mono">{{if .Group.Endpoint}}{{.Group.Endpoint}}{{else}}not set{{end}}</b></div>
+    <div class="stat"><span>Game port (UDP)</span><b class="mono">{{.Group.AppPort}}</b></div>
+    <div class="stat"><span>Connected now</span><b data-connected="{{.Group.ID}}">{{.Group.Connected}}</b></div>
+  </div>
+  <p class="hint">The UDP port is managed by this deployment. Change it in <code>.env</code> (Docker) or <code>web.env</code> (native), then restart.<br>In <code>server/docker</code>, <code>sudo ./setup.sh --ports</code> does it for you.</p>
+  {{if .Group.HostNote}}<p class="muted small">{{.Group.HostNote}}</p>{{end}}
+  <div class="actions">
+    {{if .Group.Live}}
+    <form method="post" action="/groups/{{.Group.ID}}/stop" class="inline">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button type="submit">End session</button>
+    </form>
+    {{else}}
+    <form method="post" action="/groups/{{.Group.ID}}/start" class="inline">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button type="submit" class="primary">Start session</button>
+    </form>
+    {{end}}
+    <a class="button" href="/groups/{{.Group.ID}}/invites/new" data-modal>Invite a friend</a>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Services</h2>
+    <a class="button" href="/groups/{{.Group.ID}}/services/new" data-modal>Add service</a>
+  </div>
+  {{if .Services}}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Protocol</th><th>Server target</th><th>Ports</th><th></th></tr></thead>
+      <tbody>
+      {{range .Services}}
+        <tr>
+          <td><a href="/groups/{{$.Group.ID}}/services/{{.ID}}" data-modal>{{.Name}}</a>{{if .Hint}}<div class="hint">{{.Hint}}</div>{{end}}</td>
+          <td class="mono">{{.Proto}}</td>
+          <td class="mono">{{.Target}}</td>
+          <td class="mono">{{.PortsText}}</td>
+          <td><a href="/groups/{{$.Group.ID}}/services/{{.ID}}/remove" data-modal>Remove</a></td>
+        </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="empty">No services yet. Add the game's server port so friends can reach it.</p>
+  {{end}}
+
+  {{if .Docker}}
+  <details class="docker-hint">
+    <summary>Docker firewall reminder</summary>
+    <p class="small">The web host runs in Docker. If the game server is on this Docker host, use the host's LAN address as the target — <code>127.0.0.1</code> means the container itself. Allow only Docker's private range to reach the game ports:</p>
+    {{if .DockerAllowCommands}}
+    <div class="split">
+      <span class="small">Allow:</span>
+      <button type="button" class="link" data-copy="docker-allow">Copy</button>
+    </div>
+    <pre id="docker-allow" class="code">{{.DockerAllowCommands}}</pre>
+    <div class="split">
+      <span class="small">Remove:</span>
+      <button type="button" class="link" data-copy="docker-delete">Copy</button>
+    </div>
+    <pre id="docker-delete" class="code">{{.DockerDeleteCommands}}</pre>
+    {{else}}
+    <p class="small">Add a service to see the exact commands.</p>
+    {{end}}
+    <p class="hint">These rules allow containers on this host only, not your LAN or the internet.</p>
+  </details>
+  {{end}}
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Invites</h2>
+    <a class="button" href="/groups/{{.Group.ID}}/invites/new" data-modal>New invite</a>
+  </div>
+  {{if .Invites}}
+  <ul class="list">
+    {{range .Invites}}
+    <li>
+      <div>
+        <strong>{{.Name}}</strong>
+        {{if .Open}}<span class="pill">Open</span>{{else if .Redeemed}}<span class="pill">Used</span>{{else}}<span class="pill">Expired</span>{{end}}
+        <div class="hint">Created {{ago .CreatedAt}} · expires {{when .ExpiresAt}}</div>
+        {{if .Code}}
+        <textarea id="invite-{{.ID}}" class="code" readonly rows="2">{{.Code}}</textarea>
+        <button type="button" class="link" data-copy="invite-{{.ID}}">Copy code</button>
+        {{end}}
+      </div>
+      <form method="post" action="/groups/{{$.Group.ID}}/invites/{{.ID}}/cancel" class="inline">
+        <input type="hidden" name="csrf" value="{{$.CSRF}}">
+        <button type="submit" class="link">Cancel</button>
+      </form>
+    </li>
+    {{end}}
+  </ul>
+  {{else}}
+  <p class="empty">No invites yet.</p>
+  {{end}}
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>People</h2></div>
+  {{if .Members}}
+  <ul class="list">
+    {{range .Members}}
+    <li>
+      <div>
+        <a href="/groups/{{$.Group.ID}}/members/{{.ID}}" data-modal>{{.Name}}</a>
+        {{if .Live}}<span class="pill" data-member-state="{{.ID}}"><span class="dot live"></span>Connected</span>{{else}}<span class="pill" data-member-state="{{.ID}}"><span class="dot"></span>Offline</span>{{end}}
+        {{if not .Approved}}<span class="pill">Waiting for approval</span>{{end}}
+        <div class="hint">{{.DeviceName}} · last seen {{ago .LastSeen}}</div>
+      </div>
+    </li>
+    {{end}}
+  </ul>
+  {{else}}
+  <p class="empty">Nobody has joined yet.</p>
+  {{end}}
+</section>
+{{end}}

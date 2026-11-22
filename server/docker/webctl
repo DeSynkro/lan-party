@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Run a web host command inside the running container.
+#   ./webctl show-info
+#   ./webctl passwd
+#   ./webctl healthcheck --url http://127.0.0.1:8080/healthz
+set -euo pipefail
+
+dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$dir"
+
+exec docker compose exec lan-party-web /lan-party-web "$@"

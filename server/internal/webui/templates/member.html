@@ -1,0 +1,22 @@
+{{define "content"}}
+<p class="small"><a href="/">Dashboard</a> / <a href="/groups/{{.GroupID}}">Group</a> / {{.Member.Name}}</p>
+<section class="card narrow">
+  <p class="eyebrow">Member</p>
+  <h1>{{.Member.Name}}</h1>
+  <p>
+    {{if .Member.Live}}<span class="pill"><span class="dot live"></span>Connected</span>{{else}}<span class="pill"><span class="dot"></span>Offline</span>{{end}}
+    {{if .Member.Approved}}<span class="pill">Approved</span>{{else}}<span class="pill">Waiting for approval</span>{{end}}
+  </p>
+  <dl class="stack">
+    <div><dt class="eyebrow">Device</dt><dd>{{if .Member.DeviceName}}{{.Member.DeviceName}}{{else}}unknown{{end}}</dd></div>
+    <div><dt class="eyebrow">Last address</dt><dd class="mono">{{if .Member.Address}}{{.Member.Address}}{{else}}unknown{{end}}</dd></div>
+    <div><dt class="eyebrow">Key fingerprint</dt><dd class="mono">{{if .Member.Fingerprint}}{{.Member.Fingerprint}}{{else}}unknown{{end}}</dd></div>
+    <div><dt class="eyebrow">First seen</dt><dd>{{when .Member.FirstSeen}}</dd></div>
+    <div><dt class="eyebrow">Last seen</dt><dd>{{ago .Member.LastSeen}}</dd></div>
+  </dl>
+  <div class="actions">
+    <a class="button danger" href="/groups/{{.GroupID}}/members/{{.Member.ID}}/remove" data-modal>Remove member</a>
+    <a class="button" href="/groups/{{.GroupID}}">Back to group</a>
+  </div>
+</section>
+{{end}}

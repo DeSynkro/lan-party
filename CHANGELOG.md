@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.3.0 — 2026-11-22
+
+- Host-only web app for a homelab or VPS: the same engine as the desktop host,
+  without GTK, a tray or a display server.
+- Server-rendered pages for groups, services, invites, members, approvals,
+  settings and a hosting guide, with zero JavaScript for every core flow.
+- One live host session at a time, matching the desktop app. Concurrent
+  multi-group hosting is deferred.
+- No relay, no join flow, no Relay ID and no reconnect-token UI in the web host.
+- Public address edited in the web UI; UDP app port read-only and owned by the
+  deployment.
+- Admin password with PBKDF2-SHA256, in-memory sessions, CSRF and Origin checks,
+  login rate limiting, strict headers and an audit log.
+- Docker Compose with a hardened non-root container, a no-root native console
+  runner and an optional systemd unit. No timers.
+- Linux amd64/arm64 web host zips and a multi-arch GHCR image.
+
+See [docs/releases/v1.3.0.md](docs/releases/v1.3.0.md) for the release notes.
+
 ## 1.2.0 — 2026-11-22
 
 - Optional self-hosted relay for hosts behind CGNAT, a VPN, or a network where a

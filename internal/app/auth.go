@@ -239,7 +239,7 @@ func (a *App) enroll(groupID, inviteID string, req tunnel.AuthRequest, ip string
 	}
 
 	if member, ok := g.FindMemberByKey(key); ok {
-		_ = g.RedeemInvite(inviteID, time.Now())
+		a.redeemInviteLocked(g, inviteID, time.Now())
 		_ = a.saveLocked()
 		return member.ID, false, nil
 	}
@@ -260,6 +260,7 @@ func (a *App) enroll(groupID, inviteID string, req tunnel.AuthRequest, ip string
 			break
 		}
 		_ = g.RedeemInvite(inviteID, now)
+		a.redeemInviteCodeLocked(inviteID)
 		if err := a.saveLocked(); err != nil {
 			return "", true, err
 		}
@@ -281,10 +282,22 @@ func (a *App) enroll(groupID, inviteID string, req tunnel.AuthRequest, ip string
 		return "", false, err
 	}
 	_ = g.RedeemInvite(inviteID, now)
+	a.redeemInviteCodeLocked(inviteID)
 	if err := a.saveLocked(); err != nil {
 		return "", false, err
 	}
 	return member.ID, false, nil
+}
+
+func (a *App) redeemInviteLocked(g *group.Group, inviteID string, now time.Time) {
+	_ = g.RedeemInvite(inviteID, now)
+	a.redeemInviteCodeLocked(inviteID)
+}
+
+// redeemInviteCodeLocked removes the one-time code once its invite is used.
+// Callers hold a.mu.
+func (a *App) redeemInviteCodeLocked(inviteID string) {
+	delete(a.inviteCodes, inviteID)
 }
 
 func (a *App) requestApproval(ctx context.Context, approval Approval) (bool, error) {

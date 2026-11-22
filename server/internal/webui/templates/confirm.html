@@ -1,0 +1,15 @@
+{{define "content"}}
+<section class="card narrow">
+  <p class="eyebrow">{{.Eyebrow}}</p>
+  <h1>{{.Heading}}</h1>
+  <p class="muted">{{.Message}}</p>
+  <form method="post" action="{{.Action}}" class="stack">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    {{range $name, $value := .Hidden}}{{if $value}}<input type="hidden" name="{{$name}}" value="{{$value}}">{{end}}{{end}}
+    <div class="actions">
+      <button type="submit" class="danger">{{.Confirm}}</button>
+      <a class="button" href="{{.Cancel}}">Cancel</a>
+    </div>
+  </form>
+</section>
+{{end}}

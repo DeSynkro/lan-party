@@ -1,0 +1,43 @@
+{{define "content"}}
+<div class="split">
+  <div>
+    <p class="eyebrow">Host console</p>
+    <h1>Dashboard</h1>
+  </div>
+  <a class="button primary" href="/groups/new" data-modal>New group</a>
+</div>
+
+{{if .Groups}}
+<div class="grid">
+  {{range .Groups}}
+  <article class="card">
+    <div class="split">
+      <h2><a href="/groups/{{.ID}}">{{.Name}}</a></h2>
+      {{if .Live}}<span class="pill" data-group-live="{{.ID}}"><span class="dot live"></span>Live</span>{{else}}<span class="pill" data-group-live="{{.ID}}"><span class="dot"></span>Offline</span>{{end}}
+    </div>
+    <p class="muted small">Hosted by {{.HostName}}</p>
+    <div class="row">
+      <span class="pill">{{.Connected}} connected</span>
+      <span class="pill">{{.Members}} members</span>
+      <span class="pill">{{.Services}} services</span>
+    </div>
+    <div class="actions">
+      <a class="button" href="/groups/{{.ID}}">Open</a>
+      {{if .Live}}<span class="muted small">Session running</span>{{end}}
+    </div>
+  </article>
+  {{end}}
+</div>
+{{else}}
+<div class="card empty">
+  <p>No groups yet. Create one to publish a game and invite a friend.</p>
+  <a class="button primary" href="/groups/new" data-modal>Create your first group</a>
+</div>
+{{end}}
+
+<div class="card">
+  <h2>How this works</h2>
+  <p class="muted">This host runs on your server. Friends use the LAN Party desktop app, paste an invite, and their game connects to <code>127.0.0.1</code> as if you were on the same LAN.</p>
+  <p><a href="/guide">Read the hosting guide</a></p>
+</div>
+{{end}}

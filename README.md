@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-blue.svg" alt="License: GPLv3"></a>
-  <a href="https://github.com/DeSynkro/lan-party/releases"><img src="https://img.shields.io/badge/version-1.2.0-orange.svg" alt="Version 1.2.0"></a>
+  <a href="https://github.com/DeSynkro/lan-party/releases"><img src="https://img.shields.io/badge/version-1.3.0-orange.svg" alt="Version 1.3.0"></a>
   <a href="https://ko-fi.com/desynkro"><img src="https://img.shields.io/badge/Ko--fi-support%20me-ff5e5b?logo=kofi&amp;logoColor=white" alt="Support me on Ko-fi"></a>
 </p>
 
@@ -24,6 +24,8 @@ LAN Party is a small desktop app that gives your friends one local port onto a g
 Your friend pastes a one-time invite, you approve their device once. Their game then connects to `127.0.0.1:<port>` as if the server were on their own machine.
 
 If you cannot forward a port, run the optional self-hosted relay on a VPS or spare machine. It forwards encrypted packets and cannot read the game traffic. See [relay/README.md](relay/README.md).
+
+If the host should live on a homelab or VPS instead of your desktop, 1.3 adds a host-only web UI. It runs the same engine without GTK or a tray; friends keep using the desktop app. See [docs/web-host.md](docs/web-host.md).
 
 The traffic crosses one encrypted QUIC connection to your PC, where the app dials the real LAN target. There is no virtual network, no route, and no peer-to-peer path. Your router, your NAS and the rest of your LAN are never reachable from the friend's machine.
 
@@ -47,6 +49,7 @@ It is deliberately lightweight and to the point. If you need a whole virtual net
 - **Windows 10 or 11 on x86-64.** The portable zip includes the GTK4 runtime. No installer, admin rights or account is needed.
 - **One UDP port forwarded** on the host's router, or a self-hosted relay when a forward is not possible. Friends do not need a forward.
 - **A public address** that reaches the host: a hostname, a static IP, or a dynamic DNS name, or a relay for a host behind carrier-grade NAT.
+- **Optional:** the 1.3 web host on a homelab or VPS needs Linux amd64/arm64 or Docker, and no desktop session.
 - No keyring daemon, no account and no telemetry.
 
 ### For the AppImage
@@ -195,6 +198,11 @@ The in-app guide has the full walkthrough with your current ports and addresses 
 | `~/.local/share/lan-party/keys/` | Long-lived private keys, relay passwords and relay reconnect tokens (`0600`) |
 | `~/.config/autostart/lan-party.desktop` | Autostart entry when enabled |
 | `~/.local/share/lan-party/lan-party.log` | Application log. `%LocalAppData%\lan-party\lan-party.log` on Windows |
+
+The 1.3 web host keeps its own directory beside `compose.yaml` or
+`run.sh`: `data/settings.json`, `data/groups.json`, `data/web.json`,
+`data/keys/` and `data/lan-party.log`. The desktop app's directories are not
+touched.
 
 On Windows, settings live under `%AppData%\lan-party`. Groups, keys and the log live under `%LocalAppData%\lan-party`. Start on login uses the per-user `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` key, not Task Scheduler or an admin service.
 

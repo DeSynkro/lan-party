@@ -8,6 +8,7 @@ require (
 	github.com/godbus/dbus/v5 v5.2.2
 	github.com/quic-go/quic-go v0.65.0
 	golang.org/x/sys v0.50.0
+	golang.org/x/term v0.47.0
 )
 
 require (

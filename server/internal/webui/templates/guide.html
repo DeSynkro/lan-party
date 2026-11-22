@@ -1,0 +1,37 @@
+{{define "content"}}
+<p class="eyebrow">Host guide</p>
+<h1>Host a game night</h1>
+<p class="muted">This page is the short version. Friends use the LAN Party desktop app, not this web UI.</p>
+
+<section class="card">
+  <h2>1. Forward UDP</h2>
+  <p>Forward the UDP game port shown in <a href="/settings">Settings</a> from your router to this host. If the app port is <code>51820</code>, forward UDP <code>51820</code> to this server's LAN address.</p>
+  <p class="hint">Changing the app port in this deployment also means changing the router forward.</p>
+</section>
+
+<section class="card">
+  <h2>2. Set the public address</h2>
+  <p>In <a href="/settings">Settings</a>, enter the address friends should dial: your public IP or a hostname. It is separate from the address of this web UI.</p>
+</section>
+
+<section class="card">
+  <h2>3. Create a group and a service</h2>
+  <p>Create a group for the game night, then add the game's server port. The target is the game server as this host sees it, for example <code>127.0.0.1:25565</code>.</p>
+</section>
+
+<section class="card">
+  <h2>4. Invite a friend</h2>
+  <p>Start the session and create an invite. Send the code to your friend. They paste it into the desktop app, and their game connects to <code>127.0.0.1</code> with the same port.</p>
+  <p class="hint">An invite works once and expires after an hour.</p>
+</section>
+
+<section class="card">
+  <h2>Keeping it safe</h2>
+  <ul>
+    <li>Put this web UI behind TLS, usually a reverse proxy such as Caddy or nginx.</li>
+    <li>Do not expose the web UI port unless you need remote administration.</li>
+    <li>Back up the data directory and encrypt the backup: it holds the host keys.</li>
+    <li>The host keys are owner-only files. Do not copy them into chat or tickets.</li>
+  </ul>
+</section>
+{{end}}

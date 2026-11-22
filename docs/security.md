@@ -257,6 +257,72 @@ The app writes no secrets to logs. It has no telemetry and no auto-update.
 | Supply chain | Few dependencies, pinned versions, `govulncheck` in CI, no runtime downloads. |
 | Game server vulnerability | Not fixed by this app. An offline-mode Minecraft server is still an offline-mode Minecraft server. |
 
+## Web host (1.3)
+
+The web host controls who may reach the LAN services, so it is treated as a
+high-value surface. It is a separate binary and data directory from the desktop
+app.
+
+### Authentication
+
+- One admin password. No username field, so there is no account enumeration.
+- PBKDF2-SHA256, 600,000 iterations, 32-byte key, 16-byte random salt,
+  constant-time comparison (shared with the relay).
+- First run generates a 24-byte random password, prints it once and stores only
+  the salted hash in `data/web.json` (`0600`). `passwd` replaces it. A
+  user-supplied password must be at least 12 characters.
+- Login failures return a generic message and a fixed delay. Per-address token
+  buckets and a global failure cap return `429` with `Retry-After`.
+
+### Sessions and CSRF
+
+- 256-bit random session IDs, held in memory only. A restart signs everyone out;
+  no session-signing secret is stored on disk.
+- Cookie `lanparty_web_session`: `HttpOnly`, `SameSite=Strict`, `Path=/`,
+  `Secure` on HTTPS, no `Domain`. The ID rotates on login.
+- Idle timeout 12 hours, absolute timeout 7 days. Logout destroys the session
+  server-side.
+- Every authenticated mutation needs a per-session CSRF token and a matching
+  `Origin` header. A missing Origin is accepted only for non-browser clients,
+  which still need the token.
+- A password change destroys every session.
+
+### Headers and transport
+
+- CSP without inline script, `nosniff`, `X-Frame-Options: DENY`,
+  `Referrer-Policy: no-referrer`, restrictive `Permissions-Policy`,
+  `Cache-Control: no-store` on authenticated pages.
+- Request body limit 64 KiB, header limit 1 MiB, server read/write/idle
+  timeouts.
+- Optional direct TLS (1.2 minimum) or a reverse proxy. Plain HTTP on a
+  non-loopback address logs a warning.
+- `X-Forwarded-For` and `X-Forwarded-Proto` are honoured only from the
+  configured trusted-proxy CIDRs.
+
+### Storage and exposure
+
+- Host keys stay owner-only files (`0700` directory, `0600` files) exactly as
+  the desktop app. There is no app-level passphrase in 1.3: encrypt the disk and
+  backups.
+- Invite codes, password hashes, private keys and session IDs are never logged
+  or rendered on a logged-out page. Invite codes are shown on the group page
+  for the life of the process and are cleared on restart.
+- No relay secrets, Relay ID or reconnect tokens exist in this binary. Relay
+  settings copied into its data directory are normalized to direct mode at load.
+- The container runs as a non-root UID with a read-only root filesystem, dropped
+  capabilities, `no-new-privileges`, a PID limit and memory/CPU limits. Only
+  `/data` is writable.
+- Audit entries cover login success and failure, logout, password changes,
+  settings changes, session start/stop, group changes, invites, approvals and
+  member removal. Newlines are stripped so a name cannot forge a log line.
+
+### What this does not protect
+
+- A web UI exposed without TLS. Use a trusted certificate or a reverse proxy.
+- A stolen `data/` directory or backup. Encrypt both.
+- A host already compromised as the service user or root.
+- Multiple administrators. There is one password and no per-user roles in 1.3.
+
 ## What this does not protect
 
 - The game server's own bugs, weak passwords or missing whitelists.

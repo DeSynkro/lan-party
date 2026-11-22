@@ -1,0 +1,57 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>{{.Title}} · LAN Party</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/app.css">
+<script src="/static/app.js" defer></script>
+</head>
+<body{{if .Authenticated}} data-live-root data-approval="{{if .Approval}}{{.Approval.ID}}{{end}}"{{if .LiveGroupID}} data-group-id="{{.LiveGroupID}}" data-members="{{.MemberSignature}}" data-invites="{{.InviteSignature}}"{{end}}{{end}}>
+<a class="skip" href="#main">Skip to content</a>
+{{if .Authenticated}}
+<header class="topbar">
+  <div class="bar">
+    <a class="brand" href="/">LAN&nbsp;Party</a>
+    <nav class="nav" aria-label="Main">
+      <a href="/">Dashboard</a>
+      <a href="/guide">Guide</a>
+      <a href="/settings">Settings</a>
+    </nav>
+    <form method="post" action="/logout" class="inline">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button type="submit" class="link">Log out</button>
+    </form>
+  </div>
+</header>
+{{end}}
+<main id="main" class="page">
+{{if .Authenticated}}
+{{if .Approval}}
+<div class="banner warn" role="alert">
+  <strong>{{.Approval.PeerName}}</strong> on <strong>{{.Approval.DeviceName}}</strong> wants to join.
+  <div class="row">
+    <a class="button" href="/groups/{{.Approval.GroupID}}">Review the request</a>
+  </div>
+</div>
+{{end}}
+{{end}}
+{{if .Flash}}<p class="banner ok" role="status">{{.Flash}}</p>{{end}}
+{{if .Error}}<p class="banner danger" role="alert">{{.Error}}</p>{{end}}
+{{template "content" .}}
+</main>
+{{if .Authenticated}}
+<dialog id="modal" class="modal" aria-label="Dialog">
+  <div class="modal-shell">
+    <form method="dialog" class="modal-close-form">
+      <button type="submit" class="modal-close" aria-label="Close">×</button>
+    </form>
+    <div id="modal-body" class="modal-body"></div>
+  </div>
+</dialog>
+{{end}}
+<footer class="foot">LAN Party {{version}} · host-only web UI</footer>
+</body>
+</html>{{end}}
