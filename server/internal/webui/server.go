@@ -72,6 +72,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /logout", s.authenticated(s.handleLogout))
 	s.mux.HandleFunc("GET /{$}", s.authenticated(s.handleHome))
 	s.mux.HandleFunc("GET /groups/{id}", s.authenticated(s.handleGroupPage))
+	s.mux.HandleFunc("GET /events", s.authenticated(s.handleEvents))
 	s.mux.HandleFunc("/", s.handleNotFound)
 }
 

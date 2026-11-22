@@ -25,7 +25,7 @@
 <section class="card">
   <div class="split">
     <h2>Session</h2>
-    {{if .Group.Live}}<span class="pill"><span class="dot live"></span>Live</span>{{else}}<span class="pill"><span class="dot"></span>Session off</span>{{end}}
+    {{if .Group.Live}}<span class="pill" data-session-state="{{.Group.ID}}"><span class="dot live"></span>Live</span>{{else}}<span class="pill" data-session-state="{{.Group.ID}}"><span class="dot"></span>Session off</span>{{end}}
   </div>
   <div class="grid">
     <div class="stat"><span>Public endpoint</span><b class="mono">{{if .Group.Endpoint}}{{.Group.Endpoint}}{{else}}not set{{end}}</b></div>
@@ -115,7 +115,7 @@
     <li>
       <div>
         <a href="/groups/{{$.Group.ID}}/members/{{.ID}}">{{.Name}}</a>
-        {{if .Live}}<span class="pill"><span class="dot live"></span>Connected</span>{{else}}<span class="pill"><span class="dot"></span>Offline</span>{{end}}
+        {{if .Live}}<span class="pill" data-member-state="{{.ID}}"><span class="dot live"></span>Connected</span>{{else}}<span class="pill" data-member-state="{{.ID}}"><span class="dot"></span>Offline</span>{{end}}
         {{if not .Approved}}<span class="pill">Waiting for approval</span>{{end}}
         <div class="hint">{{.DeviceName}} · last seen {{ago .LastSeen}}</div>
       </div>

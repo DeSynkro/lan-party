@@ -34,4 +34,65 @@
     selection.removeAllRanges();
     selection.addRange(range);
   }
+
+  if (!document.body.hasAttribute("data-live-root") || !("EventSource" in window)) {
+    return;
+  }
+
+  let source;
+  let retry = 1000;
+
+  const pill = (element, live, text) => {
+    if (!element) return;
+    element.replaceChildren();
+    const dot = document.createElement("span");
+    dot.className = live ? "dot live" : "dot";
+    element.append(dot, document.createTextNode(text));
+  };
+
+  const selectors = (name, id) =>
+    document.querySelectorAll("[" + name + '="' + window.CSS.escape(id) + '"]');
+
+  const apply = (snap) => {
+    const approval = snap.approval || "";
+    if (approval !== (document.body.dataset.approval || "")) {
+      window.location.reload();
+      return;
+    }
+    for (const group of snap.groups || []) {
+      for (const element of selectors("data-connected", group.id)) {
+        element.textContent = String(group.connected);
+      }
+      for (const element of selectors("data-group-live", group.id)) {
+        pill(element, group.live, group.live ? "Live" : "Offline");
+      }
+      for (const element of selectors("data-session-state", group.id)) {
+        pill(element, group.live, group.live ? "Live" : "Session off");
+      }
+      for (const member of group.members || []) {
+        for (const element of selectors("data-member-state", member.id)) {
+          pill(element, member.live, member.live ? "Connected" : "Offline");
+        }
+      }
+    }
+  };
+
+  const connect = () => {
+    source = new EventSource("/events");
+    source.addEventListener("message", (event) => {
+      retry = 1000;
+      try {
+        apply(JSON.parse(event.data));
+      } catch (_) {
+        /* ignore a malformed frame */
+      }
+    });
+    source.addEventListener("error", () => {
+      source.close();
+      window.setTimeout(connect, retry);
+      retry = Math.min(retry * 2, 30000);
+    });
+  };
+
+  connect();
 })();

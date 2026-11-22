@@ -13,7 +13,7 @@
   <article class="card">
     <div class="split">
       <h2><a href="/groups/{{.ID}}">{{.Name}}</a></h2>
-      {{if .Live}}<span class="pill"><span class="dot live"></span>Live</span>{{else}}<span class="pill"><span class="dot"></span>Offline</span>{{end}}
+      {{if .Live}}<span class="pill" data-group-live="{{.ID}}"><span class="dot live"></span>Live</span>{{else}}<span class="pill" data-group-live="{{.ID}}"><span class="dot"></span>Offline</span>{{end}}
     </div>
     <p class="muted small">Hosted by {{.HostName}}</p>
     <div class="row">
