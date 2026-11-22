@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -20,6 +21,7 @@ import (
 	"time"
 
 	appengine "github.com/desynkro/lan-party/internal/app"
+	"github.com/desynkro/lan-party/internal/applog"
 	"github.com/desynkro/lan-party/internal/buildinfo"
 	"github.com/desynkro/lan-party/internal/secure"
 	"github.com/desynkro/lan-party/server/internal/webui"
@@ -148,6 +150,11 @@ func runServer(args []string) error {
 	if err := os.MkdirAll(cfg.DataDir, 0o700); err != nil {
 		return fmt.Errorf("create data directory: %w", err)
 	}
+	logFile, err := openLog(cfg.DataDir)
+	if err != nil {
+		return fmt.Errorf("open log: %w", err)
+	}
+	defer logFile.Close()
 	_, generated, err := webui.EnsureCredentials(webui.CredentialsPath(cfg.DataDir), strings.TrimSpace(os.Getenv("LANPARTY_WEB_PASSWORD")))
 	if err != nil {
 		return err
@@ -362,6 +369,15 @@ func envIntOr(name string, fallback int) int {
 		return fallback
 	}
 	return n
+}
+
+func openLog(dataDir string) (*os.File, error) {
+	file, err := applog.Open(dataDir)
+	if err != nil {
+		return nil, err
+	}
+	log.SetOutput(io.MultiWriter(os.Stderr, file))
+	return file, nil
 }
 
 func envBool(name string) bool {

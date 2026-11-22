@@ -123,6 +123,8 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request, session *S
 		select {
 		case <-r.Context().Done():
 			return
+		case <-s.shutdown:
+			return
 		case <-ticker.C:
 			if !s.sessions.Alive(session.ID) {
 				return

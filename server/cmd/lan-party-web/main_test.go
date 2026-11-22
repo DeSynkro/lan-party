@@ -2,6 +2,9 @@ package main
 
 import (
 	"flag"
+	"log"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -14,6 +17,24 @@ func TestDefaultHealthURL(t *testing.T) {
 	}
 	if got := defaultHealthURL("/tls/cert.pem", ""); got != "http://127.0.0.1:8080/healthz" {
 		t.Fatalf("half-configured TLS URL = %q", got)
+	}
+}
+
+func TestOpenLogCreatesOwnerOnlyFile(t *testing.T) {
+	old := log.Writer()
+	defer log.SetOutput(old)
+	dir := t.TempDir()
+	file, err := openLog(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	info, err := os.Stat(filepath.Join(dir, "lan-party.log"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o600 {
+		t.Fatalf("log mode = %o", info.Mode().Perm())
 	}
 }
 

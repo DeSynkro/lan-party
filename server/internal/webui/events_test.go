@@ -114,6 +114,29 @@ func TestEventsCloseWhenSessionIsDestroyed(t *testing.T) {
 	}
 }
 
+func TestEventsCloseOnServerShutdown(t *testing.T) {
+	srv := newTestServer(t)
+	srv.eventInterval = time.Hour
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req := httptest.NewRequest("GET", "http://lan.local/events", nil).WithContext(ctx)
+	req.Host = "lan.local"
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: srv.session.ID})
+	rr := httptest.NewRecorder()
+	done := make(chan struct{})
+	go func() {
+		srv.Handler().ServeHTTP(rr, req)
+		close(done)
+	}()
+	time.Sleep(20 * time.Millisecond)
+	srv.closeStreams()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("event stream survived server shutdown")
+	}
+}
+
 func TestSessionAliveDoesNotTouch(t *testing.T) {
 	store := NewSessionStore(20*time.Millisecond, time.Hour)
 	session, err := store.Create()

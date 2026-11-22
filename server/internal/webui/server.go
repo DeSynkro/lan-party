@@ -13,6 +13,7 @@ import (
 	"net/netip"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/desynkro/lan-party/internal/buildinfo"
@@ -39,6 +40,8 @@ type Server struct {
 	loginDelay    time.Duration
 	eventInterval time.Duration
 	audit         *AuditLog
+	shutdown      chan struct{}
+	shutdownOnce  sync.Once
 }
 
 // New builds the web UI. The data directory must already have credentials.
@@ -63,6 +66,7 @@ func New(a App, cfg Config) (*Server, error) {
 		loginDelay:    300 * time.Millisecond,
 		eventInterval: time.Second,
 		audit:         NewAuditLog(100),
+		shutdown:      make(chan struct{}),
 	}
 	s.routes()
 	return s, nil
@@ -141,10 +145,17 @@ func (s *Server) Run(ctx context.Context) error {
 	case err := <-errCh:
 		return err
 	case <-ctx.Done():
+		s.closeStreams()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		return srv.Shutdown(shutdownCtx)
 	}
+}
+
+// closeStreams ends open SSE handlers so graceful shutdown does not wait for
+// clients that never disconnect.
+func (s *Server) closeStreams() {
+	s.shutdownOnce.Do(func() { close(s.shutdown) })
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
