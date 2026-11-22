@@ -279,14 +279,12 @@ jobs:
       - name: Check release zips for local data
         run: |
           set -euo pipefail
+          unwanted='(^|/)(native/data|native/web\.env|docker/data|docker/tls|docker/\.env)(/|$)'
           for archive in dist/lan-party-web_*.zip; do
-            listing="$(unzip -l "$archive")"
-            case "$listing" in
-              *"native/data"*|*"native/web.env"*|*"docker/data"*|*"docker/tls"*|*"docker/.env"*)
-                echo "local data found in $archive" >&2
-                exit 1
-                ;;
-            esac
+            if unzip -Z1 "$archive" | grep -Eq "$unwanted"; then
+              echo "local data found in $archive" >&2
+              exit 1
+            fi
           done
       - name: Smoke test native zip
         run: |
