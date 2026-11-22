@@ -142,10 +142,6 @@ func (s *Server) handleNotFound(w http.ResponseWriter, r *http.Request) {
 	s.renderError(w, r, http.StatusNotFound, "That page does not exist.")
 }
 
-func (s *Server) handleHome(w http.ResponseWriter, r *http.Request, session *Session) {
-	s.render(w, r, http.StatusOK, "dashboard.html", DashboardView{BaseView: s.base(r, "Dashboard")})
-}
-
 func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, name string, data any) {
 	tpl, ok := s.tpl[name]
 	if !ok {
