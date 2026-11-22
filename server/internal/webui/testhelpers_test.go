@@ -150,7 +150,7 @@ func (f *fakeApp) CreateInvite(groupID, peerName string) (string, error) {
 	for i := range f.groups {
 		if f.groups[i].ID == groupID {
 			f.groups[i].Invites = append(f.groups[i].Invites, group.Invite{
-				ID: "invite-1", Name: peerName,
+				ID: "invite-1", Name: peerName, TokenHash: "test-hash",
 				CreatedAt: time.Now(),
 				ExpiresAt: time.Now().Add(time.Hour),
 			})

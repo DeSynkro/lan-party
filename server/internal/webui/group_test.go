@@ -3,6 +3,7 @@ package webui
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/desynkro/lan-party/internal/group"
 )
@@ -28,6 +29,32 @@ func TestGroupPageShowsSessionAndServices(t *testing.T) {
 	}
 }
 
+func TestRedeemedInviteDoesNotShowCode(t *testing.T) {
+	srv := newTestServerWithGroups(t, group.Group{ID: "g1", Name: "Friday", Role: group.RoleHost,
+		Invites: []group.Invite{{ID: "i1", Name: "Ash", TokenHash: "hash", CreatedAt: time.Now().Add(-time.Minute), ExpiresAt: time.Now().Add(time.Hour), RedeemedAt: time.Now()}},
+	})
+	srv.fake.lastInvite = "lp1_secret-code"
+	rr := srv.get("/groups/g1")
+	body := rr.Body.String()
+	if strings.Contains(body, "lp1_secret-code") {
+		t.Fatal("redeemed invite still shows its code")
+	}
+	if !strings.Contains(body, "Used") {
+		t.Fatal("used invite state missing")
+	}
+}
+
+func TestSettingsExplainsApprovalSemantics(t *testing.T) {
+	srv := newTestServer(t)
+	body := srv.get("/settings").Body.String()
+	if !strings.Contains(body, "Ask before a new device joins") {
+		t.Fatal("approval setting is not explained")
+	}
+	if strings.Contains(body, "Approve new devices automatically") {
+		t.Fatal("approval setting still claims automatic approval")
+	}
+}
+
 func TestGroupPageMissingIs404(t *testing.T) {
 	srv := newTestServer(t)
 	if rr := srv.get("/groups/nope"); rr.Code != 404 {
@@ -45,7 +72,7 @@ func TestGroupPageHidesFriendGroup(t *testing.T) {
 func TestGroupPageShowsInviteCode(t *testing.T) {
 	srv := newTestServerWithGroups(t, group.Group{ID: "g1", Name: "Friday", Role: group.RoleHost})
 	srv.fake.lastInvite = "invite-code-1"
-	srv.fake.groups[0].Invites = append(srv.fake.groups[0].Invites, group.Invite{ID: "i1", Name: "Ash"})
+	srv.fake.groups[0].Invites = append(srv.fake.groups[0].Invites, group.Invite{ID: "i1", Name: "Ash", TokenHash: "hash", CreatedAt: time.Now(), ExpiresAt: time.Now().Add(time.Hour)})
 	rr := srv.get("/groups/g1")
 	body := rr.Body.String()
 	if !strings.Contains(body, "invite-code-1") {

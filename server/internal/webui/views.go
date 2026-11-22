@@ -160,14 +160,19 @@ func NewMemberView(m group.Member, presence map[string]session.Presence) MemberV
 	}
 }
 
-// NewInviteView builds an invite view. Code is empty unless supplied.
+// NewInviteView builds an invite view. Code is empty unless supplied and the
+// invite is still open; redeemed and expired invites never show their secret.
 func NewInviteView(inv group.Invite, code string, now time.Time) InviteView {
+	open := inv.Open(now)
+	if !open {
+		code = ""
+	}
 	return InviteView{
 		ID:        inv.ID,
 		Name:      inv.Name,
 		CreatedAt: inv.CreatedAt,
 		ExpiresAt: inv.ExpiresAt,
-		Open:      inv.Open(now),
+		Open:      open,
 		Redeemed:  !inv.RedeemedAt.IsZero(),
 		Code:      code,
 		Expired:   !inv.ExpiresAt.IsZero() && now.After(inv.ExpiresAt),

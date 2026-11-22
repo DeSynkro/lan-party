@@ -598,6 +598,15 @@ details[open] summary {
   border-bottom: 1px solid var(--hairline);
 }
 
+.list li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.list li > form {
+  flex: 0 0 auto;
+}
+
 .list li:last-child {
   border-bottom: 0;
 }

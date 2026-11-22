@@ -40,9 +40,9 @@ sudo docker compose up -d</pre>
     <h2>Friends</h2>
     <label class="check">
       <input type="checkbox" name="approveNewDevices"{{if .ApproveNewDevices}} checked{{end}}>
-      Approve new devices automatically
+      Ask before a new device joins
     </label>
-    <p class="hint">Invites are one-time and expire after an hour. Turn this off to approve every new device by hand.</p>
+    <p class="hint">On: every new device waits for your approval, even with a valid invite. Off: a valid invite joins automatically.</p>
     <label for="forgetDays">Forget inactive friends after
       <input id="forgetDays" name="forgetDays" type="number" min="0" max="365" value="{{.ForgetDays}}" inputmode="numeric">
       <span class="hint">Days without a connection. Leave blank or 0 to keep everyone.</span>
