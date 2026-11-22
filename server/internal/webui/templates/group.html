@@ -32,8 +32,7 @@
     <div class="stat"><span>Game port (UDP)</span><b class="mono">{{.Group.AppPort}}</b></div>
     <div class="stat"><span>Connected now</span><b data-connected="{{.Group.ID}}">{{.Group.Connected}}</b></div>
   </div>
-  <p class="hint">The UDP port is managed by this deployment. Change it in <code>.env</code> (Docker) or <code>web.env</code> (native), then restart.</p>
-  <p class="hint">In <code>server/docker</code>, <code>sudo ./setup.sh --ports</code> does it for you.</p>
+  <p class="hint">The UDP port is managed by this deployment. Change it in <code>.env</code> (Docker) or <code>web.env</code> (native), then restart.<br>In <code>server/docker</code>, <code>sudo ./setup.sh --ports</code> does it for you.</p>
   {{if .Group.HostNote}}<p class="muted small">{{.Group.HostNote}}</p>{{end}}
   <div class="actions">
     {{if .Group.Live}}
