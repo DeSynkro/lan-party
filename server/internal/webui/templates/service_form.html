@@ -6,14 +6,15 @@
   <p class="muted">Tell this host which game server port friends should reach. The target is the address of the game server as seen from this host.</p>
 
   {{if not .Editing}}
-  <form method="get" action="/groups/{{.GroupID}}/services/new" class="row preset-row">
-    <label class="field grow" for="preset">Load a preset
+  <form method="get" action="/groups/{{.GroupID}}/services/new" class="preset-form">
+    <label for="preset">Load a preset</label>
+    <div class="preset-controls">
       <select id="preset" name="preset">
         <option value="">Choose a game…</option>
         {{range .Presets}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
       </select>
-    </label>
-    <button type="submit">Load</button>
+      <button type="submit">Load</button>
+    </div>
   </form>
   {{end}}
 

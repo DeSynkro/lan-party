@@ -25,6 +25,9 @@ func TestStaticAnd404(t *testing.T) {
 	if rr.Code != 200 || !strings.Contains(rr.Header().Get("Content-Type"), "text/css") {
 		t.Fatalf("css: %d %q", rr.Code, rr.Header().Get("Content-Type"))
 	}
+	if rr.Header().Get("Cache-Control") != "no-cache" {
+		t.Fatalf("css cache control = %q; upgrades would keep stale assets", rr.Header().Get("Cache-Control"))
+	}
 	if strings.Contains(rr.Body.String(), "..") {
 		t.Fatal("unexpected body")
 	}

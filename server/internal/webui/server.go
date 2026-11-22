@@ -164,7 +164,7 @@ func (s *Server) staticHandler() http.Handler {
 			http.NotFound(w, r)
 			return
 		}
-		w.Header().Set("Cache-Control", "public, max-age=3600")
+		w.Header().Set("Cache-Control", "no-cache")
 		http.StripPrefix("/static/", fileServer).ServeHTTP(w, r)
 	})
 }
