@@ -20,6 +20,8 @@ cmd/lan-party/*.syso
 .env
 lan-party-data/
 relay-profile.json
+server/docker/data/
+server/docker/tls/
 
 # editors and os
 .vscode/
