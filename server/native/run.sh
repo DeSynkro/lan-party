@@ -16,6 +16,13 @@ fi
 
 listen="${LANPARTY_WEB_LISTEN:-0.0.0.0:8080}"
 app_port="${LANPARTY_APP_PORT:-51820}"
+web_port="${LANPARTY_WEB_PORT:-}"
+if [ -z "$web_port" ]; then
+    web_port="${listen##*:}"
+    case "$web_port" in
+        ''|*[!0-9]*) web_port=8080 ;;
+    esac
+fi
 cert="${LANPARTY_WEB_TLS_CERT:-}"
 key="${LANPARTY_WEB_TLS_KEY:-}"
 proxies="${LANPARTY_WEB_TRUSTED_PROXIES:-}"
@@ -43,6 +50,7 @@ chmod 700 "$data"
 write_env() {
     {
         printf 'LANPARTY_WEB_LISTEN=%s\n' "$listen"
+        printf 'LANPARTY_WEB_PORT=%s\n' "$web_port"
         printf 'LANPARTY_APP_PORT=%s\n' "$app_port"
         if [ -n "$cert" ]; then printf 'LANPARTY_WEB_TLS_CERT=%s\n' "$cert"; fi
         if [ -n "$key" ]; then printf 'LANPARTY_WEB_TLS_KEY=%s\n' "$key"; fi
@@ -85,6 +93,7 @@ start_host() {
         run
         --data-dir "$data"
         --listen "$listen"
+        --web-port "$web_port"
         --app-port "$app_port"
     )
     if [ -n "$cert" ] && [ -n "$key" ]; then
@@ -99,7 +108,7 @@ start_host() {
 }
 
 show_info() {
-    "$bin" show-info --data-dir "$data" --listen "$listen" --app-port "$app_port"
+    "$bin" show-info --data-dir "$data" --listen "$listen" --web-port "$web_port" --app-port "$app_port"
 }
 
 tail_log() {

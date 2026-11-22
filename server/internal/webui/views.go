@@ -111,6 +111,7 @@ type SettingsView struct {
 	BaseView
 	PublicAddress      string
 	AppPort            int
+	WebPort            int
 	ApproveNewDevices  bool
 	ForgetDays         int
 	DataDir            string

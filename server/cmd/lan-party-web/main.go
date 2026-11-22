@@ -80,7 +80,8 @@ Commands:
 Environment:
   LANPARTY_WEB_DATA_DIR         Data directory (default ./data)
   LANPARTY_WEB_LISTEN           Listen address (default 0.0.0.0:8080)
-  LANPARTY_WEB_APP_PORT         UDP app port (default 51820)
+  LANPARTY_WEB_PORT            Published web UI port (default 8080)
+  LANPARTY_APP_PORT            UDP app port (default 51820)
   LANPARTY_WEB_TLS_CERT         TLS certificate file
   LANPARTY_WEB_TLS_KEY          TLS key file
   LANPARTY_WEB_TRUSTED_PROXIES  Comma-separated proxy CIDRs
@@ -94,6 +95,7 @@ type commonFlags struct {
 	cert    string
 	key     string
 	appPort int
+	webPort int
 	proxies string
 }
 
@@ -103,7 +105,8 @@ func addCommonFlags(fs *flag.FlagSet) *commonFlags {
 	fs.StringVar(&c.listen, "listen", envOr("LANPARTY_WEB_LISTEN", "0.0.0.0:8080"), "listen address")
 	fs.StringVar(&c.cert, "tls-cert", os.Getenv("LANPARTY_WEB_TLS_CERT"), "TLS certificate file")
 	fs.StringVar(&c.key, "tls-key", os.Getenv("LANPARTY_WEB_TLS_KEY"), "TLS key file")
-	fs.IntVar(&c.appPort, "app-port", envIntOr("LANPARTY_WEB_APP_PORT", 51820), "UDP app port")
+	fs.IntVar(&c.appPort, "app-port", envIntOr("LANPARTY_APP_PORT", 51820), "UDP app port")
+	fs.IntVar(&c.webPort, "web-port", envIntOr("LANPARTY_WEB_PORT", 8080), "published web UI port (shown in Settings)")
 	fs.StringVar(&c.proxies, "trusted-proxies", os.Getenv("LANPARTY_WEB_TRUSTED_PROXIES"), "comma-separated proxy CIDRs")
 	return c
 }
@@ -123,6 +126,7 @@ func (c *commonFlags) config() (webui.Config, error) {
 		TLSCert:        c.cert,
 		TLSKey:         c.key,
 		AppPort:        c.appPort,
+		WebPort:        c.webPort,
 		TrustedProxies: proxies,
 	}, nil
 }
@@ -295,6 +299,7 @@ func runShowInfo(args []string) error {
 	}
 	fmt.Printf("data directory: %s\n", cfg.DataDir)
 	fmt.Printf("listen:         %s\n", cfg.Listen)
+	fmt.Printf("web port:       %d/tcp\n", cfg.WebPort)
 	fmt.Printf("app port:       %d/udp\n", cfg.AppPort)
 	if cfg.TLSCert != "" && cfg.TLSKey != "" {
 		fmt.Println("tls:            enabled")

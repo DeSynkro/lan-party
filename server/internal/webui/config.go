@@ -15,6 +15,7 @@ type Config struct {
 	TLSCert        string
 	TLSKey         string
 	AppPort        int
+	WebPort        int
 	TrustedProxies []netip.Prefix
 }
 

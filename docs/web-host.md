@@ -181,10 +181,12 @@ they dial, and that the session is live.
 **An invite stopped working.** Invites are single use and expire after one hour.
 Create a new one. A changed public address also invalidates old invites.
 
-**The app port in the UI is wrong.** It is read from the deployment. Change
-`LANPARTY_APP_PORT` in `.env` (or `web.env`), update the router forward, and
-restart. It cannot be edited in the UI because Docker's UDP mapping is fixed at
-container creation.
+**The app port in the UI is wrong.** It is read from the deployment. Open
+**Settings → Ports** for the current values and the commands. Change them with
+`sudo ./setup.sh --ports` in `server/docker` (or `LANPARTY_APP_PORT` in
+`web.env` for a native install), update the router forward, and restart. They
+cannot be edited in the UI because Docker's UDP mapping is fixed at container
+creation.
 
 **I forgot the admin password.** Run `./webctl passwd` in `server/docker`, or
 `native/run.sh passwd` for a native install. Every browser is signed out.

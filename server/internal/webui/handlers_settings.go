@@ -22,6 +22,7 @@ func (s *Server) settingsView(r *http.Request) SettingsView {
 		BaseView:           s.base(r, "Settings"),
 		PublicAddress:      settings.PublicAddress,
 		AppPort:            settings.AppPort,
+		WebPort:            s.cfg.WebPort,
 		ApproveNewDevices:  settings.ApproveNewDevices,
 		ForgetDays:         settings.ForgetFriendsDays,
 		DataDir:            s.cfg.DataDir,

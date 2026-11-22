@@ -36,12 +36,15 @@ service and invite a friend. Forward the UDP game port on your router first.
 | 8080 | TCP | Web UI |
 | 51820 | UDP | Host tunnel and game traffic |
 
-The UDP port is owned by the deployment: set it in Compose or `web.env`, change
-the router forward, and restart. The web UI shows it read-only.
+Both are deployment-owned and read-only in Settings, which shows the current
+values and the exact commands. Change them with `sudo ./setup.sh --ports` in
+`server/docker`, or edit `LANPARTY_WEB_PORT` / `LANPARTY_APP_PORT` in `.env`,
+then restart Compose. Changing the UDP port also means changing the router
+forward.
 
 ## Data
 
-The data directory sits beside `docker-compose.yml` or `run.sh`:
+The data directory sits beside `compose.yaml` or `run.sh`:
 
 ```text
 data/

@@ -10,6 +10,23 @@ import (
 	"github.com/desynkro/lan-party/internal/group"
 )
 
+func TestSettingsShowsDeploymentPorts(t *testing.T) {
+	srv := newTestServer(t)
+	srv.cfg.WebPort = 9090
+	srv.fake.settings.AppPort = 52821
+	rr := srv.get("/settings")
+	body := rr.Body.String()
+	if !strings.Contains(body, ">9090<") || !strings.Contains(body, ">52821<") {
+		t.Fatal("deployment ports missing from settings")
+	}
+	if !strings.Contains(body, "How to change the ports") {
+		t.Fatal("port instructions missing")
+	}
+	if strings.Contains(body, `name="appPort"`) || strings.Contains(body, `name="webPort"`) {
+		t.Fatal("ports are editable")
+	}
+}
+
 func TestSavePublicAddress(t *testing.T) {
 	srv := newTestServer(t)
 	rr := srv.post("/settings", url.Values{"publicAddress": {"192.168.1.20"}, "approveNewDevices": {"on"}, "forgetDays": {"5"}})

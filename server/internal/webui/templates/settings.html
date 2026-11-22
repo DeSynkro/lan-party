@@ -5,6 +5,27 @@
 <form method="post" action="/settings" class="stack settings-form">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
   <section class="card">
+    <h2>Ports</h2>
+    <div class="grid">
+      <div class="stat"><span>Web UI (TCP)</span><b class="mono">{{.WebPort}}</b></div>
+      <div class="stat"><span>Game (UDP)</span><b class="mono">{{.AppPort}}</b></div>
+    </div>
+    <p class="hint">Both ports are managed by this deployment and are read-only here, because Docker fixes its mappings when the container is created. Use the steps below to change them.</p>
+    <details>
+      <summary>How to change the ports</summary>
+      <p class="small">Docker, in <code>server/docker</code>:</p>
+      <pre class="code">sudo ./setup.sh --ports</pre>
+      <p class="small">Or edit <code>.env</code> directly, then restart:</p>
+      <pre class="code">LANPARTY_WEB_PORT={{.WebPort}}
+LANPARTY_APP_PORT={{.AppPort}}
+
+sudo docker compose up -d</pre>
+      <p class="small">Native: edit <code>native/web.env</code> and restart <code>run.sh</code>.</p>
+      <p class="hint">Changing the UDP port also means changing the router forward.</p>
+    </details>
+  </section>
+
+  <section class="card">
     <h2>Network</h2>
     <label for="publicAddress">Public address
       <input id="publicAddress" name="publicAddress" value="{{.PublicAddress}}" list="lan-addresses" placeholder="play.example.com or 203.0.113.10">
@@ -13,11 +34,6 @@
     <datalist id="lan-addresses">
       {{range .AddressSuggestions}}<option value="{{.}}">{{end}}
     </datalist>
-    <div class="stat">
-      <span>Game port (UDP)</span>
-      <b class="mono">{{.AppPort}}</b>
-    </div>
-    <p class="hint">The UDP port is managed by this deployment. Change it in <code>docker-compose.yml</code> or the runner settings and restart.</p>
   </section>
 
   <section class="card settings-friends">

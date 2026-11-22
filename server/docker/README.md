@@ -13,9 +13,26 @@ browser. Friends use the native desktop app as before.
 Forward the **UDP** port on your router. The web UI port is separate; expose it
 only when you need remote administration, and put it behind TLS.
 
-The UDP port is deployment-owned. If you change `LANPARTY_APP_PORT`, also change
-the router forward and restart the container. The web UI shows the port
-read-only for that reason.
+## Changing ports
+
+Both ports are set in `.env` and shown read-only in **Settings → Ports**,
+because Docker fixes its mappings when the container is created.
+
+```sh
+sudo ./setup.sh --ports
+sudo docker compose up -d
+```
+
+Or edit `.env` directly:
+
+```sh
+LANPARTY_WEB_PORT=9090
+LANPARTY_APP_PORT=51821
+```
+
+If you change the UDP port, update the router forward too. `LANPARTY_WEB_BIND`
+controls which host interface publishes the web UI (`0.0.0.0` by default,
+`127.0.0.1` behind a reverse proxy).
 
 ## First run
 
@@ -55,12 +72,19 @@ sudo ./setup.sh
 sudo docker compose up --build -d
 ```
 
+To change only the ports later:
+
+```sh
+sudo ./setup.sh --ports
+sudo docker compose up -d
+```
+
 The web container waits for a short init container that makes `./data` writable
 by `PUID`/`PGID` (default `1000`). No manual `mkdir` or `chown` is needed.
 
 ## Data
 
-Everything lives in `./data` beside `docker-compose.yml`:
+Everything lives in `./data` beside `compose.yaml`:
 
 ```text
 data/

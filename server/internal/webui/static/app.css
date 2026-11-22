@@ -511,6 +511,12 @@ textarea {
   margin-bottom: 1.75rem;
 }
 
+pre.code {
+  min-height: 0;
+  margin: 0.4rem 0 0.7rem;
+  white-space: pre-wrap;
+}
+
 .settings-form .settings-friends {
   margin-bottom: 0;
 }
