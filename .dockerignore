@@ -10,4 +10,7 @@ internal/gtkui/assets
 **/.env
 relay/docker/data
 server/docker/data
+server/docker/tls
+server/native/data
+server/native/web.env
 .superpowers

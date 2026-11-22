@@ -22,6 +22,8 @@ lan-party-data/
 relay-profile.json
 server/docker/data/
 server/docker/tls/
+server/native/data/
+server/native/web.env
 
 # editors and os
 .vscode/

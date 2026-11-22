@@ -52,11 +52,11 @@ for requested_arch in ${arches}; do
     install -m 0644 "${root}/LICENSE" "${root}/NOTICE" "${root}/THIRD_PARTY_NOTICES.md" "${pkg}/"
     sed 's|](\.\./docs/web-host.md)|](docs/web-host.md)|' "${root}/server/README.md" >"${pkg}/README.md"
 
-    cp -a "${root}/server/docker" "${pkg}/docker"
-    rm -rf "${pkg}/docker/data" "${pkg}/docker/.env"
-    # Source-checkout only; the zip pulls the published image.
-    rm -f "${pkg}/docker/compose.override.yaml"
-    cp -a "${root}/server/native" "${pkg}/native"
+    mkdir -p "${pkg}/docker" "${pkg}/native"
+    (cd "${root}/server/docker" && tar --exclude=./data --exclude=./tls --exclude=./.env --exclude=./compose.override.yaml -cf - .) |
+        tar -xf - -C "${pkg}/docker"
+    (cd "${root}/server/native" && tar --exclude=./data --exclude=./web.env -cf - .) |
+        tar -xf - -C "${pkg}/native"
     mkdir -p "${pkg}/docs"
     sed -e 's|](\.\./server/docker/README.md)|](../docker/README.md)|' \
         -e 's|](\.\./server/native/README.md)|](../native/README.md)|' \

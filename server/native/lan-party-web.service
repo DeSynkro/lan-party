@@ -10,8 +10,11 @@ Type=simple
 User=lanparty
 Group=lanparty
 WorkingDirectory=/var/lib/lan-party-web
+Environment=LANPARTY_WEB_LISTEN=0.0.0.0:8080
+Environment=LANPARTY_WEB_PORT=8080
+Environment=LANPARTY_APP_PORT=51820
 EnvironmentFile=-/etc/lan-party-web/web.env
-ExecStart=/usr/local/bin/lan-party-web run --data-dir /var/lib/lan-party-web --listen ${LANPARTY_WEB_LISTEN}
+ExecStart=/usr/local/bin/lan-party-web run --data-dir /var/lib/lan-party-web --listen ${LANPARTY_WEB_LISTEN} --web-port ${LANPARTY_WEB_PORT} --app-port ${LANPARTY_APP_PORT}
 Restart=on-failure
 RestartSec=5s
 UMask=0077

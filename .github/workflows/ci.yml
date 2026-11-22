@@ -80,6 +80,8 @@ jobs:
       - name: govulncheck relay
         # The relay has no cgo dependencies, so source mode is precise here.
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./cmd/lan-party-relay ./internal/relay
+      - name: govulncheck web host
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./server/...
 
   linux:
     name: Linux AppImage
@@ -274,6 +276,18 @@ jobs:
             version="dev-${GITHUB_SHA::7}"
           fi
           VERSION="${version}" ARCHES="amd64 arm64" ./build/web.sh
+      - name: Check release zips for local data
+        run: |
+          set -euo pipefail
+          for archive in dist/lan-party-web_*.zip; do
+            listing="$(unzip -l "$archive")"
+            case "$listing" in
+              *"native/data"*|*"native/web.env"*|*"docker/data"*|*"docker/tls"*|*"docker/.env"*)
+                echo "local data found in $archive" >&2
+                exit 1
+                ;;
+            esac
+          done
       - name: Smoke test native zip
         run: |
           set -euo pipefail
