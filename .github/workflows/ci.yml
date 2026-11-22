@@ -358,8 +358,8 @@ jobs:
             echo "web container did not become healthy" >&2
             exit 1
           fi
-          docker compose logs --no-color lan-party-web | grep -q "first-run admin password"
-          docker compose exec -T lan-party-web /lan-party-web show-info --data-dir /data | grep -q "app port"
+          docker compose logs --no-color lan-party-web | grep -F "first-run admin password" >/dev/null
+          docker compose exec -T lan-party-web /lan-party-web show-info --data-dir /data | grep -F "app port" >/dev/null
           test "$(stat -c %a data/web.json)" = "600"
           docker compose down -v
           rm -f .env
@@ -425,7 +425,7 @@ jobs:
           install -d -m 0700 "${pkg}/data"
           "${pkg}/lan-party-relay" setup --dir "${pkg}/data" --address relay.test:7443 --non-interactive
           "${pkg}/lan-party-relay" fingerprint --config "${pkg}/data/relay.json"
-          "${pkg}/lan-party-relay" show-profile --dir "${pkg}/data" | grep -q '"fingerprint"'
+          "${pkg}/lan-party-relay" show-profile --dir "${pkg}/data" | grep -F '"fingerprint"' >/dev/null
           test "$(stat -c %a "${pkg}/data/relay.key")" = "600"
 
           console_dir="${pkg}/console-data"
@@ -462,19 +462,19 @@ jobs:
 
           docker compose up --build -d
           for i in $(seq 1 30); do
-            if docker compose logs --no-color 2>/dev/null | grep -q 'relay: listening'; then
+            if docker compose logs --no-color 2>/dev/null | grep -F 'relay: listening' >/dev/null; then
               break
             fi
             sleep 1
           done
           test "$(docker compose ps --status running --services | grep -c '^relay$')" = "1"
-          docker compose logs --no-color | grep -q 'relay: listening'
-          docker compose logs --no-color | grep -q 'relay: created config'
+          docker compose logs --no-color | grep -F 'relay: listening' >/dev/null
+          docker compose logs --no-color | grep -F 'relay: created config' >/dev/null
           docker compose run --rm relay fingerprint
-          docker compose run --rm relay show-profile | grep -q '"fingerprint"'
-          ./relayctl showinfo | grep -q 'Relay ID:'
+          docker compose run --rm relay show-profile | grep -F '"fingerprint"' >/dev/null
+          ./relayctl showinfo | grep -F 'Relay ID:' >/dev/null
           docker compose run --rm -T relay passwd --generate --dir /data
-          docker compose run --rm relay show-info --dir /data | grep -q 'Relay password:'
+          docker compose run --rm relay show-info --dir /data | grep -F 'Relay password:' >/dev/null
           docker compose down -v
           rm -f .env
       - name: Smoke test release Compose
@@ -497,16 +497,16 @@ jobs:
 
           docker compose up -d
           for i in $(seq 1 30); do
-            if docker compose logs --no-color 2>/dev/null | grep -q 'relay: listening'; then
+            if docker compose logs --no-color 2>/dev/null | grep -F 'relay: listening' >/dev/null; then
               break
             fi
             sleep 1
           done
           test "$(docker compose ps --status running --services | grep -c '^relay$')" = "1"
-          docker compose logs --no-color | grep -q 'relay: listening'
-          docker compose logs --no-color | grep -q 'relay: created config'
-          docker compose run --rm relay show-profile | grep -q '"fingerprint"'
-          ./relayctl showinfo | grep -q 'Relay ID:'
+          docker compose logs --no-color | grep -F 'relay: listening' >/dev/null
+          docker compose logs --no-color | grep -F 'relay: created config' >/dev/null
+          docker compose run --rm relay show-profile | grep -F '"fingerprint"' >/dev/null
+          ./relayctl showinfo | grep -F 'Relay ID:' >/dev/null
           docker compose down -v
       - name: Publish relay image
         if: startsWith(github.ref, 'refs/tags/v')
