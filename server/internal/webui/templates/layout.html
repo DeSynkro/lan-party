@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
 <title>{{.Title}} · LAN Party</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/static/app.css">
 <script src="/static/app.js" defer></script>
 </head>
-<body{{if .Authenticated}} data-live-root data-approval="{{if .Approval}}{{.Approval.ID}}{{end}}"{{if .GroupID}} data-group-id="{{.GroupID}}" data-members="{{.MemberSignature}}" data-invites="{{.InviteSignature}}"{{end}}{{end}}>
+<body{{if .Authenticated}} data-live-root data-approval="{{if .Approval}}{{.Approval.ID}}{{end}}"{{if .LiveGroupID}} data-group-id="{{.LiveGroupID}}" data-members="{{.MemberSignature}}" data-invites="{{.InviteSignature}}"{{end}}{{end}}>
 <a class="skip" href="#main">Skip to content</a>
 {{if .Authenticated}}
 <header class="topbar">

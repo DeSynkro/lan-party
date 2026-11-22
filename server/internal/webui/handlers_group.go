@@ -38,7 +38,7 @@ func (s *Server) buildGroupPage(r *http.Request, g group.Group) GroupPageView {
 	now := time.Now()
 
 	base := s.base(r, g.Name)
-	base.GroupID = g.ID
+	base.LiveGroupID = g.ID
 	base.MemberSignature = memberSignature(g.Members)
 	var openInvites []string
 	for _, invite := range g.Invites {

@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="LAN Party">
+<defs>
+    <radialGradient id="isky" cx="0.5" cy="0.26" r="0.85">
+      <stop offset="0" stop-color="#2C1166"/>
+      <stop offset="0.55" stop-color="#120A2E"/>
+      <stop offset="1" stop-color="#07030F"/>
+    </radialGradient>
+    <linearGradient id="ipad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF3DBE"/>
+      <stop offset="0.5" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+    <linearGradient id="iring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#67E8F9"/>
+      <stop offset="0.5" stop-color="#C084FC"/>
+      <stop offset="1" stop-color="#FB7BD2"/>
+    </linearGradient>
+    <linearGradient id="iink" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FDF4FF"/>
+      <stop offset="1" stop-color="#A5F3FC"/>
+    </linearGradient>
+    <filter id="isoft" x="-100%" y="-100%" width="300%" height="300%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+    <filter id="itight" x="-100%" y="-100%" width="300%" height="300%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+    <clipPath id="itile"><rect x="0" y="0" width="512" height="512" rx="116"/></clipPath>
+    <path id="ipadShape" d="M200 112H312C336 112 350 124 356 144C364 170 374 190 382 210C392 232 382 252 360 252C342 252 330 242 318 224Q296 194 256 194Q216 194 194 224C182 242 170 252 152 252C130 252 120 232 130 210C138 190 148 170 156 144C162 124 176 112 200 112Z"/>
+    <g id="iperson">
+      <circle cx="0" cy="-14" r="14"/>
+      <path d="M-27 28C-27 10-15-1 0-1C15-1 27 10 27 28C27 31 24 33 21 33H-21C-24 33-27 31-27 28Z"/>
+    </g>
+  </defs>
+
+  <rect x="0" y="0" width="512" height="512" rx="116" fill="url(#isky)"/>
+  <g clip-path="url(#itile)">
+    <rect x="1" y="1" width="510" height="510" rx="115" fill="none" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="2"/>
+    <circle cx="256" cy="212" r="140" fill="#7C3AED" opacity="0.42" filter="url(#isoft)"/>
+    <circle cx="256" cy="366" r="124" fill="#0891B2" opacity="0.28" filter="url(#isoft)"/>
+    <g fill="#EDE9FE">
+      <circle cx="84" cy="118" r="2.2" opacity="0.7"/>
+      <circle cx="430" cy="92" r="1.6" opacity="0.5"/>
+      <circle cx="448" cy="230" r="2.2" opacity="0.6"/>
+      <circle cx="62" cy="268" r="1.5" opacity="0.45"/>
+      <circle cx="452" cy="392" r="1.8" opacity="0.45"/>
+      <circle cx="58" cy="404" r="2" opacity="0.4"/>
+      <circle cx="146" cy="54" r="1.4" opacity="0.4"/>
+      <circle cx="372" cy="46" r="2" opacity="0.5"/>
+    </g>
+
+  <g fill="none" stroke-linecap="round" stroke-dasharray="10 18">
+    <g stroke="#22D3EE" stroke-width="18" opacity="0.55" filter="url(#itight)">
+      <path d="M256 292 124 352M256 292v60M256 292l132 60"/>
+    </g>
+    <g stroke="#CFFAFE" stroke-width="5">
+      <path d="M256 292 124 352M256 292v60M256 292l132 60"/>
+    </g>
+  </g>
+
+  <g transform="matrix(1.066 0 0 1 -16.9 -41)">
+    <use href="#ipadShape" fill="#FF3DBE" opacity="0.5" filter="url(#isoft)"/>
+    <use href="#ipadShape" fill="url(#ipad)"/>
+    <use href="#ipadShape" fill="none" stroke="#F5D0FE" stroke-width="2" opacity="0.5"/>
+    <g fill="#12052B">
+      <rect x="166" y="167" width="48" height="14" rx="4"/>
+      <rect x="183" y="150" width="14" height="48" rx="4"/>
+      <circle cx="316" cy="152" r="8"/>
+      <circle cx="294" cy="174" r="8"/>
+      <circle cx="338" cy="174" r="8"/>
+      <circle cx="316" cy="196" r="8"/>
+    </g>
+  </g>
+
+  <circle cx="256" cy="251" r="63" fill="#22D3EE" opacity="0.32" filter="url(#isoft)"/>
+  <circle cx="256" cy="251" r="52" fill="#0A0320"/>
+  <circle cx="256" cy="251" r="47" fill="#0A0320" stroke="url(#iring)" stroke-width="6"/>
+  <use href="#iperson" x="256" y="251" fill="url(#iink)"/>
+
+  <g>
+    <circle cx="124" cy="397" r="44" fill="#0A0320" stroke="url(#iring)" stroke-width="4"/>
+    <circle cx="256" cy="397" r="44" fill="#0A0320" stroke="url(#iring)" stroke-width="4"/>
+    <circle cx="388" cy="397" r="44" fill="#0A0320" stroke="url(#iring)" stroke-width="4"/>
+  </g>
+  <g transform="translate(124 399) scale(0.84)"><use href="#iperson" fill="#F0ABFC"/></g>
+  <g transform="translate(256 399) scale(0.84)"><use href="#iperson" fill="#C4B5FD"/></g>
+  <g transform="translate(388 399) scale(0.84)"><use href="#iperson" fill="#67E8F9"/></g>
+  </g>
+</svg>

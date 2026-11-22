@@ -50,6 +50,16 @@ func TestServicePresetPrefillsForm(t *testing.T) {
 	}
 }
 
+func TestServiceFormDoesNotJoinLiveReloads(t *testing.T) {
+	srv := newTestServerWithGroups(t, group.Group{ID: "g1", Name: "Friday", Role: group.RoleHost,
+		Members: []group.Member{{ID: "m1", Name: "Ash"}},
+	})
+	body := srv.get("/groups/g1/services/new").Body.String()
+	if strings.Contains(body, "data-group-id=") {
+		t.Fatal("service form carries live group state and will reload in a loop")
+	}
+}
+
 func TestServiceNewDefaultsToLoopback(t *testing.T) {
 	srv := newTestServerWithGroups(t, group.Group{ID: "g1", Name: "Friday", Role: group.RoleHost})
 	rr := srv.get("/groups/g1/services/new")

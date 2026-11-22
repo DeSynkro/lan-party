@@ -18,7 +18,7 @@ type BaseView struct {
 	Flash           string
 	Error           string
 	Approval        *ApprovalView
-	GroupID         string
+	LiveGroupID     string
 	MemberSignature string
 	InviteSignature string
 }

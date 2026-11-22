@@ -38,6 +38,19 @@ func TestStaticAnd404(t *testing.T) {
 	}
 }
 
+func TestFavicon(t *testing.T) {
+	srv := newTestServer(t)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, httptest.NewRequest("GET", "/static/favicon.svg", nil))
+	if rr.Code != 200 || !strings.Contains(rr.Header().Get("Content-Type"), "image/svg+xml") {
+		t.Fatalf("favicon: %d %q", rr.Code, rr.Header().Get("Content-Type"))
+	}
+	rr = srv.get("/")
+	if !strings.Contains(rr.Body.String(), `rel="icon" href="/static/favicon.svg"`) {
+		t.Fatal("layout does not link the favicon")
+	}
+}
+
 func TestStaticDirectoryListingDenied(t *testing.T) {
 	srv := newTestServer(t)
 	rr := httptest.NewRecorder()
