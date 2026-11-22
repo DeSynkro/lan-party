@@ -1,0 +1,38 @@
+# LAN Party web host. Replace the paths and user to match the install.
+[Unit]
+Description=LAN Party web host
+Documentation=https://github.com/DeSynkro/lan-party
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lanparty
+Group=lanparty
+WorkingDirectory=/var/lib/lan-party-web
+EnvironmentFile=-/etc/lan-party-web/web.env
+ExecStart=/usr/local/bin/lan-party-web run --data-dir /var/lib/lan-party-web --listen ${LANPARTY_WEB_LISTEN}
+Restart=on-failure
+RestartSec=5s
+UMask=0077
+
+# Hardening. The only writable path is the data directory.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+StateDirectory=lan-party-web
+ReadWritePaths=/var/lib/lan-party-web
+
+[Install]
+WantedBy=multi-user.target
