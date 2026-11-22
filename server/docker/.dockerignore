@@ -1,0 +1,15 @@
+# Built from the repository root, so the root .dockerignore applies. This file
+# documents the paths the web host image does not need.
+.git
+.cache
+.tools
+.tmp
+.worktrees
+dist
+bin
+brand
+docs
+internal/gtkui
+relay
+server/docker/data
+**/.env

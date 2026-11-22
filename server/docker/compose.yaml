@@ -1,0 +1,52 @@
+# LAN Party web host.
+#
+#   cp .env.example .env
+#   ./setup.sh
+#   docker compose up -d
+#
+# See README.md for ports, TLS and backups.
+services:
+  lan-party-web:
+    image: "${LANPARTY_WEB_IMAGE:-ghcr.io/desynkro/lan-party-web:1.3}"
+    build:
+      context: ../..
+      dockerfile: server/docker/Dockerfile
+      args:
+        VERSION: "${LANPARTY_WEB_VERSION:-dev}"
+    restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-1000}"
+    ports:
+      - "${LANPARTY_WEB_BIND:-0.0.0.0}:${LANPARTY_WEB_PORT:-8080}:8080/tcp"
+      - "${LANPARTY_APP_PORT:-51820}:${LANPARTY_APP_PORT:-51820}/udp"
+    environment:
+      LANPARTY_WEB_DATA_DIR: /data
+      LANPARTY_WEB_LISTEN: 0.0.0.0:8080
+      LANPARTY_APP_PORT: "${LANPARTY_APP_PORT:-51820}"
+      LANPARTY_WEB_TLS_CERT: "${LANPARTY_WEB_TLS_CERT:-}"
+      LANPARTY_WEB_TLS_KEY: "${LANPARTY_WEB_TLS_KEY:-}"
+      LANPARTY_WEB_TRUSTED_PROXIES: "${LANPARTY_WEB_TRUSTED_PROXIES:-}"
+    volumes:
+      - ./data:/data
+      - ./tls:/tls:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 256m
+    cpus: 1.0
+    stop_grace_period: 10s
+    healthcheck:
+      test: ["CMD", "/lan-party-web", "healthcheck", "--url", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

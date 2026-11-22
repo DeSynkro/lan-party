@@ -9,3 +9,5 @@ brand
 internal/gtkui/assets
 **/.env
 relay/docker/data
+server/docker/data
+.superpowers
