@@ -201,8 +201,8 @@ Target validation:
   directory `0700`.
 - Settings are JSON at `~/.config/lan-party/settings.json`, mode `0600`. Relay
   host, port and Relay ID live here; relay passwords do not.
-- Private keys and relay passwords are separate files in
-  `~/.local/share/lan-party/keys/` on Linux or
+- Private keys, relay passwords and relay reconnect tokens are separate files
+  in `~/.local/share/lan-party/keys/` on Linux or
   `%LocalAppData%\lan-party\keys\` on Windows, mode `0600` where the OS
   supports it, in an owner-only directory. They are never written to the JSON,
   the invite, a log or the clipboard.

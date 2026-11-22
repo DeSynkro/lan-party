@@ -174,7 +174,8 @@ sudo docker compose up -d
 ```
 
 The `relay-data` volume keeps the key and config across updates. Do not remove
-it unless you intend to change the relay identity and re-import the profile.
+it unless you intend to change the relay identity. A new volume means a new
+Relay ID and password, which must be entered in the app again.
 
 ## Common commands
 

@@ -192,7 +192,7 @@ The in-app guide has the full walkthrough with your current ports and addresses 
 | --- | --- |
 | `~/.config/lan-party/settings.json` | Public address, app port, startup preferences |
 | `~/.local/share/lan-party/groups.json` | Groups, services, members, invite hashes |
-| `~/.local/share/lan-party/keys/` | Long-lived private keys and relay passwords (`0600`) |
+| `~/.local/share/lan-party/keys/` | Long-lived private keys, relay passwords and relay reconnect tokens (`0600`) |
 | `~/.config/autostart/lan-party.desktop` | Autostart entry when enabled |
 | `~/.local/share/lan-party/lan-party.log` | Application log. `%LocalAppData%\lan-party\lan-party.log` on Windows |
 

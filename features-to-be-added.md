@@ -3,55 +3,9 @@
 A lightweight list of ideas that are not scheduled. Nothing here is a
 commitment.
 
-## Relay mode
-
-**Status:** idea, not scheduled
-
-The host currently needs one forwarded UDP port and a reachable public
-address. That does not work behind CGNAT or on networks where the router
-cannot be configured.
-
-Add an optional **self-hosted** relay mode. The project does not run a
-public relay. The user runs one on their own VPS or spare machine, similar
-to self-hosting RustDesk.
-
-- A **Use relay** checkbox when hosting.
-- Fields for the relay address and its public key / fingerprint.
-- The relay has an SSH-style keypair: the private key stays on the relay,
-  and the app pins the public key so it can recognise that relay.
-- An optional relay password on top of the key, for people who want it.
-- The host and friends connect out to the relay. The relay passes the
-  encrypted traffic between them. No inbound port on the host.
-- Friends get the relay details and pinned key from the invite instead of
-  typing them in.
-- Include a small Docker Compose setup for a personal relay on a VPS or
-  another machine.
-
-Why it fits: it gives people an alternative to forwarding a port on their
-home network without the project taking on the cost or trust burden of
-running a public service. The tunnel is already encrypted and pinned to the
-host, so the relay should be able to stay a dumb forwarder that cannot read
-game traffic.
-
-Things to work out later:
-
-- How the relay key is shown during setup and how a changed key is reported.
-- Whether the optional password is required for every connection or only
-  for setup, and how it is stored.
-- Whether the relay needs UDP only or also a TCP/TLS fallback for
-  locked-down networks.
-- Whether we ship the Compose file or only document a recipe.
-- Resource limits for the relay owner (bandwidth, connections, idle time).
-
-Non-goal: a public relay operated by the project.
-
-Done when a host behind CGNAT can tick the box, point at their own relay,
-and a friend can play without either side opening a port. The normal direct
-path stays the default.
-
 ## Friend-side bind address
 
-**Status:** deferred — not planned for 1.1. Revisit if a game rejects `127.0.0.1`.
+**Status:** deferred — not planned for 1.2. Revisit if a game rejects `127.0.0.1`.
 
 The friend app always binds forwarded services to `127.0.0.1`. A few games may
 reject localhost or expect a LAN address. Add an advanced option to choose
@@ -133,9 +87,9 @@ stopping one leaves the other running.
 
 ## Windows code signing
 
-**Status:** post-1.1, not scheduled
+**Status:** post-1.2, not scheduled
 
-The 1.1 Windows build is unsigned. SmartScreen and Defender can warn about a
+The 1.2 Windows build is unsigned. SmartScreen and Defender can warn about a
 new portable executable with no reputation.
 
 - Use an OV/EV code-signing certificate or Azure Trusted Signing.
@@ -148,6 +102,11 @@ does not show a SmartScreen warning.
 
 ## Done
 
+- Self-hosted relay with Docker Compose, native systemd and a no-root console
+  runner (1.2).
+- Relay reconnect tokens, host relay recovery and inactive-friend cleanup
+  (1.2).
+- Idle relay data plane that closes UDP while no host session exists (1.2).
 - Per-group public address and app port (1.1).
 - One-hour invite lifetime (1.1).
 - Windows portable build with tray, autostart and logging (1.1).

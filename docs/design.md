@@ -54,8 +54,9 @@ virtual network, no route and no peer-to-peer path.
 
 ## Non-goals
 
-- A public relay for hosts behind CGNAT. Direct hosting needs a reachable
-  address or a port forward.
+- A project-operated public relay. A self-hosted relay is supported for hosts
+  behind CGNAT; direct hosting still needs a reachable address or a port
+  forward.
 - Peer-to-peer connections between friends. The host is the star.
 - More than one live host session at once.
 - Per-friend service grants in v1. Every member of a group sees every published
@@ -455,9 +456,9 @@ packaging and CI are all in place.
 The end-to-end tests start a host and a friend app on loopback, create an
 invite, approve the device, forward a TCP echo, and revoke the member.
 
-Not in this version: a relay for CGNAT hosts, per-friend service grants,
-multiple live host sessions, automatic public-address detection, MAC addresses
-in device details, and auto-update.
+Not in 1.0: a relay for CGNAT hosts, per-friend service grants, multiple live
+host sessions, automatic public-address detection, MAC addresses in device
+details, and auto-update. The self-hosted relay arrived in 1.2.
 
 ## Open items
 
@@ -466,6 +467,5 @@ in device details, and auto-update.
 - Public-address detection. Detection is manual in v1, with the local address
   shown to help with the router rule.
 - Per-friend service grants.
-- A self-hosted relay for CGNAT hosts.
 - Multiple live host sessions, each on a different local UDP port.
 - Windows code signing and an optional installer.
