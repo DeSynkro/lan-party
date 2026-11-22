@@ -2,16 +2,25 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
+	"log"
+	"net"
 	"net/http"
+	"net/netip"
 	"os"
+	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
+	appengine "github.com/desynkro/lan-party/internal/app"
 	"github.com/desynkro/lan-party/internal/buildinfo"
+	"github.com/desynkro/lan-party/internal/secure"
 	"github.com/desynkro/lan-party/server/internal/webui"
 	"golang.org/x/term"
 )
@@ -119,11 +128,73 @@ func (c *commonFlags) config() (webui.Config, error) {
 
 func runServer(args []string) error {
 	fs := flag.NewFlagSet("run", flag.ContinueOnError)
-	addCommonFlags(fs)
+	c := addCommonFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	return errors.New("run is not implemented yet")
+	cfg, err := c.config()
+	if err != nil {
+		return err
+	}
+	if cfg.AppPort < 1 || cfg.AppPort > 65535 {
+		return errors.New("the app port must be between 1 and 65535")
+	}
+	if err := os.MkdirAll(cfg.DataDir, 0o700); err != nil {
+		return fmt.Errorf("create data directory: %w", err)
+	}
+	_, generated, err := webui.EnsureCredentials(webui.CredentialsPath(cfg.DataDir), strings.TrimSpace(os.Getenv("LANPARTY_WEB_PASSWORD")))
+	if err != nil {
+		return err
+	}
+	if generated != "" {
+		log.Printf("first-run admin password (shown once): %s", generated)
+		fmt.Printf("\nFirst-run admin password (shown once):\n\n  %s\n\nStore it in your password manager, then open the web UI.\n\n", generated)
+	}
+
+	engine, err := appengine.NewWithOptions(
+		webui.ConfigPaths(cfg.DataDir),
+		secure.NewFileStore(filepath.Join(cfg.DataDir, "keys")),
+		appengine.Options{DisableAutostart: true, DisableRelay: true},
+	)
+	if err != nil {
+		return err
+	}
+	defer engine.Close()
+
+	settings := engine.Settings()
+	if settings.AppPort != cfg.AppPort {
+		settings.AppPort = cfg.AppPort
+		if err := engine.SaveSettings(settings); err != nil {
+			return fmt.Errorf("set app port: %w", err)
+		}
+	}
+
+	if cfg.TLSCert == "" || cfg.TLSKey == "" {
+		if !isLoopbackListen(cfg.Listen) {
+			log.Printf("web: serving plain HTTP on %s; use TLS or a reverse proxy before exposing it", cfg.Listen)
+		}
+	}
+
+	server, err := webui.New(engine, cfg)
+	if err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	log.Printf("web: listening on %s", cfg.Listen)
+	return server.Run(ctx)
+}
+
+func isLoopbackListen(listen string) bool {
+	host, _, err := net.SplitHostPort(listen)
+	if err != nil {
+		host = listen
+	}
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		return false
+	}
+	ip, err := netip.ParseAddr(host)
+	return err == nil && ip.IsLoopback()
 }
 
 func runSetup(args []string) error {

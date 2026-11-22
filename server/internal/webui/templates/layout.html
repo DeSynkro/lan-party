@@ -1,0 +1,36 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>{{.Title}} · LAN Party</title>
+<link rel="stylesheet" href="/static/app.css">
+<script src="/static/app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+{{if .Authenticated}}
+<header class="topbar">
+  <div class="bar">
+    <a class="brand" href="/">LAN&nbsp;Party</a>
+    <nav class="nav" aria-label="Main">
+      <a href="/">Dashboard</a>
+      <a href="/guide">Guide</a>
+      <a href="/settings">Settings</a>
+    </nav>
+    <form method="post" action="/logout" class="inline">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button type="submit" class="link">Log out</button>
+    </form>
+  </div>
+</header>
+{{end}}
+<main id="main" class="page">
+{{if .Flash}}<p class="banner ok" role="status">{{.Flash}}</p>{{end}}
+{{if .Error}}<p class="banner danger" role="alert">{{.Error}}</p>{{end}}
+{{template "content" .}}
+</main>
+<footer class="foot">LAN Party {{version}} · host-only web UI</footer>
+</body>
+</html>{{end}}

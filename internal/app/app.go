@@ -1110,7 +1110,7 @@ func ValidateConnection(publicAddress string, appPort int) error {
 // supports direct connections.
 func forceDirect(settings config.Settings, groups []group.Group) (config.Settings, []group.Group) {
 	changed := false
-	if settings.UseRelay || settings.RelayHost != "" || settings.RelayPort != 0 || settings.RelayID != "" {
+	if settings.UseRelay || settings.RelayHost != "" || settings.RelayID != "" {
 		settings.UseRelay = false
 		settings.RelayHost = ""
 		settings.RelayPort = 0
