@@ -70,6 +70,26 @@ func TestInviteViewHidesTokenHash(t *testing.T) {
 	}
 }
 
+func TestServiceViewDockerFirewallRules(t *testing.T) {
+	v := NewServiceView(group.Service{Name: "Game", Proto: "both", Ports: []int{25565, 19132}})
+	if len(v.AllowRules) != 4 || len(v.DeleteRules) != 4 {
+		t.Fatalf("rules: %d allow, %d delete", len(v.AllowRules), len(v.DeleteRules))
+	}
+	if !strings.Contains(v.AllowRules[0], "allow from 172.16.0.0/12 to any port 25565 proto tcp") {
+		t.Fatalf("unexpected allow rule: %q", v.AllowRules[0])
+	}
+	if !strings.Contains(v.DeleteRules[0], "delete allow from 172.16.0.0/12 to any port 25565 proto tcp") {
+		t.Fatalf("unexpected delete rule: %q", v.DeleteRules[0])
+	}
+}
+
+func TestServiceViewNoRulesForUnknownProtocol(t *testing.T) {
+	v := NewServiceView(group.Service{Name: "Game", Proto: "icmp", Ports: []int{1}})
+	if len(v.AllowRules) != 0 || len(v.DeleteRules) != 0 {
+		t.Fatal("unknown protocol produced firewall rules")
+	}
+}
+
 func TestServiceViewPortsText(t *testing.T) {
 	v := NewServiceView(group.Service{ID: "s1", Name: "Game", Proto: "tcp", Target: "127.0.0.1:25565", Ports: []int{25565, 25566}})
 	if v.PortsText != "25565, 25566" {

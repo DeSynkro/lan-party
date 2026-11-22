@@ -34,10 +34,23 @@
       <input id="target" name="target" value="{{.Target}}" placeholder="127.0.0.1:25565 or 192.168.1.50" required>
       <span class="hint">An IP, hostname, or IP:port on this host's network.</span>
     </label>
+    {{if and .Docker (eq .Target "127.0.0.1")}}
+    <p class="banner warn">This web host runs in Docker, where <code>127.0.0.1</code> means the container itself. Enter this host's LAN address instead, for example <code>192.168.0.10</code>.</p>
+    {{end}}
     <label for="ports">Game ports
       <input id="ports" name="ports" value="{{.PortsText}}" placeholder="25565 or 2456-2458" required>
       <span class="hint">Comma-separated or a range. Friends use the same port numbers.</span>
     </label>
+    {{if .Docker}}
+    <details class="docker-hint">
+      <summary>Docker firewall reminder</summary>
+      <p class="hint">If the game server is on this Docker host, allow the port from Docker's private range. Example for TCP 25565:</p>
+      <pre class="code">sudo ufw allow from 172.16.0.0/12 to any port 25565 proto tcp comment 'LAN Party'</pre>
+      <p class="hint">Remove it later with:</p>
+      <pre class="code">sudo ufw delete allow from 172.16.0.0/12 to any port 25565 proto tcp</pre>
+      <p class="hint">Use <code>udp</code> for UDP services, and add one rule per port. These rules allow containers on this host only, not your LAN or the internet.</p>
+    </details>
+    {{end}}
     <label for="hint">Hint for friends (optional)
       <input id="hint" name="hint" value="{{.Hint}}" maxlength="120" placeholder="Direct Connect in Minecraft">
     </label>

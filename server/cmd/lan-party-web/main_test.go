@@ -29,3 +29,16 @@ func TestFlagsReadPortEnvironment(t *testing.T) {
 		t.Fatalf("web port = %d", c.webPort)
 	}
 }
+
+func TestFlagsDetectContainer(t *testing.T) {
+	t.Setenv("LANPARTY_WEB_CONTAINER", "1")
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	c := addCommonFlags(fs)
+	cfg, err := c.config()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.InContainer {
+		t.Fatal("container flag not detected")
+	}
+}

@@ -75,6 +75,26 @@
   {{else}}
   <p class="empty">No services yet. Add the game's server port so friends can reach it.</p>
   {{end}}
+
+  {{if .Docker}}
+  <details class="docker-hint">
+    <summary>Docker firewall reminder</summary>
+    <p class="small">The web host runs in Docker. If the game server is on this Docker host, use the host's LAN address as the target — <code>127.0.0.1</code> means the container itself. Allow only Docker's private range to reach the game ports:</p>
+    {{range .Services}}
+      {{if .AllowRules}}
+      <p class="small"><strong>{{.Name}}</strong></p>
+      {{range .AllowRules}}<pre class="code">{{.}}</pre>{{end}}
+      {{end}}
+    {{end}}
+    {{if .Services}}
+    <p class="small">Remove those rules when you stop hosting the games:</p>
+    {{range .Services}}{{range .DeleteRules}}<pre class="code">{{.}}</pre>{{end}}{{end}}
+    {{else}}
+    <p class="small">Add a service to see the exact commands.</p>
+    {{end}}
+    <p class="hint">These rules allow containers on this host only, not your LAN or the internet.</p>
+  </details>
+  {{end}}
 </section>
 
 <section class="card">

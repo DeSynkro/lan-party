@@ -85,6 +85,45 @@ func TestGroupPageExposesStructureForLiveUpdates(t *testing.T) {
 	}
 }
 
+func TestDockerFirewallHintOnGroupPage(t *testing.T) {
+	srv := newTestServerWithGroups(t, group.Group{ID: "g1", Name: "Friday", Role: group.RoleHost,
+		Services: []group.Service{{ID: "s1", Name: "Minecraft", Proto: "tcp", Target: "192.168.0.10", Ports: []int{25565}}},
+	})
+	srv.cfg.InContainer = true
+	body := srv.get("/groups/g1").Body.String()
+	for _, want := range []string{
+		"Docker firewall reminder",
+		"sudo ufw allow from 172.16.0.0/12 to any port 25565 proto tcp",
+		"sudo ufw delete allow from 172.16.0.0/12 to any port 25565 proto tcp",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("group page is missing %q", want)
+		}
+	}
+
+	srv.cfg.InContainer = false
+	if strings.Contains(srv.get("/groups/g1").Body.String(), "Docker firewall reminder") {
+		t.Fatal("Docker hint shown outside a container")
+	}
+}
+
+func TestDockerHintOnServiceForm(t *testing.T) {
+	srv := newTestServerWithGroups(t, group.Group{ID: "g1", Name: "Friday", Role: group.RoleHost})
+	srv.cfg.InContainer = true
+	body := srv.get("/groups/g1/services/new").Body.String()
+	if !strings.Contains(body, "means the container itself") {
+		t.Fatal("service form does not warn about 127.0.0.1 in Docker")
+	}
+	if !strings.Contains(body, "sudo ufw allow from 172.16.0.0/12") || !strings.Contains(body, "sudo ufw delete allow from 172.16.0.0/12") {
+		t.Fatal("service form is missing the add/delete firewall commands")
+	}
+
+	srv.cfg.InContainer = false
+	if strings.Contains(srv.get("/groups/g1/services/new").Body.String(), "Docker firewall reminder") {
+		t.Fatal("Docker hint shown outside a container")
+	}
+}
+
 func TestGroupPageMissingIs404(t *testing.T) {
 	srv := newTestServer(t)
 	if rr := srv.get("/groups/nope"); rr.Code != 404 {

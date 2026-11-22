@@ -127,6 +127,7 @@ func (c *commonFlags) config() (webui.Config, error) {
 		TLSKey:         c.key,
 		AppPort:        c.appPort,
 		WebPort:        c.webPort,
+		InContainer:    envBool("LANPARTY_WEB_CONTAINER") || fileExists("/.dockerenv"),
 		TrustedProxies: proxies,
 	}, nil
 }
@@ -361,4 +362,18 @@ func envIntOr(name string, fallback int) int {
 		return fallback
 	}
 	return n
+}
+
+func envBool(name string) bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(name))) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }

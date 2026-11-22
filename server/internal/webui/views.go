@@ -21,6 +21,7 @@ type BaseView struct {
 	LiveGroupID     string
 	MemberSignature string
 	InviteSignature string
+	Docker          bool
 }
 
 type errorView struct {
@@ -73,13 +74,15 @@ type InviteView struct {
 
 // ServiceView is one published service.
 type ServiceView struct {
-	ID        string
-	Name      string
-	Proto     string
-	Target    string
-	Ports     []int
-	PortsText string
-	Hint      string
+	ID          string
+	Name        string
+	Proto       string
+	Target      string
+	Ports       []int
+	PortsText   string
+	Hint        string
+	AllowRules  []string
+	DeleteRules []string
 }
 
 // ApprovalView is a pending device approval.
@@ -188,15 +191,45 @@ func NewServiceView(s group.Service) ServiceView {
 	for i, p := range s.Ports {
 		ports[i] = fmt.Sprint(p)
 	}
+	allow, remove := dockerFirewallRules(s)
 	return ServiceView{
-		ID:        s.ID,
-		Name:      s.Name,
-		Proto:     s.Proto,
-		Target:    s.Target,
-		Ports:     s.Ports,
-		PortsText: strings.Join(ports, ", "),
-		Hint:      s.Hint,
+		ID:          s.ID,
+		Name:        s.Name,
+		Proto:       s.Proto,
+		Target:      s.Target,
+		Ports:       s.Ports,
+		PortsText:   strings.Join(ports, ", "),
+		Hint:        s.Hint,
+		AllowRules:  allow,
+		DeleteRules: remove,
 	}
+}
+
+const dockerFirewallScope = "172.16.0.0/12"
+
+// dockerFirewallRules returns the scoped UFW commands for a service. They only
+// allow Docker's private ranges, never the LAN or internet.
+func dockerFirewallRules(s group.Service) (allow, remove []string) {
+	var protocols []string
+	switch s.Proto {
+	case "tcp":
+		protocols = []string{"tcp"}
+	case "udp":
+		protocols = []string{"udp"}
+	case "both":
+		protocols = []string{"tcp", "udp"}
+	}
+	for _, port := range s.Ports {
+		for _, proto := range protocols {
+			allow = append(allow, fmt.Sprintf(
+				"sudo ufw allow from %s to any port %d proto %s comment 'LAN Party'",
+				dockerFirewallScope, port, proto))
+			remove = append(remove, fmt.Sprintf(
+				"sudo ufw delete allow from %s to any port %d proto %s",
+				dockerFirewallScope, port, proto))
+		}
+	}
+	return allow, remove
 }
 
 // NewApprovalView builds a view of a pending approval.

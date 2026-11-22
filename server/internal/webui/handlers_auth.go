@@ -30,7 +30,7 @@ func (s *Server) authenticated(next func(http.ResponseWriter, *http.Request, *Se
 }
 
 func (s *Server) base(r *http.Request, title string) BaseView {
-	b := BaseView{Title: title}
+	b := BaseView{Title: title, Docker: s.cfg.InContainer}
 	if session := SessionFrom(r); session != nil {
 		b.Authenticated = true
 		b.CSRF = session.CSRF
