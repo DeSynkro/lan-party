@@ -12,6 +12,7 @@ import (
 	"github.com/diamondburned/gotk4/pkg/gdk/v4"
 	"github.com/diamondburned/gotk4/pkg/gio/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
+	"github.com/diamondburned/gotk4/pkg/pango"
 
 	apppkg "github.com/desynkro/lan-party/internal/app"
 	"github.com/desynkro/lan-party/internal/config"
@@ -506,6 +507,7 @@ func textLabel(text, class string) *gtk.Label {
 	label := gtk.NewLabel(text)
 	label.AddCSSClass(class)
 	label.SetWrap(true)
+	label.SetWrapMode(pango.WrapWordChar)
 	label.SetXAlign(0)
 	label.SetHAlign(gtk.AlignStart)
 	return label
