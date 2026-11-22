@@ -55,6 +55,17 @@ func TestSettingsExplainsApprovalSemantics(t *testing.T) {
 	}
 }
 
+func TestGroupPagePointsAtTheEnvFile(t *testing.T) {
+	srv := newTestServerWithGroups(t, group.Group{ID: "g1", Name: "Friday", Role: group.RoleHost})
+	body := srv.get("/groups/g1").Body.String()
+	if strings.Contains(body, "docker-compose.yml") {
+		t.Fatal("group page names a file that does not exist")
+	}
+	if !strings.Contains(body, ".env") || !strings.Contains(body, "setup.sh --ports") {
+		t.Fatal("group page does not say where to change the port")
+	}
+}
+
 func TestGroupPageMissingIs404(t *testing.T) {
 	srv := newTestServer(t)
 	if rr := srv.get("/groups/nope"); rr.Code != 404 {

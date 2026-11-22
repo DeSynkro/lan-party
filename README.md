@@ -199,7 +199,7 @@ The in-app guide has the full walkthrough with your current ports and addresses 
 | `~/.config/autostart/lan-party.desktop` | Autostart entry when enabled |
 | `~/.local/share/lan-party/lan-party.log` | Application log. `%LocalAppData%\lan-party\lan-party.log` on Windows |
 
-The 1.3 web host keeps its own directory beside `docker-compose.yml` or
+The 1.3 web host keeps its own directory beside `compose.yaml` or
 `run.sh`: `data/settings.json`, `data/groups.json`, `data/web.json`,
 `data/keys/` and `data/lan-party.log`. The desktop app's directories are not
 touched.
