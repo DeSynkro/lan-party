@@ -45,9 +45,10 @@
     <details class="docker-hint">
       <summary>Docker firewall reminder</summary>
       <p class="hint">If the game server is on this Docker host, allow the port from Docker's private range. Example for TCP 25565:</p>
-      <pre class="code">sudo ufw allow from 172.16.0.0/12 to any port 25565 proto tcp comment 'LAN Party'</pre>
+      <pre class="code">sudo ufw allow from 172.16.0.0/12 to any port 25565 proto tcp comment 'LAN Party -> Game'</pre>
       <p class="hint">Remove it later with:</p>
-      <pre class="code">sudo ufw delete allow from 172.16.0.0/12 to any port 25565 proto tcp</pre>
+      <pre class="code"># LAN Party -> Game
+sudo ufw delete allow from 172.16.0.0/12 to any port 25565 proto tcp</pre>
       <p class="hint">Use <code>udp</code> for UDP services, and add one rule per port. These rules allow containers on this host only, not your LAN or the internet.</p>
     </details>
     {{end}}

@@ -1,6 +1,7 @@
 package webui
 
 import (
+	"html"
 	"strings"
 	"testing"
 	"time"
@@ -104,6 +105,32 @@ func TestDockerFirewallHintOnGroupPage(t *testing.T) {
 	srv.cfg.InContainer = false
 	if strings.Contains(srv.get("/groups/g1").Body.String(), "Docker firewall reminder") {
 		t.Fatal("Docker hint shown outside a container")
+	}
+}
+
+func TestDockerFirewallCommandsAreCombined(t *testing.T) {
+	srv := newTestServerWithGroups(t, group.Group{ID: "g1", Name: "Friday", Role: group.RoleHost,
+		Services: []group.Service{
+			{ID: "s1", Name: "Minecraft", Proto: "tcp", Target: "192.168.0.10", Ports: []int{25565}},
+			{ID: "s2", Name: "Valheim", Proto: "udp", Target: "192.168.0.10", Ports: []int{2456, 2457}},
+		},
+	})
+	srv.cfg.InContainer = true
+	body := html.UnescapeString(srv.get("/groups/g1").Body.String())
+	if strings.Count(body, `id="docker-allow"`) != 1 || strings.Count(body, `id="docker-delete"`) != 1 {
+		t.Fatal("commands are split across multiple blocks")
+	}
+	for _, want := range []string{
+		"comment 'LAN Party -> Minecraft'",
+		"comment 'LAN Party -> Valheim'",
+		"to any port 2456 proto udp",
+		"to any port 2457 proto udp",
+		"# LAN Party -> Minecraft",
+		"# LAN Party -> Valheim",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("combined block is missing %q", want)
+		}
 	}
 }
 

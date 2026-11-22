@@ -110,6 +110,9 @@ type GroupPageView struct {
 	Members  []MemberView
 	Invites  []InviteView
 	Approval *ApprovalView
+
+	DockerAllowCommands  string
+	DockerDeleteCommands string
 }
 
 // SettingsView is the settings page.
@@ -219,17 +222,47 @@ func dockerFirewallRules(s group.Service) (allow, remove []string) {
 	case "both":
 		protocols = []string{"tcp", "udp"}
 	}
+	label := firewallLabel(s.Name)
 	for _, port := range s.Ports {
 		for _, proto := range protocols {
 			allow = append(allow, fmt.Sprintf(
-				"sudo ufw allow from %s to any port %d proto %s comment 'LAN Party'",
-				dockerFirewallScope, port, proto))
+				"sudo ufw allow from %s to any port %d proto %s comment %s",
+				dockerFirewallScope, port, proto, shellQuote(label)))
 			remove = append(remove, fmt.Sprintf(
-				"sudo ufw delete allow from %s to any port %d proto %s",
-				dockerFirewallScope, port, proto))
+				"# %s\nsudo ufw delete allow from %s to any port %d proto %s",
+				label, dockerFirewallScope, port, proto))
 		}
 	}
 	return allow, remove
+}
+
+// firewallLabel makes a service name safe for a shell-quoted UFW comment and a
+// shell comment line.
+func firewallLabel(name string) string {
+	name = strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+			return r
+		case r == '\'' || r == '"':
+			return -1
+		case r == ' ', r == '-', r == '_', r == '.', r == ':', r == '>', r == '(', r == ')':
+			return r
+		default:
+			return ' '
+		}
+	}, name)
+	name = strings.Join(strings.Fields(name), " ")
+	if len(name) > 60 {
+		name = name[:60]
+	}
+	if name == "" {
+		name = "Game"
+	}
+	return "LAN Party -> " + name
+}
+
+func shellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", `'\''`) + "'"
 }
 
 // NewApprovalView builds a view of a pending approval.

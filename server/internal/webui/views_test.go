@@ -78,8 +78,21 @@ func TestServiceViewDockerFirewallRules(t *testing.T) {
 	if !strings.Contains(v.AllowRules[0], "allow from 172.16.0.0/12 to any port 25565 proto tcp") {
 		t.Fatalf("unexpected allow rule: %q", v.AllowRules[0])
 	}
+	if !strings.Contains(v.AllowRules[0], "comment 'LAN Party -> Game'") {
+		t.Fatalf("allow rule has no service label: %q", v.AllowRules[0])
+	}
+	if !strings.Contains(v.DeleteRules[0], "# LAN Party -> Game") {
+		t.Fatalf("delete rule has no service label: %q", v.DeleteRules[0])
+	}
 	if !strings.Contains(v.DeleteRules[0], "delete allow from 172.16.0.0/12 to any port 25565 proto tcp") {
 		t.Fatalf("unexpected delete rule: %q", v.DeleteRules[0])
+	}
+}
+
+func TestServiceFirewallLabelIsSafe(t *testing.T) {
+	v := NewServiceView(group.Service{Name: `Bob's "Game"`, Proto: "tcp", Ports: []int{1}})
+	if !strings.Contains(v.AllowRules[0], "comment 'LAN Party -> Bobs Game'") {
+		t.Fatalf("unsafe service label: %q", v.AllowRules[0])
 	}
 }
 

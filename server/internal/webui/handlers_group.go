@@ -61,6 +61,15 @@ func (s *Server) buildGroupPage(r *http.Request, g group.Group) GroupPageView {
 	for _, service := range g.Services {
 		view.Services = append(view.Services, NewServiceView(service))
 	}
+	if s.cfg.InContainer && len(view.Services) > 0 {
+		var allow, remove []string
+		for _, service := range view.Services {
+			allow = append(allow, service.AllowRules...)
+			remove = append(remove, service.DeleteRules...)
+		}
+		view.DockerAllowCommands = strings.Join(allow, "\n")
+		view.DockerDeleteCommands = strings.Join(remove, "\n")
+	}
 	for _, member := range g.Members {
 		view.Members = append(view.Members, NewMemberView(member, presence))
 	}

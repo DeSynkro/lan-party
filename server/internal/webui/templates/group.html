@@ -80,15 +80,17 @@
   <details class="docker-hint">
     <summary>Docker firewall reminder</summary>
     <p class="small">The web host runs in Docker. If the game server is on this Docker host, use the host's LAN address as the target — <code>127.0.0.1</code> means the container itself. Allow only Docker's private range to reach the game ports:</p>
-    {{range .Services}}
-      {{if .AllowRules}}
-      <p class="small"><strong>{{.Name}}</strong></p>
-      {{range .AllowRules}}<pre class="code">{{.}}</pre>{{end}}
-      {{end}}
-    {{end}}
-    {{if .Services}}
-    <p class="small">Remove those rules when you stop hosting the games:</p>
-    {{range .Services}}{{range .DeleteRules}}<pre class="code">{{.}}</pre>{{end}}{{end}}
+    {{if .DockerAllowCommands}}
+    <div class="split">
+      <span class="small">Allow:</span>
+      <button type="button" class="link" data-copy="docker-allow">Copy</button>
+    </div>
+    <pre id="docker-allow" class="code">{{.DockerAllowCommands}}</pre>
+    <div class="split">
+      <span class="small">Remove:</span>
+      <button type="button" class="link" data-copy="docker-delete">Copy</button>
+    </div>
+    <pre id="docker-delete" class="code">{{.DockerDeleteCommands}}</pre>
     {{else}}
     <p class="small">Add a service to see the exact commands.</p>
     {{end}}
