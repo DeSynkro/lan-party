@@ -13,6 +13,7 @@ import (
 
 	"github.com/desynkro/lan-party/internal/buildinfo"
 	"github.com/desynkro/lan-party/server/internal/webui"
+	"golang.org/x/term"
 )
 
 func main() {
@@ -128,23 +129,86 @@ func runServer(args []string) error {
 func runSetup(args []string) error {
 	fs := flag.NewFlagSet("setup", flag.ContinueOnError)
 	c := addCommonFlags(fs)
-	password := fs.String("password", "", "admin password (otherwise prompt or generate)")
+	passwordFlag := fs.String("password", "", "admin password (otherwise prompt or generate)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	_ = c
-	_ = password
-	return errors.New("setup is not implemented yet")
+	cfg, err := c.config()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(cfg.DataDir, 0o700); err != nil {
+		return fmt.Errorf("create data directory: %w", err)
+	}
+	supplied := strings.TrimSpace(*passwordFlag)
+	if supplied == "" {
+		supplied = strings.TrimSpace(os.Getenv("LANPARTY_WEB_PASSWORD"))
+	}
+	if supplied == "" && term.IsTerminal(int(os.Stdin.Fd())) {
+		first, err := promptPassword("Choose an admin password: ")
+		if err != nil {
+			return err
+		}
+		second, err := promptPassword("Repeat the password: ")
+		if err != nil {
+			return err
+		}
+		if first != second {
+			return errors.New("the passwords do not match")
+		}
+		supplied = first
+	}
+	_, generated, err := webui.EnsureCredentials(webui.CredentialsPath(cfg.DataDir), supplied)
+	if err != nil {
+		return err
+	}
+	if generated != "" {
+		fmt.Printf("\nFirst-run admin password (shown once):\n\n  %s\n\nStore it in your password manager, then open the web UI.\n", generated)
+	} else {
+		fmt.Printf("Admin password is set. Data directory: %s\n", cfg.DataDir)
+	}
+	return nil
 }
 
 func runPasswd(args []string) error {
 	fs := flag.NewFlagSet("passwd", flag.ContinueOnError)
-	dataDir := fs.String("data-dir", "", "data directory (default ./data)")
+	dataDirFlag := fs.String("data-dir", "", "data directory (default ./data)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	_ = dataDir
-	return errors.New("passwd is not implemented yet")
+	dataDir, err := webui.ResolveDataDir(*dataDirFlag)
+	if err != nil {
+		return err
+	}
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		return errors.New("passwd needs an interactive terminal")
+	}
+	first, err := promptPassword("New admin password: ")
+	if err != nil {
+		return err
+	}
+	second, err := promptPassword("Repeat the new password: ")
+	if err != nil {
+		return err
+	}
+	if first != second {
+		return errors.New("the passwords do not match")
+	}
+	if err := webui.SetPassword(webui.CredentialsPath(dataDir), first); err != nil {
+		return err
+	}
+	fmt.Println("Password changed. All browser sessions are logged out.")
+	return nil
+}
+
+func promptPassword(prompt string) (string, error) {
+	fmt.Fprint(os.Stderr, prompt)
+	raw, err := term.ReadPassword(int(os.Stdin.Fd()))
+	fmt.Fprintln(os.Stderr)
+	if err != nil {
+		return "", err
+	}
+	return string(raw), nil
 }
 
 func runShowInfo(args []string) error {
