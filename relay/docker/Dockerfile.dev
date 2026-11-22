@@ -5,6 +5,7 @@ WORKDIR /src
 COPY go.mod go.sum ./
 COPY cmd/lan-party-relay ./cmd/lan-party-relay
 COPY internal/relay ./internal/relay
+COPY internal/password ./internal/password
 COPY internal/buildinfo ./internal/buildinfo
 ARG VERSION=dev
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath \
