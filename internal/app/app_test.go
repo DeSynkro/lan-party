@@ -256,6 +256,9 @@ func TestEnrollWithoutApproval(t *testing.T) {
 	if inviteRecord.RedeemedAt.IsZero() {
 		t.Fatal("the invite was not redeemed")
 	}
+	if code := a.InviteCode(inviteRecord.ID); code != "" {
+		t.Fatal("the invite code survived redemption")
+	}
 
 	other := newTestIdentity(t, "device-b")
 	second, err := a.authenticate(context.Background(), g.ID, authRequest(inv, other, inv.Token))

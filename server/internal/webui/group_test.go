@@ -39,8 +39,8 @@ func TestRedeemedInviteDoesNotShowCode(t *testing.T) {
 	if strings.Contains(body, "lp1_secret-code") {
 		t.Fatal("redeemed invite still shows its code")
 	}
-	if !strings.Contains(body, "Used") {
-		t.Fatal("used invite state missing")
+	if strings.Contains(body, "Used") {
+		t.Fatal("redeemed invite is still listed")
 	}
 }
 

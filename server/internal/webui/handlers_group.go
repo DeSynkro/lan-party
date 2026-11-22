@@ -53,6 +53,9 @@ func (s *Server) buildGroupPage(r *http.Request, g group.Group) GroupPageView {
 		view.Members = append(view.Members, NewMemberView(member, presence))
 	}
 	for _, invite := range g.Invites {
+		if !invite.Open(now) {
+			continue
+		}
 		view.Invites = append(view.Invites, NewInviteView(invite, s.app.InviteCode(invite.ID), now))
 	}
 	return view

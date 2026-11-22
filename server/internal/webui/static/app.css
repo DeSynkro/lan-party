@@ -225,6 +225,11 @@ code {
   flex: 1;
 }
 
+.preset-row {
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
 .split {
   display: flex;
   align-items: baseline;
