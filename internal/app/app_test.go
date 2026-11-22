@@ -2276,6 +2276,10 @@ func TestForgetInactiveFriends(t *testing.T) {
 	a.mu.Unlock()
 	s := a.Settings()
 	s.ForgetFriendsDays = 5
+	s.UseRelay = true
+	s.RelayHost = "relay.example.net"
+	s.RelayPort = 7443
+	s.RelayID = strings.Repeat("ab", 32)
 	if err := a.SaveSettings(s); err != nil {
 		t.Fatal(err)
 	}
@@ -2309,6 +2313,29 @@ func TestForgetInactiveFriendsKeepsRecentAndUnknown(t *testing.T) {
 	saved, _ := a.Group(g.ID)
 	if len(saved.Members) != 2 {
 		t.Fatalf("members = %+v", saved.Members)
+	}
+}
+
+func TestForgetInactiveFriendsSkipsDirectGroups(t *testing.T) {
+	a := newTestApp(t)
+	g, err := a.CreateGroup("Friday Night", "Desynkro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	addTestMember(a, g.ID, group.Member{
+		ID: "old", Name: "Ash", State: group.MemberApproved,
+		LastSeen: now.Add(-30 * 24 * time.Hour),
+	})
+	s := a.Settings()
+	s.ForgetFriendsDays = 5
+	if err := a.SaveSettings(s); err != nil {
+		t.Fatal(err)
+	}
+	a.cleanupInactiveFriends(now)
+	saved, _ := a.Group(g.ID)
+	if len(saved.Members) != 1 {
+		t.Fatalf("a direct group member was forgotten: %+v", saved.Members)
 	}
 }
 

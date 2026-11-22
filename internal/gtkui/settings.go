@@ -24,6 +24,18 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	networkFeedback := newFeedback()
 	friendsFeedback := newFeedback()
 
+	hasRelayGroup := false
+	for _, saved := range u.state.Groups() {
+		if !saved.IsHost() {
+			continue
+		}
+		if connection, err := u.state.EffectiveConnection(saved.ID); err == nil && connection.UseRelay {
+			hasRelayGroup = true
+			break
+		}
+	}
+	var friendsSection *gtk.Box
+
 	page := gtk.NewBox(gtk.OrientationVertical, 0)
 	page.AddCSSClass("page")
 	page.SetMarginTop(20)
@@ -90,6 +102,11 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	useRelay := gtk.NewCheckButtonWithLabel("Use Relay")
 	useRelay.SetActive(settings.UseRelay)
 	useRelay.SetMarginBottom(10)
+	updateFriendsVisibility := func() {
+		if friendsSection != nil {
+			friendsSection.SetVisible(useRelay.Active() || hasRelayGroup)
+		}
+	}
 
 	publicEntry := gtk.NewEntry()
 	publicEntry.SetText(settings.PublicAddress)
@@ -229,6 +246,7 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	useRelay.ConnectToggled(func() {
 		networkFeedback.hide()
 		syncConnectionFields()
+		updateFriendsVisibility()
 	})
 
 	networkCard := gtk.NewBox(gtk.OrientationVertical, 0)
@@ -311,6 +329,7 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 		updatePasswordStatus()
 		updateDirectPreview()
 		updateRelayPreview()
+		updateFriendsVisibility()
 		networkFeedback.showStatus("Saved.")
 	})
 
@@ -344,7 +363,6 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	friends := textLabel("Friends", "section")
 	friends.SetMarginTop(18)
 	friends.SetMarginBottom(8)
-	page.Append(friends)
 
 	forgetEntry := gtk.NewEntry()
 	if settings.ForgetFriendsDays > 0 {
@@ -362,7 +380,15 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 	friendsCard.Append(gapBox(4))
 	friendsCard.Append(formRow("After (days)", forgetEntry))
 	friendsCard.Append(gapBox(8))
-	friendsCard.Append(textLabel("Friends who have not connected in this many days are removed and need a new invite. Leave blank to keep them forever.", "help"))
+	description := textLabel("Friends who have not connected in this many days are removed and need a new invite. Leave blank to keep them forever.", "help")
+	description.SetHExpand(true)
+	description.SetHAlign(gtk.AlignFill)
+	friendsCard.Append(description)
+	friendsCard.Append(gapBox(6))
+	reason := textLabel("Only groups using a relay are cleaned up. The saved reconnect access is long-lived, so this limits how long a lost or abandoned device can keep reconnecting.", "help")
+	reason.SetHExpand(true)
+	reason.SetHAlign(gtk.AlignFill)
+	friendsCard.Append(reason)
 	friendsCard.Append(friendsFeedback.box)
 	friendsSave := gtk.NewButtonWithLabel("Save friend settings")
 	friendsSave.AddCSSClass("primary")
@@ -389,7 +415,11 @@ func (u *probeUI) buildSettingsPage() *gtk.ScrolledWindow {
 		friendsFeedback.showStatus("Saved.")
 	})
 	friendsCard.Append(friendsSave)
-	page.Append(friendsCard)
+	friendsSection = gtk.NewBox(gtk.OrientationVertical, 0)
+	friendsSection.Append(friends)
+	friendsSection.Append(friendsCard)
+	page.Append(friendsSection)
+	updateFriendsVisibility()
 
 	security := textLabel("Security", "section")
 	security.SetMarginTop(18)

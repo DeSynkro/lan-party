@@ -149,10 +149,11 @@ defined in the stylesheet.
   connection changed are cancelled.
 - Connection: Reconnect automatically, on by default. It retries a dropped
   friend connection for up to 30 minutes.
-- Friends: `Forget inactive friends after [N] days`. Blank means never. New
-  installs default to 5; upgraded settings files start blank so nobody is
-  forgotten before the host chooses. Friends who have not connected in that
-  window are removed and need a new invite. Live friends are kept.
+- Friends: `Forget inactive friends after [N] days`, shown only when a host
+  group uses a relay. Blank means never. New installs default to 5; upgraded
+  settings files start blank so nobody is forgotten before the host chooses.
+  Only relay group members are cleaned up; friends who have not connected in
+  that window are removed and need a new invite. Live friends are kept.
 - Security: Approve new devices.
 - About: version, data directory, key location, log path.
 - Links to the setup guide.

@@ -163,6 +163,9 @@ func (a *App) cleanupInactiveFriends(now time.Time) {
 		if !g.IsHost() {
 			continue
 		}
+		if !resolveGroupConnection(a.settings, *g).UseRelay {
+			continue
+		}
 		kept := g.Members[:0]
 		for _, member := range g.Members {
 			if !member.IsApproved() || live[member.ID] {
