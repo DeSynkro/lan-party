@@ -42,6 +42,16 @@
 {{if .Error}}<p class="banner danger" role="alert">{{.Error}}</p>{{end}}
 {{template "content" .}}
 </main>
+{{if .Authenticated}}
+<dialog id="modal" class="modal" aria-label="Dialog">
+  <div class="modal-shell">
+    <form method="dialog" class="modal-close-form">
+      <button type="submit" class="modal-close" aria-label="Close">×</button>
+    </form>
+    <div id="modal-body" class="modal-body"></div>
+  </div>
+</dialog>
+{{end}}
 <footer class="foot">LAN Party {{version}} · host-only web UI</footer>
 </body>
 </html>{{end}}

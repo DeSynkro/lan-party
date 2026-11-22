@@ -5,7 +5,7 @@
     <p class="eyebrow">Group</p>
     <h1>{{.Group.Name}}</h1>
   </div>
-  <a class="button" href="/groups/{{.Group.ID}}/delete">Delete group</a>
+  <a class="button" href="/groups/{{.Group.ID}}/delete" data-modal>Delete group</a>
 </div>
 
 {{if .Approval}}
@@ -46,14 +46,14 @@
       <button type="submit" class="primary">Start session</button>
     </form>
     {{end}}
-    <a class="button" href="/groups/{{.Group.ID}}/invites/new">Invite a friend</a>
+    <a class="button" href="/groups/{{.Group.ID}}/invites/new" data-modal>Invite a friend</a>
   </div>
 </section>
 
 <section class="card">
   <div class="card-head">
     <h2>Services</h2>
-    <a class="button" href="/groups/{{.Group.ID}}/services/new">Add service</a>
+    <a class="button" href="/groups/{{.Group.ID}}/services/new" data-modal>Add service</a>
   </div>
   {{if .Services}}
   <div class="table-wrap">
@@ -62,11 +62,11 @@
       <tbody>
       {{range .Services}}
         <tr>
-          <td><a href="/groups/{{$.Group.ID}}/services/{{.ID}}">{{.Name}}</a>{{if .Hint}}<div class="hint">{{.Hint}}</div>{{end}}</td>
+          <td><a href="/groups/{{$.Group.ID}}/services/{{.ID}}" data-modal>{{.Name}}</a>{{if .Hint}}<div class="hint">{{.Hint}}</div>{{end}}</td>
           <td class="mono">{{.Proto}}</td>
           <td class="mono">{{.Target}}</td>
           <td class="mono">{{.PortsText}}</td>
-          <td><a href="/groups/{{$.Group.ID}}/services/{{.ID}}/remove">Remove</a></td>
+          <td><a href="/groups/{{$.Group.ID}}/services/{{.ID}}/remove" data-modal>Remove</a></td>
         </tr>
       {{end}}
       </tbody>
@@ -80,7 +80,7 @@
 <section class="card">
   <div class="card-head">
     <h2>Invites</h2>
-    <a class="button" href="/groups/{{.Group.ID}}/invites/new">New invite</a>
+    <a class="button" href="/groups/{{.Group.ID}}/invites/new" data-modal>New invite</a>
   </div>
   {{if .Invites}}
   <ul class="list">

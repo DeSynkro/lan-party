@@ -4,7 +4,7 @@
     <p class="eyebrow">Host console</p>
     <h1>Dashboard</h1>
   </div>
-  <a class="button primary" href="/groups/new">New group</a>
+  <a class="button primary" href="/groups/new" data-modal>New group</a>
 </div>
 
 {{if .Groups}}
@@ -31,7 +31,7 @@
 {{else}}
 <div class="card empty">
   <p>No groups yet. Create one to publish a game and invite a friend.</p>
-  <a class="button primary" href="/groups/new">Create your first group</a>
+  <a class="button primary" href="/groups/new" data-modal>Create your first group</a>
 </div>
 {{end}}
 

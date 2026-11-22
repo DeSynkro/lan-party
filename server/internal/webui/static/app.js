@@ -35,11 +35,122 @@
     selection.addRange(range);
   }
 
-  if (!document.body.hasAttribute("data-live-root") || !("EventSource" in window)) {
-    return;
+  const dialog = document.getElementById("modal");
+  const modalBody = document.getElementById("modal-body");
+
+  if (dialog && modalBody && typeof dialog.showModal === "function") {
+    const render = (html) => {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const main = doc.querySelector("main");
+      modalBody.replaceChildren();
+      if (main) {
+        for (const node of Array.from(main.childNodes)) {
+          modalBody.append(document.importNode(node, true));
+        }
+      } else {
+        const message = document.createElement("p");
+        message.className = "muted";
+        message.textContent = "Could not load that form.";
+        modalBody.append(message);
+      }
+      const heading = modalBody.querySelector("h1");
+      if (heading) {
+        if (!heading.id) heading.id = "modal-title";
+        dialog.setAttribute("aria-labelledby", heading.id);
+      }
+      const focusable = modalBody.querySelector(
+        "input:not([type=hidden]), select, textarea, button, a[href]",
+      );
+      if (focusable) focusable.focus({ preventScroll: true });
+    };
+
+    const showError = (text) => {
+      const message = document.createElement("p");
+      message.className = "banner danger";
+      message.textContent = text;
+      modalBody.prepend(message);
+    };
+
+    const open = async (url) => {
+      if (!dialog.open) dialog.showModal();
+      modalBody.replaceChildren();
+      const loading = document.createElement("p");
+      loading.className = "muted";
+      loading.textContent = "Loading…";
+      modalBody.append(loading);
+      try {
+        const response = await fetch(url, { credentials: "same-origin" });
+        render(await response.text());
+      } catch (_) {
+        modalBody.replaceChildren();
+        showError("Could not load that form. Check the connection and try again.");
+      }
+    };
+
+    document.addEventListener("click", (event) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+      const link = event.target.closest("a[data-modal]");
+      if (!link || (link.target && link.target !== "_self")) return;
+      event.preventDefault();
+      open(link.href);
+    });
+
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) dialog.close();
+    });
+
+    dialog.addEventListener("close", () => {
+      modalBody.replaceChildren();
+      dialog.removeAttribute("aria-labelledby");
+    });
+
+    dialog.addEventListener("submit", async (event) => {
+      const form = event.target;
+      if (form.method === "dialog") return;
+      event.preventDefault();
+
+      const method = (form.getAttribute("method") || "get").toLowerCase();
+      if (method === "get") {
+        const url = new URL(form.action, window.location.href);
+        url.search = new URLSearchParams(new FormData(form)).toString();
+        open(url.toString());
+        return;
+      }
+
+      try {
+        const response = await fetch(form.action, {
+          method: "POST",
+          body: new URLSearchParams(new FormData(form)),
+          credentials: "same-origin",
+        });
+        if (response.redirected) {
+          window.location.href = response.url;
+          return;
+        }
+        const html = await response.text();
+        if (response.ok) {
+          window.location.reload();
+          return;
+        }
+        render(html);
+      } catch (_) {
+        showError("Could not save that form. Check the connection and try again.");
+      }
+    });
   }
 
-  let source;
+  if (!document.body.hasAttribute("data-live-root") || !("EventSource" in window)) {
+    return;
+  }  let source;
   let retry = 1000;
 
   const pill = (element, live, text) => {
