@@ -13,6 +13,20 @@ import (
 	"github.com/desynkro/lan-party/internal/session"
 )
 
+func TestSnapshotIncludesOpenInviteIDs(t *testing.T) {
+	fake := newFakeApp()
+	fake.groups = []group.Group{{ID: "g1", Role: group.RoleHost,
+		Invites: []group.Invite{
+			{ID: "i1", TokenHash: "h1", CreatedAt: time.Now(), ExpiresAt: time.Now().Add(time.Hour)},
+			{ID: "i2", TokenHash: "h2", CreatedAt: time.Now(), ExpiresAt: time.Now().Add(time.Hour), RedeemedAt: time.Now()},
+		},
+	}}
+	snap := NewSnapshot(fake)
+	if len(snap.Groups) != 1 || len(snap.Groups[0].Invites) != 1 || snap.Groups[0].Invites[0] != "i1" {
+		t.Fatalf("unexpected snapshot invites: %+v", snap.Groups)
+	}
+}
+
 func TestSnapshotChangesWhenPresenceChanges(t *testing.T) {
 	fake := newFakeApp()
 	s := NewSnapshot(fake)

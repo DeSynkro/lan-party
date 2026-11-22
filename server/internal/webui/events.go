@@ -23,6 +23,7 @@ type SnapshotGroup struct {
 	Live      bool             `json:"live"`
 	Connected int              `json:"connected"`
 	Members   []SnapshotMember `json:"members,omitempty"`
+	Invites   []string         `json:"invites,omitempty"`
 }
 
 // SnapshotMember is one member's live state.
@@ -35,6 +36,7 @@ type SnapshotMember struct {
 func NewSnapshot(a App) Snapshot {
 	liveID := a.LiveGroupID()
 	presence := a.HostPresence()
+	now := time.Now()
 	snap := Snapshot{Live: liveID, HostNote: a.HostNote()}
 	for _, p := range presence {
 		if p.Live {
@@ -51,6 +53,11 @@ func NewSnapshot(a App) Snapshot {
 			group.Members = append(group.Members, SnapshotMember{ID: m.ID, Live: p.Live})
 			if p.Live {
 				group.Connected++
+			}
+		}
+		for _, inv := range g.Invites {
+			if inv.Open(now) {
+				group.Invites = append(group.Invites, inv.ID)
 			}
 		}
 		snap.Groups = append(snap.Groups, group)

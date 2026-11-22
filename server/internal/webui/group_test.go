@@ -66,6 +66,25 @@ func TestGroupPagePointsAtTheEnvFile(t *testing.T) {
 	}
 }
 
+func TestGroupPageExposesStructureForLiveUpdates(t *testing.T) {
+	srv := newTestServerWithGroups(t, group.Group{ID: "g1", Name: "Friday", Role: group.RoleHost,
+		Members: []group.Member{{ID: "m1", Name: "Ash"}},
+		Invites: []group.Invite{
+			{ID: "i1", Name: "Open", TokenHash: "hash", CreatedAt: time.Now(), ExpiresAt: time.Now().Add(time.Hour)},
+			{ID: "i2", Name: "Used", TokenHash: "hash", CreatedAt: time.Now(), ExpiresAt: time.Now().Add(time.Hour), RedeemedAt: time.Now()},
+		},
+	})
+	body := srv.get("/groups/g1").Body.String()
+	for _, want := range []string{`data-group-id="g1"`, `data-members="m1"`, `data-invites="i1"`} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("group page is missing %s", want)
+		}
+	}
+	if strings.Contains(body, `data-invites="i1,i2"`) {
+		t.Fatal("redeemed invite is in the live structure signature")
+	}
+}
+
 func TestGroupPageMissingIs404(t *testing.T) {
 	srv := newTestServer(t)
 	if rr := srv.get("/groups/nope"); rr.Code != 404 {

@@ -12,12 +12,15 @@ import (
 
 // BaseView carries the fields every page template uses.
 type BaseView struct {
-	Title         string
-	CSRF          string
-	Authenticated bool
-	Flash         string
-	Error         string
-	Approval      *ApprovalView
+	Title           string
+	CSRF            string
+	Authenticated   bool
+	Flash           string
+	Error           string
+	Approval        *ApprovalView
+	GroupID         string
+	MemberSignature string
+	InviteSignature string
 }
 
 type errorView struct {

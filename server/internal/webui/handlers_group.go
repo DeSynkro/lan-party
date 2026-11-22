@@ -2,6 +2,7 @@ package webui
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/desynkro/lan-party/internal/group"
@@ -34,9 +35,21 @@ func (s *Server) buildGroupPage(r *http.Request, g group.Group) GroupPageView {
 	}
 	presence := s.app.HostPresence()
 	live := s.app.LiveGroupID() == g.ID
+	now := time.Now()
+
+	base := s.base(r, g.Name)
+	base.GroupID = g.ID
+	base.MemberSignature = memberSignature(g.Members)
+	var openInvites []string
+	for _, invite := range g.Invites {
+		if invite.Open(now) {
+			openInvites = append(openInvites, invite.ID)
+		}
+	}
+	base.InviteSignature = strings.Join(openInvites, ",")
 
 	view := GroupPageView{
-		BaseView: s.base(r, g.Name),
+		BaseView: base,
 		Group:    NewGroupView(g, presence, live, 0, endpoint),
 	}
 	view.Group.AppPort = appPort
@@ -45,7 +58,6 @@ func (s *Server) buildGroupPage(r *http.Request, g group.Group) GroupPageView {
 		view.Approval = NewApprovalView(approval)
 	}
 
-	now := time.Now()
 	for _, service := range g.Services {
 		view.Services = append(view.Services, NewServiceView(service))
 	}
@@ -67,4 +79,12 @@ func (s *Server) requireHostGroup(r *http.Request) (group.Group, bool) {
 		return group.Group{}, false
 	}
 	return g, true
+}
+
+func memberSignature(members []group.Member) string {
+	ids := make([]string, len(members))
+	for i, member := range members {
+		ids[i] = member.ID
+	}
+	return strings.Join(ids, ",")
 }

@@ -53,11 +53,48 @@
   const selectors = (name, id) =>
     document.querySelectorAll("[" + name + '="' + window.CSS.escape(id) + '"]');
 
+  const groupID = document.body.dataset.groupId || "";
+  const expectedMembers = document.body.dataset.members || "";
+  const expectedInvites = document.body.dataset.invites || "";
+  let pendingReload = false;
+
+  const isTyping = () => {
+    const element = document.activeElement;
+    return Boolean(
+      element &&
+        (element.matches("input, textarea, select") || element.isContentEditable),
+    );
+  };
+
+  document.addEventListener("focusout", () => {
+    if (!pendingReload) return;
+    window.setTimeout(() => {
+      if (!isTyping()) window.location.reload();
+    }, 150);
+  });
+
+  const groupStructureChanged = (group) => {
+    const members = (group.members || []).map((member) => member.id).join(",");
+    const invites = (group.invites || []).join(",");
+    return members !== expectedMembers || invites !== expectedInvites;
+  };
+
   const apply = (snap) => {
     const approval = snap.approval || "";
     if (approval !== (document.body.dataset.approval || "")) {
       window.location.reload();
       return;
+    }
+    if (groupID) {
+      const current = (snap.groups || []).find((group) => group.id === groupID);
+      if (current && groupStructureChanged(current)) {
+        if (isTyping()) {
+          pendingReload = true;
+          return;
+        }
+        window.location.reload();
+        return;
+      }
     }
     for (const group of snap.groups || []) {
       for (const element of selectors("data-connected", group.id)) {

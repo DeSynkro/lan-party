@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="/static/app.css">
 <script src="/static/app.js" defer></script>
 </head>
-<body{{if .Authenticated}} data-live-root data-approval="{{if .Approval}}{{.Approval.ID}}{{end}}"{{end}}>
+<body{{if .Authenticated}} data-live-root data-approval="{{if .Approval}}{{.Approval.ID}}{{end}}"{{if .GroupID}} data-group-id="{{.GroupID}}" data-members="{{.MemberSignature}}" data-invites="{{.InviteSignature}}"{{end}}{{end}}>
 <a class="skip" href="#main">Skip to content</a>
 {{if .Authenticated}}
 <header class="topbar">
