@@ -165,24 +165,30 @@ CI uses `dev-<sha>` for branches.
 
 ### Tagging a release
 
-1. Make sure `main` is clean and the tests pass.
-2. Add or update `docs/releases/<tag>.md`. CI uses it as the release body.
-3. Create an annotated tag:
+Use the release helper. It requires a clean `main`, a matching release-notes
+file, and green `make test` / `make vet`:
 
-   ```sh
-   git tag -a v1.1.0 -m "LAN Party 1.1.0"
-   ```
+```sh
+./build/tag-release.sh --check-only 1.2.0   # validate without tagging
+./build/tag-release.sh 1.2.0                # create the local annotated tag
+./build/tag-release.sh --push 1.2.0         # create, push main and push the tag
+```
 
-4. Push `main` first, then the tag:
+The helper creates `v1.2.0` from `docs/releases/v1.2.0.md`, then either prints
+the push commands or, with `--push`, pushes to the `github` remote (or `origin`
+when `github` is not configured). Set `LANPARTY_RELEASE_REMOTE` to override it.
 
-   ```sh
-   git push github main
-   git push github v1.1.0
-   ```
+CI builds the AppImage, Windows zip and relay zips, writes `SHA256SUMS`, and
+creates a **draft** release. Open the draft on GitHub, check the notes and all
+assets, then publish it.
 
-5. CI builds the AppImage and Windows zip, writes `SHA256SUMS`, and creates a
-   **draft** release.
-6. Open the draft on GitHub, check the notes and all assets, then publish it.
+Manual equivalent:
+
+```sh
+git tag -a v1.2.0 -m "LAN Party 1.2.0"
+git push github main
+git push github v1.2.0
+```
 
 Never move or delete an existing release tag. If a build is wrong, fix it and
 publish a new patch version instead.

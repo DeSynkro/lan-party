@@ -278,7 +278,7 @@ the release's `SHA256SUMS`.
 Windows Defender can occasionally false-positive an unsigned new build. Do not
 disable Defender. Submit the zip through Microsoft's
 [false-positive form](https://www.microsoft.com/en-us/wdsi/filesubmission) and
-send the log. Code signing is planned after 1.1.
+send the log. Code signing is still planned.
 
 ### A friend cannot reach the host
 

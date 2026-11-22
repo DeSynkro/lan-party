@@ -255,10 +255,12 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
-      - name: Check relayctl scripts
+      - name: Check relay scripts
         run: |
           bash -n relay/docker/relayctl
           bash -n relay/native/relayctl
+          bash -n relay/native/run.sh
+          bash -n build/tag-release.sh
       - name: Build relay zips
         run: |
           set -euo pipefail
@@ -284,6 +286,13 @@ jobs:
           "${pkg}/lan-party-relay" fingerprint --config "${pkg}/data/relay.json"
           "${pkg}/lan-party-relay" show-profile --dir "${pkg}/data" | grep -q '"fingerprint"'
           test "$(stat -c %a "${pkg}/data/relay.key")" = "600"
+
+          console_dir="${pkg}/console-data"
+          console_port=$((20000 + RANDOM % 20000))
+          printf '7\n' | LANPARTY_RELAY_PASSWORD=ci LANPARTY_RELAY_BIN="${pkg}/lan-party-relay" \
+            "${pkg}/native/run.sh" --dir "${console_dir}" --host 127.0.0.1 --port "${console_port}"
+          test -f "${console_dir}/relay-profile.json"
+          test "$(stat -c %a "${console_dir}/relay-profile.json")" = "600"
       - name: Build release image
         run: |
           set -euo pipefail

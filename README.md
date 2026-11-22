@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-blue.svg" alt="License: GPLv3"></a>
-  <a href="https://github.com/DeSynkro/lan-party/releases"><img src="https://img.shields.io/badge/version-1.1.0-orange.svg" alt="Version 1.1.0"></a>
+  <a href="https://github.com/DeSynkro/lan-party/releases"><img src="https://img.shields.io/badge/version-1.2.0-orange.svg" alt="Version 1.2.0"></a>
   <a href="https://ko-fi.com/desynkro"><img src="https://img.shields.io/badge/Ko--fi-support%20me-ff5e5b?logo=kofi&amp;logoColor=white" alt="Support me on Ko-fi"></a>
 </p>
 
@@ -99,8 +99,8 @@ Download the artifact for your platform and `SHA256SUMS` from [Releases](https:/
 2. Make it executable and run it:
 
    ```sh
-   chmod +x lan-party_1.1.0_linux_amd64.AppImage
-   ./lan-party_1.1.0_linux_amd64.AppImage
+   chmod +x lan-party_1.2.0_linux_amd64.AppImage
+   ./lan-party_1.2.0_linux_amd64.AppImage
    ```
 
 The AppImage uses the system GTK4 runtime and needs FUSE. On Ubuntu 24.04+ install `libfuse2t64`. On Arch install `fuse2`. Without FUSE, run it with `--appimage-extract-and-run`.
@@ -109,11 +109,11 @@ The app keeps its data in `~/.config/lan-party` and `~/.local/share/lan-party`. 
 
 ### Windows portable zip
 
-1. Download `lan-party_1.1.0_windows_amd64.zip` and `SHA256SUMS`.
+1. Download `lan-party_1.2.0_windows_amd64.zip` and `SHA256SUMS`.
 2. Verify the zip in PowerShell. Compare the hash to the Windows zip line in `SHA256SUMS`:
 
    ```powershell
-   Get-FileHash .\lan-party_1.1.0_windows_amd64.zip -Algorithm SHA256
+   Get-FileHash .\lan-party_1.2.0_windows_amd64.zip -Algorithm SHA256
    ```
 
 3. Extract the zip and keep the folder together. Run `lan-party.cmd`.
@@ -122,7 +122,7 @@ Windows may show a SmartScreen warning because this build is not code-signed. Ch
 
 Allow LAN Party on **private networks** when Windows Firewall asks. The app keeps settings in `%AppData%\lan-party`, and groups, keys and the log in `%LocalAppData%\lan-party`. To update, replace the folder. To uninstall, delete the folder and turn off **Start on login** in Settings first.
 
-There is no Windows installer in 1.1. The console debug build is a separate manual CI artifact, not part of the release zip.
+There is no Windows installer in 1.2. The console debug build is a separate manual CI artifact, not part of the release zip.
 
 ## Build and run from source
 
@@ -220,9 +220,9 @@ If it reports a missing GTK library, install GTK4 (for example `libgtk-4-1` on D
 
 ### Windows shows a SmartScreen or Defender warning
 
-The 1.1 Windows build is not code-signed. SmartScreen may ask you to confirm the app. Use **More info** and **Run anyway** only if the SHA-256 matches the release's `SHA256SUMS`.
+The 1.2 Windows build is not code-signed. SmartScreen may ask you to confirm the app. Use **More info** and **Run anyway** only if the SHA-256 matches the release's `SHA256SUMS`.
 
-Windows Defender can occasionally false-positive an unsigned new build. Do not disable Defender. Submit the zip through Microsoft's [false-positive form](https://www.microsoft.com/en-us/wdsi/filesubmission), and send the log so the cause can be checked. Code signing is planned after 1.1.
+Windows Defender can occasionally false-positive an unsigned new build. Do not disable Defender. Submit the zip through Microsoft's [false-positive form](https://www.microsoft.com/en-us/wdsi/filesubmission), and send the log so the cause can be checked. Code signing is still planned.
 
 ### Sending a log
 
@@ -273,7 +273,7 @@ Turn **Start on login** off and on again so the autostart entry points at the ne
   <a href="docs/roadmap.svg"><img src="docs/roadmap.svg" alt="LAN Party roadmap: 1.0 Linux, 1.1 Windows and group overrides, 1.2 relay and packaging, 2.0 beyond" width="900"></a>
 </p>
 
-The short version: **1.0** is the Linux release. **1.1** adds the Windows portable build, per-group connection overrides, one-hour invites, automatic reconnect and service editing. **1.2** adds the self-hosted relay. **2.0** is the long shelf for Flatpak, auto-update and the next big idea.
+The short version: **1.0** is the Linux release. **1.1** adds the Windows portable build, per-group connection overrides, one-hour invites, automatic reconnect and service editing. **1.2** adds the self-hosted relay, relay reconnect tokens, inactive-friend cleanup and a no-root native relay console. **2.0** is the long shelf for Flatpak, auto-update and the next big idea.
 
 The full notes live in [features-to-be-added.md](features-to-be-added.md). Versions and scope are a direction, not a promise.
 

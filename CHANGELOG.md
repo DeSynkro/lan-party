@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.2.0 — 2026-11-22
+
+- Optional self-hosted relay for hosts behind CGNAT, a VPN, or a network where a
+  UDP port cannot be forwarded. Direct mode remains the default.
+- The relay is an opaque IPv4/IPv6 UDP forwarder. Host/friend QUIC/TLS and the
+  host pin stay end to end; the relay never reads game traffic.
+- Relay ID pin, host-only password, short-lived first-join tokens and hashed
+  single-use tokens.
+- Per-device relay reconnect tokens, issued after the first approved join and
+  stored owner-only. Friends reconnect through the relay without a new invite
+  after network drops, host session restarts and relay restarts.
+- Host relay recovery uses a 5s/10s/30s retry schedule for about 16 minutes.
+- Relay data-plane idling: UDP is closed while no host session exists; only the
+  TLS control port remains.
+- Relay inactive-friend cleanup for relay groups, with a configurable window,
+  a default of 5 days on new installs, and a blank/never option. Live friends
+  are never removed.
+- Member reconnect reset and revocation.
+- Docker Compose and native Linux relay packaging, including a hardened systemd
+  unit and a no-root console runner. The console runner keeps its data in one
+  user-owned directory and stops with the terminal.
+- `set-public` relay command for changing the advertised host/port without
+  rotating the identity.
+- Linux and Windows app builds updated with relay settings, group Override
+  Settings, friend reconnect status, inactivity deadlines and improved error
+  wrapping.
+
+See [docs/releases/v1.2.0.md](docs/releases/v1.2.0.md) for the release notes.
+
 ## 1.1.0 — 2026-11-20
 
 - Windows 10/11 x86-64 portable build with a GUI executable, bundled GTK4
