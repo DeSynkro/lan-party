@@ -77,12 +77,32 @@ func TestCheckOrigin(t *testing.T) {
 	}
 }
 
-func TestCheckOriginRejectsMissingBrowserOrigin(t *testing.T) {
+func TestCheckOriginBrowserRules(t *testing.T) {
 	r := httptest.NewRequest("POST", "http://lan.local/settings", nil)
 	r.Host = "lan.local"
+
+	// Same-origin form posts without an Origin are what Firefox/LibreWolf send
+	// when the page sets Referrer-Policy: no-referrer.
 	r.Header.Set("Sec-Fetch-Site", "same-origin")
+	if err := CheckOrigin(r, ""); err != nil {
+		t.Fatalf("same-origin without Origin: %v", err)
+	}
+	r.Header.Set("Origin", "null")
+	if err := CheckOrigin(r, ""); err != nil {
+		t.Fatalf("same-origin with null Origin: %v", err)
+	}
+	r.Header.Set("Sec-Fetch-Site", "none")
+	if err := CheckOrigin(r, ""); err != nil {
+		t.Fatalf("user navigation with null Origin: %v", err)
+	}
+
+	r.Header.Set("Sec-Fetch-Site", "cross-site")
 	if err := CheckOrigin(r, ""); err == nil {
-		t.Fatal("browser post without Origin accepted")
+		t.Fatal("cross-site null Origin accepted")
+	}
+	r.Header.Set("Origin", "http://evil.example")
+	if err := CheckOrigin(r, ""); err == nil {
+		t.Fatal("foreign origin accepted")
 	}
 }
 

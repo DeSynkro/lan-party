@@ -70,6 +70,50 @@ func TestLoginSuccessAndLogout(t *testing.T) {
 	}
 }
 
+func TestLoginWithoutOriginFromSameOriginBrowser(t *testing.T) {
+	srv := newTestServer(t)
+	body := url.Values{"password": {testPassword}}
+	req := httptest.NewRequest("POST", "http://lan.local/login", strings.NewReader(body.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Sec-Fetch-Site", "same-origin")
+	req.Host = "lan.local"
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusSeeOther || rr.Header().Get("Location") != "/" {
+		t.Fatalf("login: %d %q", rr.Code, rr.Header().Get("Location"))
+	}
+}
+
+func TestLoginNullOriginFromSameOriginBrowser(t *testing.T) {
+	srv := newTestServer(t)
+	body := url.Values{"password": {testPassword}}
+	req := httptest.NewRequest("POST", "http://lan.local/login", strings.NewReader(body.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Origin", "null")
+	req.Header.Set("Sec-Fetch-Site", "same-origin")
+	req.Host = "lan.local"
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Fatalf("login: %d", rr.Code)
+	}
+}
+
+func TestLoginCrossSiteNullOriginRejected(t *testing.T) {
+	srv := newTestServer(t)
+	body := url.Values{"password": {testPassword}}
+	req := httptest.NewRequest("POST", "http://lan.local/login", strings.NewReader(body.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Origin", "null")
+	req.Header.Set("Sec-Fetch-Site", "cross-site")
+	req.Host = "lan.local"
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status = %d", rr.Code)
+	}
+}
+
 func TestLoginFailureIsGeneric(t *testing.T) {
 	srv := newTestServer(t)
 	rr := httptest.NewRecorder()

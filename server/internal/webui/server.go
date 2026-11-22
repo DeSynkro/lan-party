@@ -173,6 +173,15 @@ func (s *Server) handleNotFound(w http.ResponseWriter, r *http.Request) {
 	s.renderError(w, r, http.StatusNotFound, "That page does not exist.")
 }
 
+// logOriginRejection records the headers behind a failed Origin check so a
+// proxy or browser quirk can be diagnosed from the log.
+func (s *Server) logOriginRejection(r *http.Request) {
+	log.Printf("web: rejected origin origin=%q host=%q sec-fetch-site=%q",
+		sanitizeLog(r.Header.Get("Origin")),
+		sanitizeLog(r.Host),
+		sanitizeLog(r.Header.Get("Sec-Fetch-Site")))
+}
+
 func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, name string, data any) {
 	tpl, ok := s.tpl[name]
 	if !ok {

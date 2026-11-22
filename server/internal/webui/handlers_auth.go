@@ -16,6 +16,7 @@ func (s *Server) authenticated(next func(http.ResponseWriter, *http.Request, *Se
 		session := SessionFrom(r)
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			if err := CheckOrigin(r, ""); err != nil {
+				s.logOriginRejection(r)
 				s.renderError(w, r, http.StatusForbidden, "That request did not come from this site.")
 				return
 			}
@@ -48,6 +49,7 @@ func (s *Server) handleLoginGet(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleLoginPost(w http.ResponseWriter, r *http.Request) {
 	if err := CheckOrigin(r, ""); err != nil {
+		s.logOriginRejection(r)
 		s.renderError(w, r, http.StatusForbidden, "That request did not come from this site.")
 		return
 	}

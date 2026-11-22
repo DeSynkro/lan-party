@@ -58,16 +58,20 @@ func RequireAuth(store *SessionStore, next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// CheckOrigin verifies that a POST came from this site. Browsers always send
-// Origin on form posts; a missing Origin is allowed only for non-browser
-// clients, which still need a CSRF token.
+// CheckOrigin verifies that a POST came from this site. A browser that sets
+// Referrer-Policy: no-referrer (as this app does) omits Origin or sends "null"
+// on same-origin form posts, so those are accepted when Sec-Fetch-Site says the
+// request is same-origin. Cross-site requests and foreign Origins are rejected.
 func CheckOrigin(r *http.Request, allowedOrigin string) error {
 	origin := strings.TrimSpace(r.Header.Get("Origin"))
-	if origin == "" {
-		if r.Header.Get("Sec-Fetch-Site") != "" {
-			return errors.New("missing origin")
+	site := r.Header.Get("Sec-Fetch-Site")
+	if origin == "" || strings.EqualFold(origin, "null") {
+		switch site {
+		case "", "same-origin", "none":
+			return nil
+		default:
+			return errors.New("origin does not match host")
 		}
-		return nil
 	}
 	if allowedOrigin != "" && origin == allowedOrigin {
 		return nil

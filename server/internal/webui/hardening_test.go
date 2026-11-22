@@ -77,9 +77,9 @@ func TestForeignOriginRejected(t *testing.T) {
 	}
 }
 
-func TestBrowserPostWithoutOriginRejected(t *testing.T) {
+func TestSameOriginPostWithoutOriginIsAllowed(t *testing.T) {
 	srv := newTestServer(t)
-	values := url.Values{"publicAddress": {"evil.example"}}
+	values := url.Values{"publicAddress": {"192.168.1.20"}, "csrf": {srv.session.CSRF}}
 	req := httptest.NewRequest("POST", "http://lan.local/settings", strings.NewReader(values.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Sec-Fetch-Site", "same-origin")
@@ -87,8 +87,29 @@ func TestBrowserPostWithoutOriginRejected(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: srv.session.ID})
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d", rr.Code)
+	}
+	if srv.fake.settings.PublicAddress != "192.168.1.20" {
+		t.Fatal("same-origin post was not saved")
+	}
+}
+
+func TestCrossSitePostWithoutOriginRejected(t *testing.T) {
+	srv := newTestServer(t)
+	values := url.Values{"publicAddress": {"evil.example"}, "csrf": {srv.session.CSRF}}
+	req := httptest.NewRequest("POST", "http://lan.local/settings", strings.NewReader(values.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Sec-Fetch-Site", "cross-site")
+	req.Host = "lan.local"
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: srv.session.ID})
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
 	if rr.Code != http.StatusForbidden {
 		t.Fatalf("status = %d", rr.Code)
+	}
+	if srv.fake.settings.PublicAddress == "evil.example" {
+		t.Fatal("cross-site post changed settings")
 	}
 }
 
