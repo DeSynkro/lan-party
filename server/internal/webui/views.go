@@ -109,13 +109,14 @@ type GroupPageView struct {
 // SettingsView is the settings page.
 type SettingsView struct {
 	BaseView
-	PublicAddress     string
-	AppPort           int
-	ApproveNewDevices bool
-	ForgetDays        int
-	DataDir           string
-	LogPath           string
-	Version           string
+	PublicAddress      string
+	AppPort            int
+	ApproveNewDevices  bool
+	ForgetDays         int
+	DataDir            string
+	LogPath            string
+	Version            string
+	AddressSuggestions []string
 }
 
 // NewGroupView builds a view that only carries host-visible fields.

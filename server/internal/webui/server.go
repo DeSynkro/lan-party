@@ -92,6 +92,10 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /groups/{id}/members/{mid}", s.authenticated(s.handleMemberPage))
 	s.mux.HandleFunc("GET /groups/{id}/members/{mid}/remove", s.authenticated(s.handleMemberRemoveForm))
 	s.mux.HandleFunc("POST /groups/{id}/members/{mid}/remove", s.authenticated(s.handleMemberRemove))
+	s.mux.HandleFunc("GET /settings", s.authenticated(s.handleSettings))
+	s.mux.HandleFunc("POST /settings", s.authenticated(s.handleSettingsSave))
+	s.mux.HandleFunc("GET /settings/password", s.authenticated(s.handlePasswordForm))
+	s.mux.HandleFunc("POST /settings/password", s.authenticated(s.handlePasswordChange))
 	s.mux.HandleFunc("GET /events", s.authenticated(s.handleEvents))
 	s.mux.HandleFunc("/", s.handleNotFound)
 }

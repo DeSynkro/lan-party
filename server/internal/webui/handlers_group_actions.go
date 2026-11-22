@@ -19,6 +19,7 @@ type confirmView struct {
 	Action  string
 	Confirm string
 	Cancel  string
+	Hidden  map[string]string
 }
 
 func (s *Server) handleGroupNew(w http.ResponseWriter, r *http.Request, session *Session) {

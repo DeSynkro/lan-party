@@ -1,0 +1,57 @@
+{{define "content"}}
+<p class="eyebrow">Host</p>
+<h1>Settings</h1>
+
+<form method="post" action="/settings" class="stack">
+  <section class="card">
+    <h2>Network</h2>
+    <label for="publicAddress">Public address
+      <input id="publicAddress" name="publicAddress" value="{{.PublicAddress}}" list="lan-addresses" placeholder="play.example.com or 203.0.113.10">
+      <span class="hint">The address friends dial. It can be a hostname or IP, and it is not necessarily this web UI's address.</span>
+    </label>
+    <datalist id="lan-addresses">
+      {{range .AddressSuggestions}}<option value="{{.}}">{{end}}
+    </datalist>
+    <div class="stat">
+      <span>Game port (UDP)</span>
+      <b class="mono">{{.AppPort}}</b>
+    </div>
+    <p class="hint">The UDP port is managed by this deployment. Change it in <code>docker-compose.yml</code> or the runner settings and restart.</p>
+  </section>
+
+  <section class="card">
+    <h2>Friends</h2>
+    <label class="check">
+      <input type="checkbox" name="approveNewDevices"{{if .ApproveNewDevices}} checked{{end}}>
+      Approve new devices automatically
+    </label>
+    <p class="hint">Invites are one-time and expire after an hour. Turn this off to approve every new device by hand.</p>
+    <label for="forgetDays">Forget inactive friends after
+      <input id="forgetDays" name="forgetDays" type="number" min="0" max="365" value="{{.ForgetDays}}" inputmode="numeric">
+      <span class="hint">Days without a connection. Leave blank or 0 to keep everyone.</span>
+    </label>
+  </section>
+
+  <div class="actions">
+    <button type="submit" class="primary">Save settings</button>
+  </div>
+</form>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Admin password</h2>
+    <a class="button" href="/settings/password">Change password</a>
+  </div>
+  <p class="muted">Changing the password signs out every browser, including this one.</p>
+</section>
+
+<section class="card">
+  <h2>About</h2>
+  <div class="stack small">
+    <div class="split"><span class="muted">Version</span><span class="mono">{{.Version}}</span></div>
+    <div class="split"><span class="muted">Data directory</span><span class="mono">{{.DataDir}}</span></div>
+    <div class="split"><span class="muted">Log file</span><span class="mono">{{.LogPath}}</span></div>
+  </div>
+  <p class="hint">Host keys stay in the data directory as owner-only files. Back up that directory, and encrypt the backup.</p>
+</section>
+{{end}}
