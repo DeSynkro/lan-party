@@ -8,12 +8,21 @@ import (
 )
 
 func (s *Server) handleGroupPage(w http.ResponseWriter, r *http.Request, session *Session) {
-	id := r.PathValue("id")
-	g, ok := s.app.Group(id)
-	if !ok || !g.IsHost() {
+	g, ok := s.requireHostGroup(r)
+	if !ok {
 		s.renderError(w, r, http.StatusNotFound, "That group does not exist.")
 		return
 	}
+	s.render(w, r, http.StatusOK, "group.html", s.buildGroupPage(r, g))
+}
+
+func (s *Server) renderGroupWithError(w http.ResponseWriter, r *http.Request, g group.Group, message string, status int) {
+	view := s.buildGroupPage(r, g)
+	view.Error = message
+	s.render(w, r, status, "group.html", view)
+}
+
+func (s *Server) buildGroupPage(r *http.Request, g group.Group) GroupPageView {
 	settings := s.app.Settings()
 	endpoint, _ := s.app.GroupEndpoint(g.ID)
 	appPort, err := s.app.GroupAppPort(g.ID)
@@ -46,8 +55,7 @@ func (s *Server) handleGroupPage(w http.ResponseWriter, r *http.Request, session
 	for _, invite := range g.Invites {
 		view.Invites = append(view.Invites, NewInviteView(invite, s.app.InviteCode(invite.ID), now))
 	}
-
-	s.render(w, r, http.StatusOK, "group.html", view)
+	return view
 }
 
 func (s *Server) requireHostGroup(r *http.Request) (group.Group, bool) {

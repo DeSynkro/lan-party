@@ -1,0 +1,19 @@
+{{define "content"}}
+<section class="card narrow">
+  <p class="eyebrow">New group</p>
+  <h1>Create a group</h1>
+  <p class="muted">A group holds one game night: its services, invites and people.</p>
+  <form method="post" action="/groups" class="stack">
+    <label for="name">Group name
+      <input id="name" name="name" value="{{.Name}}" maxlength="60" required autofocus>
+    </label>
+    <label for="hostName">Your name on this host
+      <input id="hostName" name="hostName" value="{{.HostName}}" maxlength="40" required>
+    </label>
+    <div class="actions">
+      <button type="submit" class="primary">Create group</button>
+      <a class="button" href="/">Cancel</a>
+    </div>
+  </form>
+</section>
+{{end}}
