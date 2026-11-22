@@ -548,7 +548,9 @@ func (a *App) reconnectDecision(groupID, memberID string, services []group.Servi
 	}
 	a.mu.Lock()
 	_, haveHash, err := a.relayReconnectHashLocked(groupID, memberID)
+	forgetDays := a.settings.ForgetFriendsDays
 	a.mu.Unlock()
+	decision.ForgetAfterDays = forgetDays
 	if err != nil {
 		log.Printf("session: reconnect token lookup: %v", err)
 		return decision
@@ -1791,6 +1793,12 @@ func (a *App) StopSession() error {
 	if host != nil {
 		a.markLiveMembersSeenLocked(host, a.liveGroupID)
 	}
+	if friend != nil {
+		if idx := a.groupIndexLocked(a.liveGroupID); idx >= 0 {
+			a.groups[idx].LastConnected = time.Now().UTC()
+			_ = a.saveLocked()
+		}
+	}
 	a.host = nil
 	a.friend = nil
 	a.liveGroupID = ""
@@ -1900,6 +1908,8 @@ func (a *App) JoinInvite(ctx context.Context, code, deviceName string) (group.Gr
 		friendServices(friend.Services()),
 	)
 	g = applyFriendInvite(g, inv, friend.MemberID, friendServices(friend.Services()))
+	g.ForgetAfterDays = friend.ForgetAfterDays()
+	g.LastConnected = time.Now().UTC()
 
 	a.mu.Lock()
 	if a.sessionEpoch != epoch {
@@ -2114,6 +2124,8 @@ func (a *App) reconnect(ctx context.Context, groupID string) error {
 	}
 	a.groups[idx].SelfID = friend.MemberID
 	a.groups[idx].Services = friendServices(friend.Services())
+	a.groups[idx].ForgetAfterDays = friend.ForgetAfterDays()
+	a.groups[idx].LastConnected = time.Now().UTC()
 	if err := a.saveLocked(); err != nil {
 		a.mu.Unlock()
 		_ = friend.Close()

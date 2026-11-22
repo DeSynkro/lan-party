@@ -3,6 +3,7 @@ package gtkui
 import (
 	"context"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -395,7 +396,7 @@ func (u *probeUI) friendSessionCard(g group.Group, showError func(error), state 
 	detail := "Start the session on the host, then reconnect."
 	if g.UseRelay {
 		if hasReconnect {
-			detail = "Reconnecting through the relay."
+			detail = "Host offline. Reconnect when the host is back."
 		} else {
 			detail = "Ask the host for a new invite."
 		}
@@ -413,7 +414,42 @@ func (u *probeUI) friendSessionCard(g group.Group, showError func(error), state 
 	detailLabel := cardText(detail, "desc")
 	state.friendDetail = detailLabel
 	card.Append(detailLabel)
+	if !live {
+		if note := friendForgetText(g); note != "" {
+			card.Append(gapBox(6))
+			card.Append(cardText(note, "desc"))
+		}
+	}
 	return card
+}
+
+func friendOfflineServiceNote(relay, hasReconnect, reconnecting bool) string {
+	if !relay {
+		return "Host offline. Reconnect when the host is back."
+	}
+	if !hasReconnect {
+		return "Host offline. Ask the host for a new invite."
+	}
+	if reconnecting {
+		return "Host offline. Reconnecting through the relay."
+	}
+	return "Host offline. Reconnect when the host is back."
+}
+
+func friendForgetText(g group.Group) string {
+	if g.ForgetAfterDays <= 0 || g.LastConnected.IsZero() {
+		return ""
+	}
+	deadline := g.LastConnected.Add(time.Duration(g.ForgetAfterDays) * 24 * time.Hour)
+	remaining := time.Until(deadline)
+	if remaining <= 0 {
+		return "This group's reconnect window has ended. Ask the host for a new invite."
+	}
+	days := int(math.Ceil(remaining.Hours() / 24))
+	if days <= 1 {
+		return "This group will be forgotten in less than a day. Reconnect before then to keep it."
+	}
+	return fmt.Sprintf("This group will be forgotten in %d days. Reconnect before then to keep it.", days)
 }
 
 func reconnectWaitText(status apppkg.ReconnectStatus) string {
@@ -450,7 +486,9 @@ func (u *probeUI) friendServices(g group.Group) *gtk.Box {
 			if i > 0 {
 				box.Append(gapBox(8))
 			}
-			box.Append(u.offlineFriendServiceCard(s, g.UseRelay))
+			hasReconnect := g.UseRelay && u.state.FriendRelayTokenSet(g.ID)
+			reconnecting := u.state.ReconnectStatus(g.ID).Active
+			box.Append(u.offlineFriendServiceCard(s, friendOfflineServiceNote(g.UseRelay, hasReconnect, reconnecting)))
 		}
 		return box
 	}
@@ -501,7 +539,7 @@ func (u *probeUI) friendServices(g group.Group) *gtk.Box {
 	return box
 }
 
-func (u *probeUI) offlineFriendServiceCard(s group.Service, relay bool) *gtk.Box {
+func (u *probeUI) offlineFriendServiceCard(s group.Service, note string) *gtk.Box {
 	card := gtk.NewBox(gtk.OrientationVertical, 0)
 	card.AddCSSClass("card")
 	top := gtk.NewBox(gtk.OrientationHorizontal, 8)
@@ -512,11 +550,7 @@ func (u *probeUI) offlineFriendServiceCard(s group.Service, relay bool) *gtk.Box
 	card.Append(top)
 	card.Append(gapBox(8))
 	card.Append(cardText("Port "+group.FormatPorts(s.Ports), "desc"))
-	if relay {
-		card.Append(cardText("Host offline. Ask the host for a new invite.", "desc"))
-	} else {
-		card.Append(cardText("Host offline. Reconnect when the host is back.", "desc"))
-	}
+	card.Append(cardText(note, "desc"))
 	if s.Hint != "" {
 		card.Append(gapBox(6))
 		card.Append(cardText(s.Hint, "desc"))
@@ -666,7 +700,8 @@ func (u *probeUI) groupSignature(g group.Group) string {
 
 	presence := u.state.FriendPresence()
 	live := u.state.LiveGroupID() == g.ID && presence.Live
-	fmt.Fprintf(&b, "|live=%t|note=%s|reconnect=%t", live, u.state.FriendNote(), u.state.FriendRelayTokenSet(g.ID))
+	status := u.state.ReconnectStatus(g.ID)
+	fmt.Fprintf(&b, "|live=%t|note=%s|reconnect=%t|retrying=%t|forget=%d|connected=%s", live, u.state.FriendNote(), u.state.FriendRelayTokenSet(g.ID), status.Active, g.ForgetAfterDays, g.LastConnected)
 	if live {
 		for _, bound := range u.state.FriendBounds() {
 			fmt.Fprintf(&b, "|bound=%s,%s,%s,%d,%d,%s,%s,%s", bound.ServiceID, bound.Service, bound.Proto, bound.PublishedPort, bound.Port, bound.Address, bound.Error, bound.Hint)
@@ -796,7 +831,7 @@ func (state *groupLive) refresh(u *probeUI, g group.Group) {
 		case reconnect.Stopped:
 			state.friendDetail.SetText(reconnectStoppedText(reconnect))
 		case g.UseRelay && hasReconnect:
-			state.friendDetail.SetText("Reconnecting through the relay.")
+			state.friendDetail.SetText("Host offline. Reconnect when the host is back.")
 		case g.UseRelay:
 			state.friendDetail.SetText("Ask the host for a new invite.")
 		default:

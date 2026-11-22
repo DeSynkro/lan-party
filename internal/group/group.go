@@ -31,21 +31,23 @@ const (
 // Group is one LAN party. A host group owns services and invites; a friend
 // group remembers the host, the pinned key and the services it was granted.
 type Group struct {
-	ID            string    `json:"id"`
-	Name          string    `json:"name"`
-	Role          Role      `json:"role"`
-	HostName      string    `json:"hostName"`
-	PublicAddress string    `json:"publicAddress,omitempty"`
-	AppPort       int       `json:"appPort,omitempty"`
-	Endpoint      string    `json:"endpoint,omitempty"`
-	HostPin       string    `json:"hostPin,omitempty"`
-	HostGroupID   string    `json:"hostGroupId,omitempty"`
-	SelfID        string    `json:"selfId,omitempty"`
-	SelfName      string    `json:"selfName,omitempty"`
-	CreatedAt     time.Time `json:"createdAt"`
-	Services      []Service `json:"services,omitempty"`
-	Members       []Member  `json:"members,omitempty"`
-	Invites       []Invite  `json:"invites,omitempty"`
+	ID              string    `json:"id"`
+	Name            string    `json:"name"`
+	Role            Role      `json:"role"`
+	HostName        string    `json:"hostName"`
+	PublicAddress   string    `json:"publicAddress,omitempty"`
+	AppPort         int       `json:"appPort,omitempty"`
+	Endpoint        string    `json:"endpoint,omitempty"`
+	HostPin         string    `json:"hostPin,omitempty"`
+	HostGroupID     string    `json:"hostGroupId,omitempty"`
+	SelfID          string    `json:"selfId,omitempty"`
+	SelfName        string    `json:"selfName,omitempty"`
+	ForgetAfterDays int       `json:"forgetAfterDays,omitempty"`
+	LastConnected   time.Time `json:"lastConnected,omitempty"`
+	CreatedAt       time.Time `json:"createdAt"`
+	Services        []Service `json:"services,omitempty"`
+	Members         []Member  `json:"members,omitempty"`
+	Invites         []Invite  `json:"invites,omitempty"`
 
 	// Connection choices. OverrideSettings makes the group use its own values
 	// instead of the saved network defaults. RelayCustom selects the group's

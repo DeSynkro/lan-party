@@ -148,6 +148,10 @@ func (f *Friend) Done() <-chan struct{} { return f.ctx.Done() }
 // RelayToken is the host-issued reconnect token from the welcome, if any.
 func (f *Friend) RelayToken() string { return f.conn.RelayToken }
 
+// ForgetAfterDays is the host's inactivity window from the welcome. Zero means
+// the host keeps members forever.
+func (f *Friend) ForgetAfterDays() int { return f.conn.ForgetAfterDays }
+
 // Revoked reports whether the host removed this device.
 func (f *Friend) Revoked() bool {
 	f.mu.Lock()

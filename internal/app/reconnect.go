@@ -245,6 +245,10 @@ func (a *App) watchFriend(friend *session.Friend, groupID string) {
 		a.mu.Unlock()
 		return
 	}
+	if idx := a.groupIndexLocked(groupID); idx >= 0 {
+		a.groups[idx].LastConnected = time.Now().UTC()
+		_ = a.saveLocked()
+	}
 	if friend.Revoked() || !a.settings.AutoReconnect {
 		a.mu.Unlock()
 		return

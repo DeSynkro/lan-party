@@ -3,8 +3,10 @@ package gtkui
 import (
 	"strings"
 	"testing"
+	"time"
 
 	apppkg "github.com/desynkro/lan-party/internal/app"
+	"github.com/desynkro/lan-party/internal/group"
 )
 
 func TestConnectionEndpointNote(t *testing.T) {
@@ -60,6 +62,39 @@ func TestLiveConnectionChange(t *testing.T) {
 	}
 	if !liveConnectionChange(direct, relay) {
 		t.Fatal("switching to the relay did not ask for a restart")
+	}
+}
+
+func TestFriendOfflineServiceNote(t *testing.T) {
+	if got := friendOfflineServiceNote(false, false, false); !strings.Contains(got, "Reconnect when the host is back") {
+		t.Fatalf("direct note = %q", got)
+	}
+	if got := friendOfflineServiceNote(true, false, false); !strings.Contains(got, "new invite") {
+		t.Fatalf("no-token note = %q", got)
+	}
+	if got := friendOfflineServiceNote(true, true, true); !strings.Contains(got, "Reconnecting through the relay") {
+		t.Fatalf("reconnecting note = %q", got)
+	}
+	if got := friendOfflineServiceNote(true, true, false); !strings.Contains(got, "Reconnect when the host is back") {
+		t.Fatalf("idle note = %q", got)
+	}
+}
+
+func TestFriendForgetText(t *testing.T) {
+	if got := friendForgetText(group.Group{}); got != "" {
+		t.Fatalf("note = %q", got)
+	}
+	g := group.Group{ForgetAfterDays: 5, LastConnected: time.Now().Add(-2 * 24 * time.Hour)}
+	if got := friendForgetText(g); !strings.Contains(got, "3 days") {
+		t.Fatalf("note = %q", got)
+	}
+	g.LastConnected = time.Now().Add(-6 * 24 * time.Hour)
+	if got := friendForgetText(g); !strings.Contains(got, "ended") {
+		t.Fatalf("expired note = %q", got)
+	}
+	g.LastConnected = time.Now().Add(-5*24*time.Hour + time.Hour)
+	if got := friendForgetText(g); !strings.Contains(got, "less than a day") {
+		t.Fatalf("last-day note = %q", got)
 	}
 }
 

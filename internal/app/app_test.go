@@ -1794,6 +1794,9 @@ func TestAppRelayHostAndFriend(t *testing.T) {
 	if !friendApp.FriendRelayTokenSet(joined.ID) {
 		t.Fatal("the friend did not receive a reconnect token")
 	}
+	if joined.ForgetAfterDays != 5 || joined.LastConnected.IsZero() {
+		t.Fatalf("friend inactivity details = days %d, last %v", joined.ForgetAfterDays, joined.LastConnected)
+	}
 	waitFor(t, 3*time.Second, func() bool {
 		return len(hostApp.HostPresence()) > 0
 	})

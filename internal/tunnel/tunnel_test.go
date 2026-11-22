@@ -495,7 +495,7 @@ func TestTunnelCarriesRelayReconnectToken(t *testing.T) {
 	sawHasToken := make(chan bool, 1)
 	srv, pin := startServer(t, authFunc(func(_ context.Context, req AuthRequest) (AuthDecision, error) {
 		sawHasToken <- req.HasRelayToken
-		return AuthDecision{Allow: true, MemberID: "friend", RelayToken: "reconnect-token"}, nil
+		return AuthDecision{Allow: true, MemberID: "friend", RelayToken: "reconnect-token", ForgetAfterDays: 5}, nil
 	}), 4)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -518,5 +518,8 @@ func TestTunnelCarriesRelayReconnectToken(t *testing.T) {
 	}
 	if c.RelayToken != "reconnect-token" {
 		t.Fatalf("relay token = %q", c.RelayToken)
+	}
+	if c.ForgetAfterDays != 5 {
+		t.Fatalf("forget days = %d", c.ForgetAfterDays)
 	}
 }

@@ -119,7 +119,9 @@ defined in the stylesheet.
   button. A relay group reconnects with its saved device key and reconnect
   token, using the same automatic retry schedule as direct mode. A group with
   no reconnect token yet shows `New invite`; the screen only asks for a new
-  invite when the token is missing or was reset.
+  invite when the token is missing or was reset. If the host has set an
+  inactivity window and the group is offline, the card shows how many days are
+  left before the host may forget the group.
 - Ready to play: one card per service. Each address is `127.0.0.1:<port>` with
   Copy. Multi-port services list each address. A local port that fell back from
   the published port says so. The host's hint is shown under the address.

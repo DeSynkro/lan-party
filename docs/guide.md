@@ -157,7 +157,10 @@ field blank to keep friends forever. Friends who are currently connected are
 never removed.
 
 A friend who is removed needs a new invite and host approval. The member details
-show when they last connected and when they will be forgotten.
+show when they last connected and when they will be forgotten. A relay friend
+who is offline also sees a line such as “This group will be forgotten in 3
+days. Reconnect before then to keep it.” The host sends the current window when
+the friend connects.
 
 ### Use a different address or port for one group
 

@@ -297,10 +297,11 @@ func (s *Server) handshake(qc *quic.Conn) (*Conn, error) {
 	}
 
 	if err := writeControl(enc, stream, ControlMessage{
-		Type:       MsgWelcome,
-		MemberID:   memberID,
-		Services:   decision.Services,
-		RelayToken: decision.RelayToken,
+		Type:            MsgWelcome,
+		MemberID:        memberID,
+		Services:        decision.Services,
+		RelayToken:      decision.RelayToken,
+		ForgetAfterDays: decision.ForgetAfterDays,
 	}); err != nil {
 		return nil, fmt.Errorf("send welcome: %w", err)
 	}

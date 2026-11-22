@@ -142,6 +142,7 @@ func Dial(ctx context.Context, cfg ClientConfig) (*Conn, error) {
 	c.MemberID = reply.MemberID
 	c.Services = reply.Services
 	c.RelayToken = reply.RelayToken
+	c.ForgetAfterDays = reply.ForgetAfterDays
 	c.start()
 	return c, nil
 }

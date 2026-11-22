@@ -37,17 +37,18 @@ type ServiceInfo struct {
 
 // ControlMessage is one JSON object on the control stream.
 type ControlMessage struct {
-	Type          string        `json:"type"`
-	Version       int           `json:"version,omitempty"`
-	GroupID       string        `json:"groupID,omitempty"`
-	MemberID      string        `json:"memberID,omitempty"`
-	PeerName      string        `json:"peerName,omitempty"`
-	DeviceName    string        `json:"deviceName,omitempty"`
-	Token         string        `json:"token,omitempty"`
-	HasRelayToken bool          `json:"hasRelayToken,omitempty"`
-	RelayToken    string        `json:"relayToken,omitempty"`
-	Reason        string        `json:"reason,omitempty"`
-	Services      []ServiceInfo `json:"services,omitempty"`
+	Type            string        `json:"type"`
+	Version         int           `json:"version,omitempty"`
+	GroupID         string        `json:"groupID,omitempty"`
+	MemberID        string        `json:"memberID,omitempty"`
+	PeerName        string        `json:"peerName,omitempty"`
+	DeviceName      string        `json:"deviceName,omitempty"`
+	Token           string        `json:"token,omitempty"`
+	HasRelayToken   bool          `json:"hasRelayToken,omitempty"`
+	RelayToken      string        `json:"relayToken,omitempty"`
+	ForgetAfterDays int           `json:"forgetAfterDays,omitempty"`
+	Reason          string        `json:"reason,omitempty"`
+	Services        []ServiceInfo `json:"services,omitempty"`
 }
 
 // AuthRequest is what the host policy layer gets to inspect before a
@@ -68,11 +69,12 @@ type AuthRequest struct {
 
 // AuthDecision is the host's answer.
 type AuthDecision struct {
-	Allow      bool
-	MemberID   string
-	Services   []ServiceInfo
-	RelayToken string
-	Reason     string
+	Allow           bool
+	MemberID        string
+	Services        []ServiceInfo
+	RelayToken      string
+	ForgetAfterDays int
+	Reason          string
 }
 
 // Authenticator decides whether a connection may proceed. It may block while
