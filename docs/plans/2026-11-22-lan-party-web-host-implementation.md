@@ -1,5 +1,9 @@
 # LAN Party 1.3 web host implementation plan
 
+Status: all tasks implemented on `feat/web-host`. See the ledger for rulings and
+the deferred Docker/friend-join checks. Task checkboxes below are historical and
+remain unticked.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a host-only web app that runs the existing LAN Party host engine headlessly on a homelab or VPS, with a server-rendered UI, strong defaults, Docker and native packaging, and no relay or join flow.

@@ -1,6 +1,7 @@
 # LAN Party 1.3 web host
 
-Status: design agreed. Implementation has not started.
+Status: implementation complete on branch `feat/web-host`; Docker image build
+and a real friend join remain to be verified outside this session.
 
 This document records the direction and the decisions for the 1.3 web host so a
 later session does not have to reconstruct them from chat. The task-by-task
