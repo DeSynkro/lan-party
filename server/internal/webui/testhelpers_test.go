@@ -249,6 +249,7 @@ func newTestServerWithGroups(t *testing.T, groups ...group.Group) *testServer {
 	if err != nil {
 		t.Fatal(err)
 	}
+	srv.loginDelay = 0
 	session, err := srv.sessions.Create()
 	if err != nil {
 		t.Fatal(err)

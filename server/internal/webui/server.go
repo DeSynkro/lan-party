@@ -28,14 +28,15 @@ var embedded embed.FS
 
 // Server serves the web UI.
 type Server struct {
-	app      App
-	cfg      Config
-	sessions *SessionStore
-	limiter  *LoginLimiter
-	creds    Credentials
-	tpl      map[string]*template.Template
-	mux      *http.ServeMux
-	now      func() time.Time
+	app        App
+	cfg        Config
+	sessions   *SessionStore
+	limiter    *LoginLimiter
+	creds      Credentials
+	tpl        map[string]*template.Template
+	mux        *http.ServeMux
+	now        func() time.Time
+	loginDelay time.Duration
 }
 
 // New builds the web UI. The data directory must already have credentials.
@@ -49,14 +50,15 @@ func New(a App, cfg Config) (*Server, error) {
 		return nil, err
 	}
 	s := &Server{
-		app:      a,
-		cfg:      cfg,
-		sessions: NewSessionStore(sessionIdle, sessionAbsolute),
-		limiter:  NewLoginLimiter(),
-		creds:    creds,
-		tpl:      tpl,
-		mux:      http.NewServeMux(),
-		now:      time.Now,
+		app:        a,
+		cfg:        cfg,
+		sessions:   NewSessionStore(sessionIdle, sessionAbsolute),
+		limiter:    NewLoginLimiter(),
+		creds:      creds,
+		tpl:        tpl,
+		mux:        http.NewServeMux(),
+		now:        time.Now,
+		loginDelay: 300 * time.Millisecond,
 	}
 	s.routes()
 	return s, nil
@@ -65,6 +67,10 @@ func New(a App, cfg Config) (*Server, error) {
 func (s *Server) routes() {
 	s.mux.HandleFunc("GET /healthz", s.handleHealth)
 	s.mux.Handle("GET /static/", s.staticHandler())
+	s.mux.HandleFunc("GET /login", s.handleLoginGet)
+	s.mux.HandleFunc("POST /login", s.handleLoginPost)
+	s.mux.HandleFunc("POST /logout", s.authenticated(s.handleLogout))
+	s.mux.HandleFunc("GET /{$}", s.authenticated(s.handleHome))
 	s.mux.HandleFunc("/", s.handleNotFound)
 }
 
@@ -134,6 +140,10 @@ func (s *Server) staticHandler() http.Handler {
 
 func (s *Server) handleNotFound(w http.ResponseWriter, r *http.Request) {
 	s.renderError(w, r, http.StatusNotFound, "That page does not exist.")
+}
+
+func (s *Server) handleHome(w http.ResponseWriter, r *http.Request, session *Session) {
+	s.render(w, r, http.StatusOK, "dashboard.html", DashboardView{BaseView: s.base(r, "Dashboard")})
 }
 
 func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, name string, data any) {

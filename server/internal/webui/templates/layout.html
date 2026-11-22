@@ -27,6 +27,16 @@
 </header>
 {{end}}
 <main id="main" class="page">
+{{if .Authenticated}}
+{{if .Approval}}
+<div class="banner warn" role="alert">
+  <strong>{{.Approval.PeerName}}</strong> on <strong>{{.Approval.DeviceName}}</strong> wants to join.
+  <div class="row">
+    <a class="button" href="/groups/{{.Approval.GroupID}}">Review the request</a>
+  </div>
+</div>
+{{end}}
+{{end}}
 {{if .Flash}}<p class="banner ok" role="status">{{.Flash}}</p>{{end}}
 {{if .Error}}<p class="banner danger" role="alert">{{.Error}}</p>{{end}}
 {{template "content" .}}

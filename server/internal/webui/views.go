@@ -17,6 +17,7 @@ type BaseView struct {
 	Authenticated bool
 	Flash         string
 	Error         string
+	Approval      *ApprovalView
 }
 
 type errorView struct {
