@@ -51,9 +51,20 @@ type App struct {
 	cleanupStop  chan struct{}
 	cleanupOnce  sync.Once
 	hostRecovery *hostRecoveryState
+
+	disableAutostart bool
+	disableRelay     bool
 }
 
 var errSessionStopped = errors.New("the session was stopped")
+
+// Options adapts the app for a headless server.
+type Options struct {
+	// DisableAutostart stops the app writing a desktop autostart entry.
+	DisableAutostart bool
+	// DisableRelay forces the direct connection path and hides relay state.
+	DisableRelay bool
+}
 
 // New opens the stores and uses owner-only key files under the data dir.
 func New(paths config.Paths) (*App, error) {
@@ -62,15 +73,25 @@ func New(paths config.Paths) (*App, error) {
 
 // NewWithStore is New with an injectable key store, used by the tests.
 func NewWithStore(paths config.Paths, kr secure.SecretStore) (*App, error) {
+	return NewWithOptions(paths, kr, Options{})
+}
+
+// NewWithOptions opens the stores with headless server options.
+func NewWithOptions(paths config.Paths, kr secure.SecretStore, opts Options) (*App, error) {
 	settings, err := config.LoadSettings(paths)
 	if err != nil {
 		return nil, err
 	}
-	_ = autostart.Set(filepath.Dir(paths.ConfigDir), settings.StartOnLogin)
+	if !opts.DisableAutostart {
+		_ = autostart.Set(filepath.Dir(paths.ConfigDir), settings.StartOnLogin)
+	}
 	store := group.OpenStore(filepath.Join(paths.DataDir, "groups.json"))
 	groups, err := store.Load()
 	if err != nil {
 		return nil, err
+	}
+	if opts.DisableRelay {
+		settings, groups = forceDirect(settings, groups)
 	}
 	// Relay invite tokens live only in the running relay session. A code from
 	// a previous run cannot be re-registered, so do not present it as open.
@@ -89,15 +110,17 @@ func NewWithStore(paths config.Paths, kr secure.SecretStore) (*App, error) {
 		groups[i].Invites = kept
 	}
 	a := &App{
-		paths:       paths,
-		settings:    settings,
-		store:       store,
-		groups:      groups,
-		keys:        secure.NewStore(kr),
-		secrets:     kr,
-		inviteCodes: map[string]string{},
-		limiter:     newAttemptLimiter(),
-		cleanupStop: make(chan struct{}),
+		paths:            paths,
+		settings:         settings,
+		store:            store,
+		groups:           groups,
+		keys:             secure.NewStore(kr),
+		secrets:          kr,
+		inviteCodes:      map[string]string{},
+		limiter:          newAttemptLimiter(),
+		cleanupStop:      make(chan struct{}),
+		disableAutostart: opts.DisableAutostart,
+		disableRelay:     opts.DisableRelay,
 	}
 	a.cleanupInactiveFriends(time.Now().UTC())
 	go a.cleanupLoop()
@@ -263,6 +286,12 @@ func (a *App) SaveSettings(s config.Settings) error {
 // saveSettingsLocked is SaveSettings for callers that take several changes
 // under one lock. Callers hold a.mu.
 func (a *App) saveSettingsLocked(s config.Settings) error {
+	if a.disableRelay {
+		s.UseRelay = false
+		s.RelayHost = ""
+		s.RelayPort = 0
+		s.RelayID = ""
+	}
 	s.RelayHost = normalizeRelayHost(s.RelayHost)
 	s.RelayID = strings.ToLower(strings.TrimSpace(s.RelayID))
 
@@ -300,10 +329,12 @@ func (a *App) saveSettingsLocked(s config.Settings) error {
 		a.rollbackInvitesLocked(cancelled)
 		return err
 	}
-	if err := autostart.Set(filepath.Dir(a.paths.ConfigDir), s.StartOnLogin); err != nil {
-		_ = config.SaveSettings(a.paths, a.settings)
-		a.rollbackInvitesLocked(cancelled)
-		return err
+	if !a.disableAutostart {
+		if err := autostart.Set(filepath.Dir(a.paths.ConfigDir), s.StartOnLogin); err != nil {
+			_ = config.SaveSettings(a.paths, a.settings)
+			a.rollbackInvitesLocked(cancelled)
+			return err
+		}
 	}
 	wasAutoReconnect := a.settings.AutoReconnect
 	a.settings = s
@@ -1073,6 +1104,35 @@ func ValidateConnection(publicAddress string, appPort int) error {
 		return errors.New("the app port must be between 1 and 65535")
 	}
 	return nil
+}
+
+// forceDirect strips relay configuration for a headless host that only
+// supports direct connections.
+func forceDirect(settings config.Settings, groups []group.Group) (config.Settings, []group.Group) {
+	changed := false
+	if settings.UseRelay || settings.RelayHost != "" || settings.RelayPort != 0 || settings.RelayID != "" {
+		settings.UseRelay = false
+		settings.RelayHost = ""
+		settings.RelayPort = 0
+		settings.RelayID = ""
+		changed = true
+	}
+	for i := range groups {
+		g := &groups[i]
+		if g.OverrideSettings || g.UseRelay || g.RelayCustom || g.RelayHost != "" || g.RelayPort != 0 || g.RelayID != "" {
+			g.OverrideSettings = false
+			g.UseRelay = false
+			g.RelayCustom = false
+			g.RelayHost = ""
+			g.RelayPort = 0
+			g.RelayID = ""
+			changed = true
+		}
+	}
+	if changed {
+		log.Printf("relay settings ignored: this host only uses direct connections")
+	}
+	return settings, groups
 }
 
 // normalizeRelayHost removes the brackets around a pasted IPv6 literal so the
