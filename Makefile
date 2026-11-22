@@ -8,6 +8,8 @@ LDFLAGS := -s -w -X github.com/desynkro/lan-party/internal/buildinfo.Version=$(V
 DOCKER ?= docker
 RELAY_IMAGE ?= ghcr.io/desynkro/lan-party-relay
 RELAY_TAG ?= $(VERSION)
+WEB_IMAGE ?= ghcr.io/desynkro/lan-party-web
+WEB_TAG ?= $(VERSION)
 
 # Everything the build touches stays inside the project.
 export TMPDIR := $(ROOT)/.tmp
@@ -20,7 +22,7 @@ export XDG_DATA_HOME := $(ROOT)/.tmp/data
 export XDG_CACHE_HOME := $(ROOT)/.tmp/cache
 export PATH := $(ROOT)/.tools/go/bin:$(PATH)
 
-.PHONY: help dirs env toolchain tidy fmt vet test test-race vuln build run gtk-probe appimage relay relay-native relay-bin relay-image clean
+.PHONY: help dirs env toolchain tidy fmt vet test test-race vuln build run gtk-probe appimage relay relay-native relay-bin relay-image web web-test web-native web-bin web-image clean
 
 help: ## List targets
 	@awk 'BEGIN {FS = ":.*## "; print "Targets:"} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -79,6 +81,23 @@ relay-image: relay-bin ## Build the relay container image from the host binary
 		cp bin/lan-party-relay "$$tmp/lan-party-relay"; \
 		$(DOCKER) build --build-arg VERSION=$(VERSION) -f relay/docker/Dockerfile \
 			-t $(RELAY_IMAGE):$(RELAY_TAG) "$$tmp"
+
+web: toolchain ## Run the web host tests and build it into bin/
+	@$(GO) test ./server/...
+	@CGO_ENABLED=0 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o bin/lan-party-web ./server/cmd/lan-party-web
+
+web-test: toolchain ## Run the web host tests
+	@$(GO) test ./server/...
+
+web-native: toolchain ## Build Linux amd64/arm64 web host release zips
+	@VERSION=$(VERSION) ARCHES="amd64 arm64" build/web.sh
+
+web-bin: toolchain ## Build the host-arch web host binary into bin/
+	@CGO_ENABLED=0 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o bin/lan-party-web ./server/cmd/lan-party-web
+
+web-image: ## Build the web host container image from the repository root
+	@$(DOCKER) build --build-arg VERSION=$(VERSION) -f server/docker/Dockerfile \
+		-t $(WEB_IMAGE):$(WEB_TAG) .
 
 clean: ## Remove build output and caches
 	@rm -rf "$(ROOT)/bin" "$(CACHE)" "$(ROOT)/.tmp"
