@@ -3,6 +3,7 @@ package app
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -12,6 +13,9 @@ import (
 )
 
 func TestHeadlessDoesNotWriteAutostart(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("autostart file test is Linux-specific")
+	}
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
@@ -38,6 +42,9 @@ func TestHeadlessDoesNotWriteAutostart(t *testing.T) {
 }
 
 func TestAutostartWritesWithoutHeadlessOption(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("autostart file test is Linux-specific")
+	}
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
