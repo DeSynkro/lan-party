@@ -494,6 +494,23 @@ textarea {
   font-size: 0.9rem;
 }
 
+/* Override the stacked form-label rule for a single checkbox row. */
+.stack .check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.stack .check input[type="checkbox"] {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.settings-form {
+  margin-bottom: 1.1rem;
+}
+
 .empty {
   text-align: center;
   padding: 2rem 1rem;

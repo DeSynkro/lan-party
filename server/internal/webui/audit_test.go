@@ -46,12 +46,16 @@ func TestGuideRenders(t *testing.T) {
 
 func TestSettingsShowsRecentActivity(t *testing.T) {
 	srv := newTestServer(t)
-	srv.audit.Record("login", "1.2.3.4", "ok")
+	srv.audit.Record("login", "203.0.113.7", "ok")
 	rr := srv.get("/settings")
-	if !strings.Contains(rr.Body.String(), "Recent activity") {
+	body := rr.Body.String()
+	if !strings.Contains(body, "Recent activity") {
 		t.Fatal("activity section missing")
 	}
-	if !strings.Contains(rr.Body.String(), "login") {
+	if !strings.Contains(body, "login") {
 		t.Fatal("audit entry not rendered")
+	}
+	if !strings.Contains(body, "203.0.113.7") {
+		t.Fatal("audit IP not rendered")
 	}
 }

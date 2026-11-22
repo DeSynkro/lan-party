@@ -2,7 +2,7 @@
 <p class="eyebrow">Host</p>
 <h1>Settings</h1>
 
-<form method="post" action="/settings" class="stack">
+<form method="post" action="/settings" class="stack settings-form">
   <input type="hidden" name="csrf" value="{{.CSRF}}">
   <section class="card">
     <h2>Network</h2>
@@ -53,7 +53,7 @@
     {{range .Activity}}
     <li>
       <div><strong>{{.Action}}</strong> {{.Detail}}</div>
-      <span class="muted">{{when .At}}</span>
+      <span class="muted">{{if .IP}}{{.IP}} · {{end}}{{when .At}}</span>
     </li>
     {{end}}
   </ul>
