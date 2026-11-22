@@ -1,0 +1,206 @@
+// Command lan-party-web runs the LAN Party host from a browser.
+package main
+
+import (
+	"errors"
+	"flag"
+	"fmt"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/desynkro/lan-party/internal/buildinfo"
+	"github.com/desynkro/lan-party/server/internal/webui"
+)
+
+func main() {
+	if err := dispatch(os.Args[1:]); err != nil {
+		if !errors.Is(err, errUsage) {
+			fmt.Fprintln(os.Stderr, "lan-party-web:", err)
+		}
+		os.Exit(1)
+	}
+}
+
+var errUsage = errors.New("usage")
+
+func dispatch(args []string) error {
+	if len(args) == 0 {
+		return runServer(nil)
+	}
+	command, rest := args[0], args[1:]
+	switch command {
+	case "run":
+		return runServer(rest)
+	case "setup":
+		return runSetup(rest)
+	case "passwd":
+		return runPasswd(rest)
+	case "show-info":
+		return runShowInfo(rest)
+	case "healthcheck":
+		return runHealthcheck(rest)
+	case "version":
+		fmt.Println(buildinfo.Version)
+		return nil
+	case "help", "-h", "--help":
+		usage()
+		return errUsage
+	default:
+		fmt.Fprintf(os.Stderr, "unknown command %q\n\n", command)
+		usage()
+		return errUsage
+	}
+}
+
+func usage() {
+	fmt.Fprint(os.Stderr, `Usage: lan-party-web <command> [options]
+
+Commands:
+  run          Start the web host
+  setup        Set the admin password and create the data directory
+  passwd       Change the admin password
+  show-info    Show the data directory, listen address and app port
+  healthcheck  Check a running web host
+  version      Print the version
+
+Environment:
+  LANPARTY_WEB_DATA_DIR         Data directory (default ./data)
+  LANPARTY_WEB_LISTEN           Listen address (default 0.0.0.0:8080)
+  LANPARTY_WEB_APP_PORT         UDP app port (default 51820)
+  LANPARTY_WEB_TLS_CERT         TLS certificate file
+  LANPARTY_WEB_TLS_KEY          TLS key file
+  LANPARTY_WEB_TRUSTED_PROXIES  Comma-separated proxy CIDRs
+  LANPARTY_WEB_PASSWORD         First-run password
+`)
+}
+
+type commonFlags struct {
+	dataDir string
+	listen  string
+	cert    string
+	key     string
+	appPort int
+	proxies string
+}
+
+func addCommonFlags(fs *flag.FlagSet) *commonFlags {
+	c := &commonFlags{}
+	fs.StringVar(&c.dataDir, "data-dir", "", "data directory (default ./data)")
+	fs.StringVar(&c.listen, "listen", envOr("LANPARTY_WEB_LISTEN", "0.0.0.0:8080"), "listen address")
+	fs.StringVar(&c.cert, "tls-cert", os.Getenv("LANPARTY_WEB_TLS_CERT"), "TLS certificate file")
+	fs.StringVar(&c.key, "tls-key", os.Getenv("LANPARTY_WEB_TLS_KEY"), "TLS key file")
+	fs.IntVar(&c.appPort, "app-port", envIntOr("LANPARTY_WEB_APP_PORT", 51820), "UDP app port")
+	fs.StringVar(&c.proxies, "trusted-proxies", os.Getenv("LANPARTY_WEB_TRUSTED_PROXIES"), "comma-separated proxy CIDRs")
+	return c
+}
+
+func (c *commonFlags) config() (webui.Config, error) {
+	dataDir, err := webui.ResolveDataDir(c.dataDir)
+	if err != nil {
+		return webui.Config{}, err
+	}
+	proxies, err := webui.ParseTrustedProxies(c.proxies)
+	if err != nil {
+		return webui.Config{}, fmt.Errorf("trusted proxies: %w", err)
+	}
+	return webui.Config{
+		DataDir:        dataDir,
+		Listen:         c.listen,
+		TLSCert:        c.cert,
+		TLSKey:         c.key,
+		AppPort:        c.appPort,
+		TrustedProxies: proxies,
+	}, nil
+}
+
+func runServer(args []string) error {
+	fs := flag.NewFlagSet("run", flag.ContinueOnError)
+	addCommonFlags(fs)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	return errors.New("run is not implemented yet")
+}
+
+func runSetup(args []string) error {
+	fs := flag.NewFlagSet("setup", flag.ContinueOnError)
+	c := addCommonFlags(fs)
+	password := fs.String("password", "", "admin password (otherwise prompt or generate)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	_ = c
+	_ = password
+	return errors.New("setup is not implemented yet")
+}
+
+func runPasswd(args []string) error {
+	fs := flag.NewFlagSet("passwd", flag.ContinueOnError)
+	dataDir := fs.String("data-dir", "", "data directory (default ./data)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	_ = dataDir
+	return errors.New("passwd is not implemented yet")
+}
+
+func runShowInfo(args []string) error {
+	fs := flag.NewFlagSet("show-info", flag.ContinueOnError)
+	c := addCommonFlags(fs)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	cfg, err := c.config()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("data directory: %s\n", cfg.DataDir)
+	fmt.Printf("listen:         %s\n", cfg.Listen)
+	fmt.Printf("app port:       %d/udp\n", cfg.AppPort)
+	if cfg.TLSCert != "" && cfg.TLSKey != "" {
+		fmt.Println("tls:            enabled")
+	} else {
+		fmt.Println("tls:            disabled")
+	}
+	return nil
+}
+
+func runHealthcheck(args []string) error {
+	fs := flag.NewFlagSet("healthcheck", flag.ContinueOnError)
+	url := fs.String("url", "http://127.0.0.1:8080/healthz", "health endpoint")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get(*url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("healthcheck: %s", resp.Status)
+	}
+	return nil
+}
+
+func envOr(name, fallback string) string {
+	if v := strings.TrimSpace(os.Getenv(name)); v != "" {
+		return v
+	}
+	return fallback
+}
+
+func envIntOr(name string, fallback int) int {
+	v := strings.TrimSpace(os.Getenv(name))
+	if v == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return fallback
+	}
+	return n
+}
