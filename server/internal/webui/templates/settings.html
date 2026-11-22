@@ -3,6 +3,7 @@
 <h1>Settings</h1>
 
 <form method="post" action="/settings" class="stack">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
   <section class="card">
     <h2>Network</h2>
     <label for="publicAddress">Public address

@@ -20,6 +20,7 @@
   {{else}}<details open><summary>Service details</summary>{{end}}
 
   <form method="post" action="{{if .Editing}}/groups/{{.GroupID}}/services/{{.ServiceID}}{{else}}/groups/{{.GroupID}}/services{{end}}" class="stack">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
     <label for="name">Name
       <input id="name" name="name" value="{{.Name}}" maxlength="64" required>
     </label>

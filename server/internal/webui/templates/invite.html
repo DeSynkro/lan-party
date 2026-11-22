@@ -16,6 +16,7 @@
   {{end}}
 
   <form method="post" action="/groups/{{.GroupID}}/invites" class="stack">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
     <label for="peerName">Friend's name
       <input id="peerName" name="peerName" value="{{.PeerName}}" maxlength="40" required autofocus>
       <span class="hint">Only so you can tell invites apart.</span>

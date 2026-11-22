@@ -4,6 +4,7 @@
   <h1>Create a group</h1>
   <p class="muted">A group holds one game night: its services, invites and people.</p>
   <form method="post" action="/groups" class="stack">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
     <label for="name">Group name
       <input id="name" name="name" value="{{.Name}}" maxlength="60" required autofocus>
     </label>
