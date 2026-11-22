@@ -35,6 +35,38 @@
     selection.addRange(range);
   }
 
+  const SCROLL_KEY = "lanparty:scroll";
+
+  const saveScroll = (value) => {
+    try {
+      window.sessionStorage.setItem(SCROLL_KEY, String(value));
+    } catch (_) {
+      /* private mode */
+    }
+  };
+
+  const applyScroll = (value) => {
+    window.requestAnimationFrame(() => window.scrollTo(0, value));
+    window.setTimeout(() => window.scrollTo(0, value), 60);
+  };
+
+  const restoreSavedScroll = () => {
+    let value = null;
+    try {
+      value = window.sessionStorage.getItem(SCROLL_KEY);
+      if (value !== null) window.sessionStorage.removeItem(SCROLL_KEY);
+    } catch (_) {
+      return;
+    }
+    const y = Number(value);
+    if (!Number.isFinite(y)) return;
+    window.requestAnimationFrame(() => window.scrollTo(0, y));
+    window.addEventListener("load", () => window.scrollTo(0, y), { once: true });
+    window.setTimeout(() => window.scrollTo(0, y), 120);
+  };
+
+  restoreSavedScroll();
+
   const dialog = document.getElementById("modal");
   const modalBody = document.getElementById("modal-body");
 
@@ -110,14 +142,22 @@
     });
 
     dialog.addEventListener("click", (event) => {
-      if (event.target === dialog) dialog.close();
+      if (event.target === dialog) {
+        dialog.close();
+        return;
+      }
+      const link = event.target.closest("a[href]");
+      if (!link || link.hasAttribute("data-modal")) return;
+      const target = new URL(link.href, window.location.href);
+      if (target.pathname !== window.location.pathname) return;
+      event.preventDefault();
+      dialog.close();
     });
 
     dialog.addEventListener("close", () => {
       modalBody.replaceChildren();
       dialog.removeAttribute("aria-labelledby");
-      const y = pageScrollY;
-      window.setTimeout(() => window.scrollTo(0, y), 0);
+      applyScroll(pageScrollY);
     });
 
     dialog.addEventListener("submit", async (event) => {
@@ -140,11 +180,16 @@
           credentials: "same-origin",
         });
         if (response.redirected) {
-          window.location.href = response.url;
+          const target = new URL(response.url, window.location.href);
+          if (target.pathname === window.location.pathname) {
+            saveScroll(pageScrollY);
+          }
+          window.location.href = target.toString();
           return;
         }
         const html = await response.text();
         if (response.ok) {
+          saveScroll(pageScrollY);
           window.location.reload();
           return;
         }
