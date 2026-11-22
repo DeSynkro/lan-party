@@ -23,6 +23,11 @@ func (s *Server) handleApproval(w http.ResponseWriter, r *http.Request, session 
 		s.renderError(w, r, http.StatusConflict, "That approval request could not be resolved.")
 		return
 	}
+	outcome := "denied"
+	if allow {
+		outcome = "allowed"
+	}
+	s.record(r, "approval", outcome+" id="+approval.ID)
 	http.Redirect(w, r, "/groups/"+approval.GroupID, http.StatusSeeOther)
 }
 
@@ -76,6 +81,7 @@ func (s *Server) handleMemberRemove(w http.ResponseWriter, r *http.Request, sess
 		s.renderGroupWithError(w, r, g, err.Error(), http.StatusConflict)
 		return
 	}
+	s.record(r, "member", "removed id="+r.PathValue("mid"))
 	http.Redirect(w, r, "/groups/"+g.ID, http.StatusSeeOther)
 }
 

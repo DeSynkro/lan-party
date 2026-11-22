@@ -75,6 +75,7 @@ func (s *Server) handleInviteCreate(w http.ResponseWriter, r *http.Request, sess
 		s.render(w, r, http.StatusConflict, "invite.html", view)
 		return
 	}
+	s.record(r, "invite", "created for "+peerName)
 	http.Redirect(w, r, "/groups/"+g.ID, http.StatusSeeOther)
 }
 
@@ -110,6 +111,7 @@ func (s *Server) handleInviteCancel(w http.ResponseWriter, r *http.Request, sess
 		s.renderGroupWithError(w, r, g, err.Error(), http.StatusConflict)
 		return
 	}
+	s.record(r, "invite", "cancelled id="+r.PathValue("iid"))
 	http.Redirect(w, r, "/groups/"+g.ID, http.StatusSeeOther)
 }
 

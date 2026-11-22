@@ -93,6 +93,7 @@ func (s *Server) handleServiceCreate(w http.ResponseWriter, r *http.Request, ses
 		s.render(w, r, http.StatusConflict, "service_form.html", view)
 		return
 	}
+	s.record(r, "service", "added id="+service.ID)
 	http.Redirect(w, r, "/groups/"+g.ID, http.StatusSeeOther)
 }
 
@@ -118,6 +119,7 @@ func (s *Server) handleServiceUpdate(w http.ResponseWriter, r *http.Request, ses
 		s.render(w, r, http.StatusConflict, "service_form.html", view)
 		return
 	}
+	s.record(r, "service", "updated id="+service.ID)
 	http.Redirect(w, r, "/groups/"+g.ID, http.StatusSeeOther)
 }
 
@@ -153,6 +155,7 @@ func (s *Server) handleServiceRemove(w http.ResponseWriter, r *http.Request, ses
 		s.renderGroupWithError(w, r, g, err.Error(), http.StatusConflict)
 		return
 	}
+	s.record(r, "service", "removed id="+r.PathValue("sid"))
 	http.Redirect(w, r, "/groups/"+g.ID, http.StatusSeeOther)
 }
 

@@ -46,6 +46,22 @@
 </section>
 
 <section class="card">
+  <h2>Recent activity</h2>
+  {{if .Activity}}
+  <ul class="list small">
+    {{range .Activity}}
+    <li>
+      <div><strong>{{.Action}}</strong> {{.Detail}}</div>
+      <span class="muted">{{when .At}}</span>
+    </li>
+    {{end}}
+  </ul>
+  {{else}}
+  <p class="muted">Nothing recorded yet.</p>
+  {{end}}
+</section>
+
+<section class="card">
   <h2>About</h2>
   <div class="stack small">
     <div class="split"><span class="muted">Version</span><span class="mono">{{.Version}}</span></div>

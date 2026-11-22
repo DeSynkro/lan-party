@@ -47,6 +47,7 @@ func (s *Server) handleGroupCreate(w http.ResponseWriter, r *http.Request, sessi
 		})
 		return
 	}
+	s.record(r, "group", "created id="+g.ID)
 	http.Redirect(w, r, "/groups/"+g.ID, http.StatusSeeOther)
 }
 
@@ -77,6 +78,7 @@ func (s *Server) handleGroupDelete(w http.ResponseWriter, r *http.Request, sessi
 		s.renderError(w, r, http.StatusConflict, err.Error())
 		return
 	}
+	s.record(r, "group", "deleted id="+g.ID)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -90,6 +92,7 @@ func (s *Server) handleGroupStart(w http.ResponseWriter, r *http.Request, sessio
 		s.renderGroupWithError(w, r, g, err.Error(), http.StatusConflict)
 		return
 	}
+	s.record(r, "session", "started group="+g.ID)
 	http.Redirect(w, r, "/groups/"+g.ID, http.StatusSeeOther)
 }
 
@@ -103,5 +106,6 @@ func (s *Server) handleGroupStop(w http.ResponseWriter, r *http.Request, session
 		s.renderGroupWithError(w, r, g, err.Error(), http.StatusConflict)
 		return
 	}
+	s.record(r, "session", "stopped")
 	http.Redirect(w, r, "/groups/"+g.ID, http.StatusSeeOther)
 }

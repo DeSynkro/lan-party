@@ -28,6 +28,7 @@ func (s *Server) settingsView(r *http.Request) SettingsView {
 		LogPath:            filepath.Join(s.cfg.DataDir, "lan-party.log"),
 		Version:            buildinfo.Version,
 		AddressSuggestions: lanAddresses(),
+		Activity:           s.audit.Recent(),
 	}
 }
 
@@ -87,6 +88,7 @@ func (s *Server) handleSettingsSave(w http.ResponseWriter, r *http.Request, sess
 		s.render(w, r, http.StatusBadRequest, "settings.html", view)
 		return
 	}
+	s.record(r, "settings", "saved")
 	http.Redirect(w, r, "/settings", http.StatusSeeOther)
 }
 
@@ -128,6 +130,7 @@ func (s *Server) handlePasswordChange(w http.ResponseWriter, r *http.Request, se
 	}
 	s.creds = creds
 	s.sessions.DestroyAll()
+	s.record(r, "password", "changed")
 	ClearSessionCookie(w, s.secureRequest(r))
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }

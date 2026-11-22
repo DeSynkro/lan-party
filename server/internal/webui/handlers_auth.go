@@ -67,10 +67,12 @@ func (s *Server) handleLoginPost(w http.ResponseWriter, r *http.Request) {
 			time.Sleep(s.loginDelay)
 		}
 		s.limiter.Fail(ip, now)
+		s.record(r, "login", "failed")
 		s.renderLogin(w, r, http.StatusUnauthorized, "That password is not correct.")
 		return
 	}
 	s.limiter.Success(ip)
+	s.record(r, "login", "ok")
 
 	if old := SessionID(r); old != "" {
 		s.sessions.Destroy(old)
@@ -86,6 +88,7 @@ func (s *Server) handleLoginPost(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request, session *Session) {
 	s.sessions.Destroy(session.ID)
+	s.record(r, "logout", "ok")
 	ClearSessionCookie(w, s.secureRequest(r))
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }

@@ -37,6 +37,7 @@ type Server struct {
 	mux        *http.ServeMux
 	now        func() time.Time
 	loginDelay time.Duration
+	audit      *AuditLog
 }
 
 // New builds the web UI. The data directory must already have credentials.
@@ -59,6 +60,7 @@ func New(a App, cfg Config) (*Server, error) {
 		mux:        http.NewServeMux(),
 		now:        time.Now,
 		loginDelay: 300 * time.Millisecond,
+		audit:      NewAuditLog(100),
 	}
 	s.routes()
 	return s, nil
@@ -96,6 +98,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /settings", s.authenticated(s.handleSettingsSave))
 	s.mux.HandleFunc("GET /settings/password", s.authenticated(s.handlePasswordForm))
 	s.mux.HandleFunc("POST /settings/password", s.authenticated(s.handlePasswordChange))
+	s.mux.HandleFunc("GET /guide", s.authenticated(s.handleGuide))
 	s.mux.HandleFunc("GET /events", s.authenticated(s.handleEvents))
 	s.mux.HandleFunc("/", s.handleNotFound)
 }

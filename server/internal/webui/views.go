@@ -117,6 +117,7 @@ type SettingsView struct {
 	LogPath            string
 	Version            string
 	AddressSuggestions []string
+	Activity           []AuditEntry
 }
 
 // NewGroupView builds a view that only carries host-visible fields.
