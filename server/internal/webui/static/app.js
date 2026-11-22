@@ -39,6 +39,8 @@
   const modalBody = document.getElementById("modal-body");
 
   if (dialog && modalBody && typeof dialog.showModal === "function") {
+    let pageScrollY = 0;
+
     const render = (html) => {
       const doc = new DOMParser().parseFromString(html, "text/html");
       const main = doc.querySelector("main");
@@ -72,7 +74,10 @@
     };
 
     const open = async (url) => {
-      if (!dialog.open) dialog.showModal();
+      if (!dialog.open) {
+        pageScrollY = window.scrollY;
+        dialog.showModal();
+      }
       modalBody.replaceChildren();
       const loading = document.createElement("p");
       loading.className = "muted";
@@ -111,6 +116,8 @@
     dialog.addEventListener("close", () => {
       modalBody.replaceChildren();
       dialog.removeAttribute("aria-labelledby");
+      const y = pageScrollY;
+      window.setTimeout(() => window.scrollTo(0, y), 0);
     });
 
     dialog.addEventListener("submit", async (event) => {

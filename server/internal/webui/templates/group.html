@@ -114,7 +114,7 @@
     {{range .Members}}
     <li>
       <div>
-        <a href="/groups/{{$.Group.ID}}/members/{{.ID}}">{{.Name}}</a>
+        <a href="/groups/{{$.Group.ID}}/members/{{.ID}}" data-modal>{{.Name}}</a>
         {{if .Live}}<span class="pill" data-member-state="{{.ID}}"><span class="dot live"></span>Connected</span>{{else}}<span class="pill" data-member-state="{{.ID}}"><span class="dot"></span>Offline</span>{{end}}
         {{if not .Approved}}<span class="pill">Waiting for approval</span>{{end}}
         <div class="hint">{{.DeviceName}} · last seen {{ago .LastSeen}}</div>
