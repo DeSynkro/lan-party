@@ -268,9 +268,11 @@ app.
 - One admin password. No username field, so there is no account enumeration.
 - PBKDF2-SHA256, 600,000 iterations, 32-byte key, 16-byte random salt,
   constant-time comparison (shared with the relay).
-- First run generates a 24-byte random password, prints it once and stores only
-  the salted hash in `data/web.json` (`0600`). `passwd` replaces it. A
-  user-supplied password must be at least 12 characters.
+- First run generates a 24-byte random password, prints it once to stdout and
+  writes it once to the owner-only `data/lan-party.log`, then stores only the
+  salted hash in `data/web.json` (`0600`). Remove or rotate the log after saving
+  the password. `passwd` replaces it. A user-supplied password must be at least
+  12 characters.
 - Login failures return a generic message and a fixed delay. Per-address token
   buckets and a global failure cap return `429` with `Retry-After`.
 
@@ -283,8 +285,10 @@ app.
 - Idle timeout 12 hours, absolute timeout 7 days. Logout destroys the session
   server-side.
 - Every authenticated mutation needs a per-session CSRF token and a matching
-  `Origin` header. A missing Origin is accepted only for non-browser clients,
-  which still need the token.
+  `Origin` header. Browsers that omit `Origin` or send `null` on same-origin
+  form posts (because the app sets `Referrer-Policy: no-referrer`) are accepted
+  when `Sec-Fetch-Site` is `same-origin` or `none`; the CSRF token is still
+  required. Cross-site requests and foreign Origins are rejected.
 - A password change destroys every session.
 
 ### Headers and transport
@@ -305,10 +309,11 @@ app.
   the desktop app. There is no app-level passphrase in 1.3: encrypt the disk and
   backups.
 - Invite codes, password hashes, private keys and session IDs are never logged
-  or rendered on a logged-out page. Invite codes are shown on the group page
-  for the life of the process and are cleared on restart.
-- No relay secrets, Relay ID or reconnect tokens exist in this binary. Relay
-  settings copied into its data directory are normalized to direct mode at load.
+  or rendered on a logged-out page. Invite codes are shown only while an invite
+  is open and are deleted from memory when it is redeemed or cancelled.
+- The web host does not create or expose relay secrets, Relay IDs or reconnect
+  tokens. Relay settings copied into its data directory are normalized to
+  direct mode at load.
 - The container runs as a non-root UID with a read-only root filesystem, dropped
   capabilities, `no-new-privileges`, a PID limit and memory/CPU limits. Only
   `/data` is writable.

@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.3.0 — 2026-11-22
+## 1.3.0 — 2026-11-24
 
 - Host-only web app for a homelab or VPS: the same engine as the desktop host,
   without GTK, a tray or a display server.

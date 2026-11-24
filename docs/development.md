@@ -177,10 +177,10 @@ CI runs vet, race tests, `govulncheck` and a binary build on every push. The
 Linux AppImage is built on every push to main, on tags and by hand, then smoke
 tested under Xvfb. The Windows portable zip is built in the same workflow on
 Windows and is uploaded as the `windows-portable` artifact. A tag also creates
-a draft release with the AppImage, Windows zip and `SHA256SUMS`. If
-`docs/releases/<tag>.md` exists, it becomes the release body. Otherwise the
-notes are generated. The AppImage installs the GPLv3 license, font licenses and
-third-party notices under `usr/share/licenses/lan-party/`.
+a draft release with the AppImage, Windows zip, relay zips, web host zips and
+`SHA256SUMS`. If `docs/releases/<tag>.md` exists, it becomes the release body.
+Otherwise the notes are generated. The AppImage installs the GPLv3 license,
+font licenses and third-party notices under `usr/share/licenses/lan-party/`.
 
 Version strings come from `git describe` and are passed to
 `internal/buildinfo.Version` with `-ldflags`. Untagged local builds say `dev`.
@@ -192,12 +192,12 @@ Use the release helper. It requires a clean `main`, a matching release-notes
 file, and green `make test` / `make vet`:
 
 ```sh
-./build/tag-release.sh --check-only 1.2.0   # validate without tagging
-./build/tag-release.sh 1.2.0                # create the local annotated tag
-./build/tag-release.sh --push 1.2.0         # create, push main and push the tag
+./build/tag-release.sh --check-only 1.3.0   # validate without tagging
+./build/tag-release.sh 1.3.0                # create the local annotated tag
+./build/tag-release.sh --push 1.3.0         # create, push main and push the tag
 ```
 
-The helper creates `v1.2.0` from `docs/releases/v1.2.0.md`, then either prints
+The helper creates `v1.3.0` from `docs/releases/v1.3.0.md`, then either prints
 the push commands or, with `--push`, pushes to the `github` remote (or `origin`
 when `github` is not configured). Set `LANPARTY_RELEASE_REMOTE` to override it.
 
@@ -210,9 +210,9 @@ notes and all assets, then publish it.
 Manual equivalent:
 
 ```sh
-git tag -a v1.2.0 -m "LAN Party 1.2.0"
+git tag -a v1.3.0 -m "LAN Party 1.3.0"
 git push github main
-git push github v1.2.0
+git push github v1.3.0
 ```
 
 Never move or delete an existing release tag. If a build is wrong, fix it and

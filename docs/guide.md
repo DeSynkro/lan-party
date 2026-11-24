@@ -3,6 +3,9 @@
 This is the longer version of the in-app guide. The app shows the same steps
 with your current port and local address filled in.
 
+The 1.3 host can also run headlessly on a homelab or VPS with a browser UI. The
+friend side does not change; see [web-host.md](web-host.md) for that setup.
+
 ## What you need
 
 - The host: a Linux or Windows PC running the game server, with LAN Party

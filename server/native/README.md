@@ -16,7 +16,9 @@ cd lan-party-web_1.3.0_linux_amd64
 ```
 
 On first run `run.sh` asks for the listen address and UDP game port, writes
-`./native/web.env`, and sets the admin password. It then shows a menu:
+`./native/web.env`, and sets the admin password. The generated password is also
+written once to the data directory's `lan-party.log`; delete or rotate that file
+after saving it. It then shows a menu:
 
 ```text
   1) Start
@@ -66,6 +68,20 @@ sudo systemctl enable --now lan-party-web
 
 The unit runs as `lanparty` with `NoNewPrivileges`, `ProtectSystem=strict`,
 `ProtectHome=true` and only the data directory writable. There are no timers.
+
+## Firewall
+
+The native app binds `51820/udp` and the web UI port directly, so allow them on
+the host firewall. Docker's published ports bypass UFW; the native runner does
+not.
+
+```sh
+sudo ufw allow 51820/udp comment 'LAN Party tunnel'
+sudo ufw allow 8080/tcp comment 'LAN Party web'   # only if the UI is remote
+```
+
+Forward `51820/udp` on the router. Do not forward the web UI port unless you
+need remote administration, and put it behind TLS if you do.
 
 ## TLS
 

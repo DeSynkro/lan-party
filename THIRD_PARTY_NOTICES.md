@@ -1,6 +1,6 @@
 # Third-party notices
 
-LAN Party is licensed under **GPLv3**. The AppImage also contains the following third-party Go modules. Their license texts are reproduced below.
+LAN Party is licensed under **GPLv3**. The shipped binaries also contain the following third-party Go modules. Their license texts are reproduced below.
 
 This file covers the modules linked into the shipped binary. Build-only and test-only modules are not included.
 
@@ -18,6 +18,7 @@ This file covers the modules linked into the shipped binary. Build-only and test
 | `golang.org/x/net` | `v0.62.0` | BSD-3-Clause |
 | `golang.org/x/sync` | `v0.25.0` | BSD-3-Clause |
 | `golang.org/x/sys` | `v0.50.0` | BSD-3-Clause |
+| `golang.org/x/term` | `v0.47.0` | BSD-3-Clause |
 
 ## License texts
 
@@ -311,6 +312,7 @@ Applies to:
 - `golang.org/x/net` v0.62.0 (LICENSE)
 - `golang.org/x/sync` v0.25.0 (LICENSE)
 - `golang.org/x/sys` v0.50.0 (LICENSE)
+- `golang.org/x/term` v0.47.0 (LICENSE)
 
 ```text
 Copyright 2009 The Go Authors.

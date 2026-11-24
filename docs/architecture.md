@@ -66,10 +66,13 @@ party, and it says so.
 | `internal/tunnel` | QUIC listener/dialer, TLS pinning, control stream, data streams, datagrams |
 | `internal/forward` | TCP pipes and UDP flow forwarding |
 | `internal/session` | host and friend session lifecycle, presence, service updates |
+| `internal/password` | PBKDF2 hashing shared by the relay and web host |
 | `internal/gtkui` | GTK4 screens, style, widgets, in-app guide |
 | `internal/autostart` | XDG desktop entry for login |
 | `internal/buildinfo` | version string |
 | `internal/preset` | the shipped game port table |
+| `server/cmd/lan-party-web` | optional headless host entry point |
+| `server/internal/webui` | HTTP server, auth, templates, assets for the web host |
 
 The dependency direction is roughly:
 
@@ -153,6 +156,11 @@ host       -> relay UDP      [0x02][16-byte data token][2-byte friend id][inner 
 | groups, services, members, public keys, invite hashes | `~/.local/share/lan-party/groups.json` | 0600 |
 | private host and device keys | `~/.local/share/lan-party/keys/` | 0600 files in a 0700 directory |
 
+The optional 1.3 web host keeps its own directory beside `compose.yaml` or
+`run.sh`: `settings.json`, `groups.json`, `web.json`, `keys/` and
+`lan-party.log`. It uses the same engine and file modes as the desktop app, but
+a separate admin password.
+
 Private keys are never written to the JSON, an invite or a log. A key file that
 other users can read is refused.
 
@@ -160,7 +168,9 @@ The group store uses a versioned JSON wrapper and an atomic replace: write a
 temporary file in the same directory, chmod it, sync it, rename it. Directories
 are `0700`.
 
-There is no database, no local server and no daemon.
+The desktop app has no local server or daemon. The optional web host is a
+separate server binary; friends do not connect to it and the desktop app does
+not depend on it.
 
 ## Limits
 
@@ -193,6 +203,7 @@ These are guards against a broken or malicious client, not billing limits.
 ## Where to read next
 
 - [security.md](security.md) for the key and invite lifecycle
+- [web-host.md](web-host.md) for the optional browser-controlled host
 - [ui.md](ui.md) for the window and screens
 - [guide.md](guide.md) for the user-facing setup
 - [development.md](development.md) for the build and tests

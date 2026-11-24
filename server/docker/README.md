@@ -34,6 +34,23 @@ If you change the UDP port, update the router forward too. `LANPARTY_WEB_BIND`
 controls which host interface publishes the web UI (`0.0.0.0` by default,
 `127.0.0.1` behind a reverse proxy).
 
+## Game server on the Docker host
+
+With bridge networking, `127.0.0.1` inside the container is the container
+itself. For a game server on the same machine, use the host's LAN address as
+the service target and allow the game port from Docker's private range only:
+
+```sh
+sudo ufw allow from 172.16.0.0/12 to any port 25565 proto tcp comment 'LAN Party'
+```
+
+Use `udp` for UDP services, and one rule per port. The web UI's Services card
+generates these commands, plus the matching delete commands, for your saved
+services. This does not expose the port to the LAN or internet.
+
+If the host uses a custom Docker address range outside `172.16.0.0/12`, adjust
+the source range to match.
+
 ## First run
 
 From a source checkout, one command:
@@ -54,8 +71,16 @@ sudo docker compose logs lan-party-web | grep -A2 "admin password"
 
 The first start generates a strong admin password and prints it once in the
 logs. Save it in your password manager, open `http://<host>:8080`, and sign in.
-After signing in you can recreate the container to drop the password from its
-logs:
+The same line is written once to `data/lan-party.log` (mode `0600`). Recreating
+the container clears Docker's own logs but not that file; after saving the
+password, remove or rotate the log:
+
+```sh
+rm data/lan-party.log
+```
+
+After signing in you can also recreate the container to drop the password from
+its Docker logs:
 
 ```sh
 sudo docker compose down

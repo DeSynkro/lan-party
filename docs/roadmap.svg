@@ -157,19 +157,22 @@
     <circle cx="120" cy="744" r="14" fill="#08040f" stroke="#8b5cf6" stroke-opacity="0.35" stroke-width="2"/>
     <circle cx="120" cy="744" r="7" fill="#8b5cf6"/>
     <path d="M74 722 L166 722 C178.15 722 188 731.85 188 744 L188 744 C188 756.15 178.15 766 166 766 L74 766 C61.85 766 52 756.15 52 744 L52 744 C52 731.85 61.85 722 74 722 Z" fill="#120a2e" stroke="#8b5cf6" stroke-opacity="0.55"/>
-    <text transform="matrix(1 0 0 1 120 750)" x="0" y="0" xml:space="preserve" font-family="&apos;JetBrains Mono&apos;, monospace" font-size="20" fill="#8b5cf6" text-anchor="middle"><tspan x="0" y="0">1.2</tspan></text>
-    <text transform="matrix(1 0 0 1 236 718)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans SmBld&apos;, sans-serif" font-size="29" font-weight="600" fill="#fdf4ff"><tspan x="0" y="0">Relay + packaging</tspan></text>
+    <text transform="matrix(1 0 0 1 120 750)" x="0" y="0" xml:space="preserve" font-family="&apos;JetBrains Mono&apos;, monospace" font-size="20" fill="#8b5cf6" text-anchor="middle"><tspan x="0" y="0">1.2–1.3</tspan></text>
+    <text transform="matrix(1 0 0 1 236 718)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans SmBld&apos;, sans-serif" font-size="29" font-weight="600" fill="#fdf4ff"><tspan x="0" y="0">Relay + web host</tspan></text>
     <g>
       <path d="M1229.5 693 L1292 693 C1299.732 693 1306 699.268 1306 707 L1306 707 C1306 714.732 1299.732 721 1292 721 L1229.5 721 C1221.768 721 1215.5 714.732 1215.5 707 L1215.5 707 C1215.5 699.268 1221.768 693 1229.5 693 Z" fill="#8b5cf6" fill-opacity="0.1" stroke="#8b5cf6" stroke-opacity="0.45"/>
       <text transform="matrix(1 0 0 1 1260.066 711.32)" x="0.7" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans SmBld&apos;, sans-serif" font-size="12" font-weight="600" fill="#8b5cf6" letter-spacing="1.4" text-anchor="middle"><tspan x="0.7" y="0">OUT NOW</tspan></text>
     </g>
-    <text transform="matrix(1 0 0 1 236 752)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="18" fill="#b9a8d9"><tspan x="0" y="0">For hosts behind CGNAT, and for anyone who cannot forward a port.</tspan></text>
+    <text transform="matrix(1 0 0 1 236 752)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="18" fill="#b9a8d9"><tspan x="0" y="0">The relay release, plus browser control for a homelab or VPS.</tspan></text>
     <path d="M253 774 L383.8 774 C393.189 774 400.8 781.611 400.8 791 L400.8 791 C400.8 800.389 393.189 808 383.8 808 L253 808 C243.611 808 236 800.389 236 791 L236 791 C236 781.611 243.611 774 253 774 Z" fill="#1a0e3d" stroke="#8b5cf6" stroke-opacity="0.22"/>
     <circle cx="251" cy="791" r="3" fill="#8b5cf6"/>
     <text transform="matrix(1 0 0 1 261 796.6)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="16" fill="#e9ddf9"><tspan x="0" y="0">Self-hosted relay</tspan></text>
     <path d="M427.788 774 L597.388 774 C606.777 774 614.388 781.611 614.388 791 L614.388 791 C614.388 800.389 606.777 808 597.388 808 L427.788 808 C418.399 808 410.788 800.389 410.788 791 L410.788 791 C410.788 781.611 418.399 774 427.788 774 Z" fill="#1a0e3d" stroke="#8b5cf6" stroke-opacity="0.22"/>
     <circle cx="425.788" cy="791" r="3" fill="#8b5cf6"/>
     <text transform="matrix(1 0 0 1 435.788 796.6)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="16" fill="#e9ddf9"><tspan x="0" y="0">Docker Compose relay</tspan></text>
+    <rect x="624" y="774" width="132" height="34" rx="8" fill="#1a0e3d" stroke="#8b5cf6" stroke-opacity="0.22"/>
+    <circle cx="639" cy="791" r="3" fill="#8b5cf6"/>
+    <text transform="matrix(1 0 0 1 649 796.6)" x="0" y="0" xml:space="preserve" font-family="&apos;IBM Plex Sans&apos;, sans-serif" font-size="16" fill="#e9ddf9"><tspan x="0" y="0">Web host</tspan></text>
     <circle cx="120" cy="940" r="14" fill="#08040f" stroke="#8e7bb5" stroke-opacity="0.35" stroke-width="2"/>
     <circle cx="120" cy="940" r="7" fill="#8e7bb5"/>
     <path d="M224 862 L1310 862 C1321.046 862 1330 870.954 1330 882 L1330 992 C1330 1003.046 1321.046 1012 1310 1012 L224 1012 C212.954 1012 204 1003.046 204 992 L204 882 C204 870.954 212.954 862 224 862 Z" fill="#120a2e" fill-opacity="0.88" stroke="#ffffff" stroke-opacity="0.1" stroke-width="1.5"/>

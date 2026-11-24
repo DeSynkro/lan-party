@@ -80,7 +80,9 @@ These would count as failures even if the app technically works:
 
 - Go 1.27.4, pinned in `.tools`, with the module and build caches inside the
   project.
-- Go and GTK4 only. No webview, no npm, no bundled browser.
+- Go and GTK4 only for the desktop app. The optional 1.3 web host uses Go's
+  `net/http` with server-rendered templates. No webview, no npm, no bundled
+  browser.
 - Fixed 400×640 window. No maximise, no resize.
 - Linux runtime data in `~/.config/lan-party` and `~/.local/share/lan-party`.
   Windows settings in `%AppData%\lan-party` and data in
@@ -458,7 +460,8 @@ invite, approve the device, forward a TCP echo, and revoke the member.
 
 Not in 1.0: a relay for CGNAT hosts, per-friend service grants, multiple live
 host sessions, automatic public-address detection, MAC addresses in device
-details, and auto-update. The self-hosted relay arrived in 1.2.
+details, and auto-update. The self-hosted relay arrived in 1.2; the optional
+host-only web UI arrived in 1.3.
 
 ## Open items
 

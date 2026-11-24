@@ -29,8 +29,10 @@ sudo docker compose logs lan-party-web | grep -A2 "admin password"
 ```
 
 The first start prints a generated admin password once in the logs. Save it,
-then open `http://<server>:8080`. The release zip does the same with
-`sudo docker compose up -d` from its `docker/` folder.
+then open `http://<server>:8080`. It is also written once to
+`data/lan-party.log` (`0600`); delete or rotate that file after saving the
+password. The release zip does the same with `sudo docker compose up -d` from
+its `docker/` folder.
 
 `./setup.sh` is optional; use it to choose the password and `PUID`/`PGID`.
 See [server/docker/README.md](../server/docker/README.md) for ports, TLS and
@@ -57,8 +59,11 @@ See [server/native/README.md](../server/native/README.md).
 ## First setup
 
 1. **Forward the UDP port.** The default is `51820/udp`. Forward it on the
-   router to this host. Changing `LANPARTY_APP_PORT` means changing the router
-   forward too; the web UI shows the port read-only for that reason.
+   router to this host and allow it through the host firewall. The native app
+   binds the port directly, so it needs `sudo ufw allow 51820/udp`; Docker
+   publishes the port through its own rules. Changing `LANPARTY_APP_PORT` means
+   changing the router forward too; the web UI shows the port read-only for
+   that reason.
 2. **Sign in** with the admin password. There is no username. A forgotten
    password can be reset from the console with `passwd` (native) or
    `./webctl passwd` (Docker).
@@ -67,14 +72,17 @@ See [server/native/README.md](../server/native/README.md).
    to confirm, because those invites point at the old address.
 4. **Create a group**, for example "Friday night".
 5. **Add a service.** Give it a name, the game protocol, the game server target
-   as this host sees it (such as `127.0.0.1:25565`), and the ports. A preset
-   fills the common games.
+   as this host sees it, and the ports. A preset fills the common games. With
+   Docker, `127.0.0.1` means the container: use the host's LAN address for a
+   game server on the same machine, and allow the game port from Docker's
+   private range (the Services card shows the exact command).
 6. **Start the session and create an invite.** Send the code to your friend.
 7. Your friend pastes it into the LAN Party desktop app and approves the device.
    Their game connects to `127.0.0.1:<port>`.
 
-New devices are approved automatically by default. Turn that off in Settings to
-approve each device by hand. An invite is single use and expires after an hour.
+New devices wait for your approval by default. Turn that off in Settings to let
+a valid invite join automatically. An invite is single use and expires after an
+hour.
 
 ## Reverse proxy and TLS
 
@@ -171,12 +179,24 @@ fields.
 ## Troubleshooting
 
 **The web UI does not load.** Check `docker compose ps` or the native log at
-`data/lan-party.log`. If you bound to `127.0.0.1`, connect from the machine or
-through the reverse proxy, not from another device.
+the data directory's `lan-party.log`. If you bound to `127.0.0.1`, connect from
+the machine or through the reverse proxy, not from another device.
 
 **A friend cannot connect.** Confirm the UDP port is forwarded to this host and
-allowed by the firewall. Confirm the public address in Settings is the address
-they dial, and that the session is live.
+allowed by the firewall. The native app needs `sudo ufw allow 51820/udp`;
+Docker publishes the port through its own rules. Confirm the public address in
+Settings is the address they dial, and that the session is live.
+
+**The game server is on the Docker host.** `127.0.0.1` inside the container is
+the container, not your PC. Use the host's LAN address as the target and let
+containers reach the game port:
+
+```sh
+sudo ufw allow from 172.16.0.0/12 to any port 25565 proto tcp
+```
+
+The Services card generates this rule for each service and port, with a matching
+delete command. If you play other games, run the command shown for that service.
 
 **An invite stopped working.** Invites are single use and expire after one hour.
 Create a new one. A changed public address also invalidates old invites.

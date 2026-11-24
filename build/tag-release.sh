@@ -14,7 +14,7 @@ usage() {
     cat >&2 <<'EOF'
 Usage: ./build/tag-release.sh [--check-only] [--push] VERSION
 
-VERSION must be a stable version such as 1.2.0. The script requires:
+VERSION must be a stable version such as 1.3.0. The script requires:
   - a clean main branch
   - docs/releases/vVERSION.md
   - make test and make vet to pass

@@ -42,6 +42,11 @@ values and the exact commands. Change them with `sudo ./setup.sh --ports` in
 then restart Compose. Changing the UDP port also means changing the router
 forward.
 
+With Docker, the published ports bypass UFW. The native runner binds them
+directly, so allow `51820/udp` (and the web port if remote) on the host
+firewall. For a game server on the Docker host, see
+[docker/README.md](docker/README.md#game-server-on-the-docker-host).
+
 ## Data
 
 The data directory sits beside `compose.yaml` or `run.sh`:
